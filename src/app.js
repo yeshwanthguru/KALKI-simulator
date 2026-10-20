@@ -62,7 +62,7 @@ function normShot(o, errs, i) {
   s.action = o.action === 'walk' ? 'walk' : 'idle';
   return s;
 }
-const DEMO = () => ({ kalai: '0.1', title: 'Chai stall – first meeting', aspect: '2.39', look: 'golden', shots: [
+const DEMO = () => ({ kalki: '0.1', title: 'Chai stall – first meeting', aspect: '2.39', look: 'golden', shots: [
   newShot({ fstop: 5.6, name: 'Establish the stall', move: 'reveal', duration: 5, lens: 24, size: 'WS', subject: 'both', height: 'eye', angle: 15, amount: .7 }),
   newShot({ fstop: 1.8, name: 'Meera notices', move: 'push_in', duration: 4.5, lens: 50, size: 'MS', subject: 'A', angle: 25, amount: .7 }),
   newShot({ fstop: 2.8, name: 'Arjun walks in', move: 'follow', duration: 5, lens: 35, size: 'FS', subject: 'B', angle: 25, action: 'walk' }),
@@ -146,7 +146,7 @@ for (const x of [-3.2, 3.2]) {
 // chai counter + sign
 add(new T.BoxGeometry(4.2, 1.05, .9), mat(0x2f6f62), 0, .52, -3.3);
 add(new T.BoxGeometry(4.4, .08, 1), mat(0xe8d6b8), 0, 1.08, -3.3);
-const signTex = canvasTex(512, 128, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#ff6b4a'); gr.addColorStop(1, '#ffb547'); g.fillStyle = '#1a0f0a'; g.fillRect(0, 0, w, h); g.fillStyle = gr; g.font = 'bold 74px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('KALAI CHAI', w / 2, h / 2 + 4); });
+const signTex = canvasTex(512, 128, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, '#ff6b4a'); gr.addColorStop(1, '#ffb547'); g.fillStyle = '#1a0f0a'; g.fillRect(0, 0, w, h); g.fillStyle = gr; g.font = 'bold 74px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('KALKI CHAI', w / 2, h / 2 + 4); });
 add(new T.PlaneGeometry(3, .75), new T.MeshBasicMaterial({ map: signTex, color: new T.Color(1.5, 1.5, 1.5) }), 0, 3.1, -4.03, false);
 for (let i = 0; i < 5; i++) { add(new T.CylinderGeometry(.09, .07, .18, 10), mat(0xf3ead8), -1.4 + i * .7, 1.21, -3.2); }
 add(new T.CylinderGeometry(.28, .3, .5, 12), mat(0x9aa3ad, { metalness: .7, roughness: .35 }), 1.5, 1.37, -3.4);
@@ -483,12 +483,12 @@ $('#modeSeg').onclick = e => { const b = e.target.closest('button'); if (b) setM
 
 /* code mode */
 const ta = $('#ta');
-function loadCode() { ta.value = JSON.stringify({ kalai: '0.1', title: P.title, aspect: P.aspect, look: P.look, shots: P.shots }, null, 2); $('#cerr').textContent = ''; }
+function loadCode() { ta.value = JSON.stringify({ kalki: '0.1', title: P.title, aspect: P.aspect, look: P.look, shots: P.shots }, null, 2); $('#cerr').textContent = ''; }
 function applyCode() {
   let o; try { o = JSON.parse(ta.value); } catch (e) { $('#cerr').textContent = '✕ ' + e.message; return; }
   if (!o || !Array.isArray(o.shots)) { $('#cerr').textContent = '✕ The scene needs a "shots" list.'; return; }
   const errs = []; const shots = o.shots.slice(0, 60).map((s, i) => normShot(s || {}, errs, i));
-  commit(); P = { kalai: '0.1', look: LOOKS[o.look] ? o.look : 'golden', title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
+  commit(); P = { kalki: '0.1', look: LOOKS[o.look] ? o.look : 'golden', title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
   sel = clamp(sel, 0, shots.length - 1); time = 0; refreshAll(false);
   $('#cerr').textContent = errs.length ? '⚠ ' + errs.slice(0, 3).join(' · ') + ' (fixed automatically)' : '';
   toast(`Applied · ${shots.length} shots`); setPlay(true);
@@ -510,14 +510,14 @@ $('#cDoc').onclick = () => {
 $('#dClose').onclick = () => $('#mDoc').classList.remove('on');
 
 /* files & export */
-const fname = ext => (P.title || 'kalai-scene').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() + ext;
+const fname = ext => (P.title || 'kalki-scene').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() + ext;
 function download(blob, name) { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }
 function menu(id, fn) { const m = $(id); m.querySelector('.btn').onclick = e => { e.stopPropagation(); $$('.menu').forEach(x => x !== m && x.classList.remove('open')); m.classList.toggle('open'); }; m.querySelector('.dd').onclick = e => { const b = e.target.closest('button'); if (b) { m.classList.remove('open'); fn(b.dataset.a); } }; }
 document.addEventListener('click', () => $$('.menu').forEach(x => x.classList.remove('open')));
 menu('#mFile', a => {
-  if (a === 'new') { commit(); P = { kalai: '0.1', title: 'Untitled scene', aspect: P.aspect, look: P.look, shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
+  if (a === 'new') { commit(); P = { kalki: '0.1', title: 'Untitled scene', aspect: P.aspect, look: P.look, shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
   if (a === 'open') $('#fileIn').click();
-  if (a === 'save') { download(new Blob([JSON.stringify(P, null, 2)], { type: 'application/json' }), fname('.kalai.json')); toast('Project saved'); }
+  if (a === 'save') { download(new Blob([JSON.stringify(P, null, 2)], { type: 'application/json' }), fname('.kalki.json')); toast('Project saved'); }
 });
 $('#fileIn').onchange = e => {
   const f = e.target.files[0]; if (!f) return; if (f.size > 2e6) { toast('File is too large'); return; }
@@ -570,9 +570,9 @@ document.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTra
 
 /* onboarding */
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
-$('#obTitle').innerHTML = 'KALAI'.split('').map((c, i) => `<span style="animation-delay:${.35 + i * .09}s">${c}</span>`).join('');
+$('#obTitle').innerHTML = 'KALKI'.split('').map((c, i) => `<span style="animation-delay:${.35 + i * .09}s">${c}</span>`).join('');
 function showIntro() { demo = true; setPlay(false); $('#ob').classList.remove('out'); $('#ob').style.display = ''; $('#obStep1').style.display = ''; $('#obStep2').style.display = 'none'; }
-function endIntro(m) { store.set('kalai.onboarded', '1'); $('#ob').classList.add('out'); setTimeout(() => $('#ob').style.display = 'none', 650); demo = false; setMode(m || mode); time = 0; sel = 0; markSel(); setPlay(true); }
+function endIntro(m) { store.set('kalki.onboarded', '1'); $('#ob').classList.add('out'); setTimeout(() => $('#ob').style.display = 'none', 650); demo = false; setMode(m || mode); time = 0; sel = 0; markSel(); setPlay(true); }
 $('#obNext').onclick = () => { $('#obStep1').style.display = 'none'; $('#obStep2').style.display = ''; };
 $$('.mode').forEach(b => b.onclick = () => endIntro(b.dataset.m));
 $('#obSkip').onclick = () => endIntro('nocode');
@@ -580,6 +580,6 @@ $('#obSkip').onclick = () => endIntro('nocode');
 function refreshAll(code = true) { P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
 new ResizeObserver(layout).observe($('#view'));
 buildLib(); refreshAll();
-if (store.get('kalai.onboarded')) { demo = false; $('#ob').style.display = 'none'; setPlay(true); }
+if (store.get('kalki.onboarded')) { demo = false; $('#ob').style.display = 'none'; setPlay(true); }
 frame();
 })();

@@ -1,4 +1,4 @@
-# Kalai (working name; possible rebrand: ThiraiKalai)
+# Kalki Simulator
 
 Offline, CPU-friendly camera-movement simulator for Indian filmmakers, YouTubers and film students.
 Ships as ONE self-contained HTML file (no install, no network).
@@ -6,7 +6,7 @@ Ships as ONE self-contained HTML file (no install, no network).
 ## Build
 ```
 npm install
-node build.mjs            # -> dist/Kalai.html (obfuscated)
+node build.mjs            # -> dist/Kalki.html (obfuscated)
 DEBUG=1 node build.mjs    # unobfuscated build for debugging
 ```
 Optional asset rebuild (needs the source FBX/TGA files, not included):
@@ -29,5 +29,5 @@ Optional asset rebuild (needs the source FBX/TGA files, not included):
 - `#hq` URL hash disables auto Light mode (used for testing).
 
 ## Next ideas
-Rebrand to ThiraiKalai, actor picker (more Rocketbox avatars), actions (sit, sip chai, talk),
+Actor picker (more Rocketbox avatars), actions (sit, sip chai, talk),
 Indian costumes, Tamil UI, Windows .exe via Tauri, optional local LLM text-to-shot.

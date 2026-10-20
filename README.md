@@ -1,14 +1,14 @@
-# Kalai · கலை — Camera Studio
+# Kalki Simulator — Camera Studio
 
 **See your shot before you shoot it.**
 
-Kalai is an offline camera-movement simulator for Indian filmmakers, YouTubers and film students. Block out camera moves on a 3D set, tune the lens and lighting, and export a shot list or preview video, all from a single HTML file. No install, no account, no network.
+Kalki is an offline camera-movement simulator for Indian filmmakers, YouTubers and film students. Block out camera moves on a 3D set, tune the lens and lighting, and export a shot list or preview video, all from a single HTML file. No install, no account, no network.
 
-**Latest release: v0.3.1** — [`Kalai-versions/Kalai-v0.3.1.html`](Kalai-versions/Kalai-v0.3.1.html) (or the zipped package, [`Kalai-v0.3.1.zip`](Kalai-versions/Kalai-v0.3.1.zip), which includes the README and licence notices).
+**Latest release: v0.3.1** — [`Kalki-versions/Kalki-v0.3.1.html`](Kalki-versions/Kalki-v0.3.1.html) (or the zipped package, [`Kalki-v0.3.1.zip`](Kalki-versions/Kalki-v0.3.1.zip), which includes the README and licence notices).
 
 ## Quick start
 
-1. Download `Kalai-v0.3.1.html`.
+1. Download `Kalki-v0.3.1.html`.
 2. Double-click it. It opens in your browser (Chrome or Edge recommended) and runs fully offline.
 
 ## Features
@@ -22,7 +22,7 @@ Kalai is an offline camera-movement simulator for Indian filmmakers, YouTubers a
 - **Lighting** — window light with sun shafts on a 3D chai-stall set
 - **Realistic actors** — animated idle and walk cycles (Microsoft Rocketbox avatars)
 - **Frame for any format** — cinema 2.39:1, YouTube 16:9, Reels/Shorts 9:16, square
-- **Export** — shot list (`.csv`), frame (`.png`), preview video (`.webm`); save and open projects (`.kalai.json`)
+- **Export** — shot list (`.csv`), frame (`.png`), preview video (`.webm`); save and open projects (`.kalki.json`)
 - **Undo / redo**, and **automatic Light mode** on slow CPUs (also toggled by the lightning button)
 
 ## Version history
@@ -34,7 +34,7 @@ Kalai is an offline camera-movement simulator for Indian filmmakers, YouTubers a
 | v0.3 | Realistic animated actors (some browsers failed to load textures) |
 | **v0.3.1** | **Latest.** Actor textures fixed for all browsers, brighter wide shots |
 
-All builds are in [`Kalai-versions/`](Kalai-versions/). See [`VERSIONS.txt`](Kalai-versions/VERSIONS.txt).
+All builds are in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 
 ## Building from source
 
@@ -42,7 +42,7 @@ Requires Node.js.
 
 ```bash
 npm install
-node build.mjs            # -> dist/Kalai.html (obfuscated)
+node build.mjs            # -> dist/Kalki.html (obfuscated)
 DEBUG=1 node build.mjs    # unobfuscated build for debugging
 ```
 
@@ -59,7 +59,7 @@ Design notes are in [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ## Privacy
 
-Kalai never connects to the internet and collects no data. Files are saved only where you choose to download them.
+Kalki never connects to the internet and collects no data. Files are saved only where you choose to download them.
 
 ## Credits and licences
 

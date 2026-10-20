@@ -30,5 +30,5 @@ let html = fs.readFileSync('src/index.html', 'utf8');
 const assets = 'window.__KA={' + ['meera','arjun','f_idle','f_walk','m_idle','m_walk'].map(k => `${k}:'${fs.readFileSync('assets_src/'+k+'.glb').toString('base64')}'`).join(',') + ',tex:' + fs.readFileSync('assets_src/tex.json','utf8') + '};';
 html = html.replace('<!--APP-->', () => `<script>${assets}</script>\n<!--APP-->`);
 html = html.replace('<!--VENDOR-->', () => `<script>${safe(vendor)}</script>`).replace('<!--APP-->', () => `<script>${safe(app)}</script>`);
-fs.writeFileSync('dist/Kalai.html', html);
-console.log('Kalai.html', (html.length / 1024 / 1024).toFixed(2), 'MB');
+fs.writeFileSync('dist/Kalki.html', html);
+console.log('Kalki.html', (html.length / 1024 / 1024).toFixed(2), 'MB');

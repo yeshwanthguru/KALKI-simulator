@@ -1,8 +1,8 @@
-KALAI · கலை — Camera Studio (prototype v0.1)
+KALKI · கல்கி — Camera Studio (prototype v0.1)
 See your shot before you shoot it.
 
 HOW TO START
-  Double-click Kalai.html. It opens in your browser (Chrome or Edge recommended)
+  Double-click Kalki.html. It opens in your browser (Chrome or Edge recommended)
   and runs fully offline. No install, no account, no internet needed.
 
 WHAT YOU CAN DO
@@ -14,14 +14,14 @@ WHAT YOU CAN DO
   - Real lens behaviour: aperture (f/1.4–f/11) controls background blur
   - Frame for cinema 2.39:1, YouTube 16:9, Reels/Shorts 9:16 or square
   - Export a shot list (.csv), a frame (.png) or a preview video (.webm)
-  - Save and open projects (.kalai.json)
+  - Save and open projects (.kalki.json)
 
 LOW-END LAPTOPS
-  Kalai switches to Light mode automatically if playback is slow.
+  Kalki switches to Light mode automatically if playback is slow.
   You can also toggle it with the lightning button in the top bar.
 
 PRIVACY
-  Kalai never connects to the internet and collects no data.
+  Kalki never connects to the internet and collects no data.
   Files are only saved where you choose to download them.
 
-© 2026 Kalai. All rights reserved.
+© 2026 Kalki. All rights reserved.

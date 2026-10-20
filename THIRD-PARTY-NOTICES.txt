@@ -1,4 +1,4 @@
-Kalai uses the following open-source software:
+Kalki uses the following open-source software:
 
 three.js — MIT License
 
