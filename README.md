@@ -36,6 +36,26 @@ Kalki is an offline camera-movement simulator for Indian filmmakers, YouTubers a
 
 All builds are in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 
+## Roadmap
+
+Kalki Simulator is built in small, shippable steps, each a single offline file. Full detail, effort estimates and rationale are in [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+| Phase | Release | Focus | Key features |
+|-------|---------|-------|--------------|
+| 1 | v0.4 | Hand-off and credibility | Shot-list PDF, lens and sensor presets, versioned project files; then storyboard sheet, shot notes, frame guides |
+| 2 | v0.5 | Performers and actions | Actor picker, actions (sit, talk, sip chai), action timeline, blocking diagram |
+| 3 | v0.6 | Indian content and language | Tamil and Hindi UI, costume, set and prop packs, time-of-day lighting |
+| 4 | v0.7 | Reach | Phone and touch layout, PWA, Windows installer (Tauri) |
+| 5 | v0.8 | Teaching and polish | Lesson scenes, instructor kit, shot templates, camera-rig props |
+| 6 | v0.9+ | Optional intelligence | Local text-to-shot, reference export for generative tools, script import |
+
+## Market and benchmark
+
+- [`docs/MARKET_ANALYSIS.md`](docs/MARKET_ANALYSIS.md): target users in India, trends, pain points, pricing and positioning.
+- [`docs/BENCHMARK.md`](docs/BENCHMARK.md): feature comparison with other previs, shot-list and storyboard tools.
+
+In short: professional previs tools are priced in USD and out of reach for most Indian creators and students, and the realistic alternative is no previs at all. Kalki aims to be free to run, offline, Indic-language and quick to learn.
+
 ## Building from source
 
 Requires Node.js.
