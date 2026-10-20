@@ -9,4 +9,4 @@ v0.3.1  Latest: fixed actor textures for all browsers, brighter wide shots  << r
 
 ZIP PACKAGES (same versions, each with README + license notices)
   Kalai-v0.1.zip, Kalai-v0.2.zip, Kalai-v0.3.zip, Kalai-v0.3.1.zip
-  kalai-source.zip  - full source code for Claude Code (see CLAUDE.md inside)
+  kalai-source.zip  - full source code (see DEVELOPMENT.md in the repo)
