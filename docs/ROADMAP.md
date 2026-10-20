@@ -75,8 +75,8 @@
 |---|---|---|---|---|
 | 4.1 | **Touch/phone layout** (responsive panels, gesture orbit/pinch, larger controls) | L | P0 | Android ~92% of Indian mobile ([StatCounter](https://gs.statcounter.com/os-market-share/mobile-/india)); Apple-only incumbent Previs Pro |
 | 4.2 | **PWA install (offline cache)** | S-M | P1 | Android installation without an app store; check CSP/offline constraints |
-| 4.3 | **Windows installer via Tauri 2** (WebView2; choose bootstrapper vs offline installer for no-network labs) | M | P0 | Windows ~78% of desktop ([StatCounter](https://gs.statcounter.com/os-market-share/desktop-operating-systems/india)); typical Tauri installers are far smaller than Electron (e.g. ~12 MB vs ~201 MB in one comparison, [HackerNoon](https://hackernoon.com/six-months-with-tauri-the-benefits-and-the-bill)); offline lab deployment possible per [Tauri docs](https://v2.tauri.app/distribute/windows-installer/) |
-| 4.4 | **Native file save/open and folder asset packs in the exe** | M | P1 | Smoother than browser downloads; enables optional large packs |
+| 4.3 | ✅ **Windows installer via Tauri 2** (first version done in v0.4.1: NSIS, per-user, native Save as; offline WebView2 bundling and signing still open) (WebView2; choose bootstrapper vs offline installer for no-network labs) | M | P0 | Windows ~78% of desktop ([StatCounter](https://gs.statcounter.com/os-market-share/desktop-operating-systems/india)); typical Tauri installers are far smaller than Electron (e.g. ~12 MB vs ~201 MB in one comparison, [HackerNoon](https://hackernoon.com/six-months-with-tauri-the-benefits-and-the-bill)); offline lab deployment possible per [Tauri docs](https://v2.tauri.app/distribute/windows-installer/) |
+| 4.4 | ◐ **Native file save/open (save done) and folder asset packs in the exe** | M | P1 | Smoother than browser downloads; enables optional large packs |
 | 4.5 | **Signed-installer plan** (SmartScreen reputation; cost is a recurring expense **[Est.]**) | S | P1 | Unsigned exes trigger warnings that reduce trust |
 
 **Done when:** a lab PC without internet can install and run Kalki; a mid-range Android phone runs a 3-shot scene in Light mode.

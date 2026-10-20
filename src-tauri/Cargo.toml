@@ -1,0 +1,20 @@
+[package]
+name = "kalki-simulator"
+version = "0.4.1"
+description = "Offline camera-movement simulator for filmmakers"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

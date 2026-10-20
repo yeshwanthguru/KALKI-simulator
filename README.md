@@ -11,6 +11,15 @@ Kalki is an offline camera-movement simulator for Indian filmmakers, YouTubers a
 1. Download `Kalki-v0.4.1.html`.
 2. Double-click it. It opens in your browser (Chrome or Edge recommended) and runs fully offline.
 
+## Windows desktop app
+
+A native Windows installer is built with [Tauri 2](https://tauri.app): [`Kalki-versions/desktop/Kalki-Simulator_0.4.1_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.4.1_x64-setup.exe) (about 3 MB).
+
+- Installs for the current user, no administrator rights needed; runs fully offline.
+- Uses the WebView2 runtime that ships with Windows 11 (Windows 10 may prompt to install it).
+- Exports (PDF, CSV, PNG, video, project) open a native **Save as** dialog.
+- The installer is **not code-signed yet**, so Windows SmartScreen may warn on first run: choose **More info, Run anyway**. Signing is on the roadmap.
+
 ## Features
 
 - **18 camera moves** — push in, orbit, dolly zoom, crane and more — on a timeline
@@ -63,18 +72,23 @@ In short: professional previs tools are priced in USD and out of reach for most 
 
 ## Building from source
 
-Requires Node.js.
+Requires Node.js. The desktop app additionally needs the [Rust toolchain](https://rustup.rs) and the Microsoft C++ Build Tools.
 
 ```bash
 npm install
 node build.mjs            # -> dist/Kalki.html (obfuscated)
 DEBUG=1 node build.mjs    # unobfuscated build for debugging
+npm test                  # PDF writer tests
+npm run desktop:dev       # run the desktop app in development
+npm run desktop:build     # build the Windows installer (src-tauri/target/release/bundle/nsis)
 ```
 
 `optimize.mjs` and `texfix.mjs` rebuild the actor assets; they need the original FBX/TGA files, which are not included.
 
 ```
 src/index.html    UI shell, CSS, onboarding, strict CSP (no network)
+src-tauri/        Windows desktop shell (Tauri 2, Rust)
+src/pdf.js        dependency-free PDF writer: shot list and storyboard layouts
 src/app.js        cinema grammar, pose solver, 3D set, lighting, post-processing, timeline, exports
 build.mjs         bundles three.js, obfuscates app.js, inlines actor assets as base64
 assets_src/       actor GLBs, animation GLBs, tex.json (textures as data URIs)

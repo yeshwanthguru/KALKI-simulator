@@ -31,4 +31,7 @@ const assets = 'window.__KA={' + ['meera','arjun','f_idle','f_walk','m_idle','m_
 html = html.replace('<!--APP-->', () => `<script>${assets}</script>\n<!--APP-->`);
 html = html.replace('<!--VENDOR-->', () => `<script>${safe(vendor)}</script>`).replace('<!--APP-->', () => `<script>${safe(app)}</script>`);
 fs.writeFileSync('dist/Kalki.html', html);
+// desktop app frontend: same page, CSP additionally allows Tauri's local IPC channel
+fs.mkdirSync('dist-app', { recursive: true });
+fs.writeFileSync('dist-app/index.html', html.replace('connect-src blob: data:', 'connect-src blob: data: ipc: http://ipc.localhost'));
 console.log('Kalki.html', (html.length / 1024 / 1024).toFixed(2), 'MB');

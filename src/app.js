@@ -531,7 +531,16 @@ $('#dClose').onclick = () => $('#mDoc').classList.remove('on');
 
 /* files & export */
 const fname = ext => (P.title || 'kalki-scene').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() + ext;
-function download(blob, name) { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }
+function browserDownload(blob, name) { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }
+/* inside the Windows desktop app: native "Save as" dialog, then write the chosen file; in a browser: normal download */
+function download(blob, name) {
+  const TA = window.__TAURI__;
+  if (!(TA && TA.dialog && TA.fs)) return browserDownload(blob, name);
+  const ext = name.split('.').pop();
+  TA.dialog.save({ defaultPath: name, filters: [{ name: ext.toUpperCase() + ' file', extensions: [ext] }] })
+    .then(async path => { if (!path) return; await TA.fs.writeFile(path, new Uint8Array(await blob.arrayBuffer())); toast('Saved'); })
+    .catch(() => browserDownload(blob, name));
+}
 function menu(id, fn) { const m = $(id); m.querySelector('.btn').onclick = e => { e.stopPropagation(); $$('.menu').forEach(x => x !== m && x.classList.remove('open')); m.classList.toggle('open'); }; m.querySelector('.dd').onclick = e => { const b = e.target.closest('button'); if (b) { m.classList.remove('open'); fn(b.dataset.a); } }; }
 document.addEventListener('click', () => $$('.menu').forEach(x => x.classList.remove('open')));
 menu('#mFile', a => {

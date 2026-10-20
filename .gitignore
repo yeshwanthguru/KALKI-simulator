@@ -2,3 +2,6 @@ node_modules/
 dist/
 src/vendor.js
 tests/out/
+dist-app/
+src-tauri/target/
+src-tauri/gen/
