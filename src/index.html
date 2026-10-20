@@ -76,8 +76,9 @@ button{cursor:pointer;border:0;background:none}
 .f{margin-bottom:11px}
 .f label{display:flex;justify-content:space-between;color:var(--mu);font-size:11.5px;font-weight:600;margin-bottom:5px}
 .f label em{font-style:normal;color:var(--tx);font-family:var(--m);font-size:11px}
-.f input[type=text],.f select{width:100%;background:var(--p2);border:1px solid var(--ln);border-radius:9px;padding:7px 9px;outline:0}
-.f select:focus,.f input:focus{border-color:var(--ac)}
+.f input[type=text],.f select,.f textarea{width:100%;background:var(--p2);border:1px solid var(--ln);border-radius:9px;padding:7px 9px;outline:0}
+.f textarea{resize:vertical;min-height:58px;color:inherit;font:inherit;font-size:12.5px;line-height:1.4}
+.f select:focus,.f input:focus,.f textarea:focus{border-color:var(--ac)}
 input[type=range]{width:100%;accent-color:var(--ac);height:18px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .learn{margin-top:6px;padding:14px;border-radius:var(--r);background:linear-gradient(160deg,color-mix(in srgb,var(--c) 14%,var(--p2)),var(--p2) 60%);border:1px solid color-mix(in srgb,var(--c) 28%,transparent)}
@@ -166,6 +167,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
     <div class="menu" id="mExport"><button class="btn pri">Export ▾</button><div class="dd">
       <button data-a="csv">Shot list (.csv)<small>Opens in Excel / Sheets for your crew</small></button>
       <button data-a="pdf">Shot list (.pdf)<small>Printable sheet with frames, lens and timing</small></button>
+      <button data-a="board">Storyboard sheet (.pdf)<small>Frame grid with captions and notes</small></button>
       <button data-a="png">Frame snapshot (.png)<small>Current frame, without overlays</small></button>
       <button data-a="rec">Preview video (.webm)<small>Plays and records the whole sequence</small></button>
     </div></div>
@@ -214,7 +216,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
 <div id="toast"></div>
 
 <div class="modal" id="mHelp"><div class="card">
-  <h2>Kalki · கல்கி <span style="color:var(--mu);font-weight:500;font-size:13px">v0.4</span></h2>
+  <h2>Kalki · கல்கி <span style="color:var(--mu);font-weight:500;font-size:13px">v0.4.1</span></h2>
   <p>Plan and learn camera movement before you shoot. Pick a move, shape it, press play.</p>
   <div class="kb"><kbd>Space</kbd><span>Play / pause</span><kbd>← →</kbd><span>Previous / next shot</span><kbd>Home</kbd><span>Back to start</span><kbd>Ctrl Z / Y</kbd><span>Undo / redo</span><kbd>Ctrl D</kbd><span>Duplicate shot</span><kbd>Del</kbd><span>Delete shot</span><kbd>G</kbd><span>Rule-of-thirds guides</span><kbd>⚡</kbd><span>Light mode: smoother on CPU-only laptops (turns on automatically if needed)</span></div>
   <p style="font-size:12px;color:var(--mu)">Works fully offline. No account, no tracking, nothing leaves your computer. Projects are saved only where you choose.<br>3D rendering by three.js (MIT License, © 2010–2026 three.js authors).<br>Actor models and motion: Microsoft Rocketbox (MIT License, © 2020 Microsoft).<br>© 2026 Kalki. All rights reserved.</p>

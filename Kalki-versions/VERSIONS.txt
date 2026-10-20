@@ -6,8 +6,10 @@ v0.2    Cinematic look: window light + sun shafts, depth of field (aperture), bl
 v0.3    Realistic actors (Microsoft Rocketbox) with real idle/walk animation
         (note: textures may fail to load in some browsers - use v0.3.1)
 v0.3.1  Fixed actor textures for all browsers, brighter wide shots
-v0.4    Latest: shot-list PDF export, camera sensor presets with full-frame equivalents,
-        versioned project files (older files still open)  << recommended
+v0.4    Shot-list PDF export, camera sensor presets with full-frame equivalents,
+        versioned project files (older files still open)
+v0.4.1  Latest: storyboard sheet PDF (frame grid with captions), per-shot notes in the
+        PDFs and CSV  << recommended
 
 ZIP PACKAGES (same versions, each with README + license notices)
-  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip
+  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip

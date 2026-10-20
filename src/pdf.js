@@ -117,7 +117,8 @@ export function buildShotListPdf(doc) {
       /* shot */
       pdf.text(cx + 6, y + 14, `${s.n}. ${s.name}`, { size: 10.5, bold: true, color: INK });
       pdf.text(cx + 6, y + 27, s.move, { size: 9, bold: true, color: ACCENT });
-      wrap(s.why, cols[1].w - 12, 7.5).slice(0, 4).forEach((ln, i) => pdf.text(cx + 6, y + 39 + i * 9, ln, { size: 7.5, color: MUTED }));
+      wrap(s.why, cols[1].w - 12, 7.5).slice(0, 2).forEach((ln, i) => pdf.text(cx + 6, y + 39 + i * 9, ln, { size: 7.5, color: MUTED }));
+      if (s.notes) wrap('Note: ' + s.notes, cols[1].w - 12, 7.5).slice(0, 2).forEach((ln, i) => pdf.text(cx + 6, y + 61 + i * 9, ln, { size: 7.5, color: INK }));
       cx += cols[1].w;
       /* timing */
       pdf.text(cx + 6, y + 14, s.start, { size: 10, bold: true, color: INK });
@@ -138,6 +139,37 @@ export function buildShotListPdf(doc) {
       pdf.text(cx + 6, y + 14, s.subject, { size: 10, bold: true, color: INK });
       pdf.text(cx + 6, y + 27, s.action, { size: 9, color: INK });
       pdf.text(cx + 6, y + 39, `Move intensity ${s.amount}%`, { size: 7.5, color: MUTED });
+    });
+    pdf.line(M, 595 - 34, M + 770, 595 - 34, { color: RULE });
+    pdf.text(M, 595 - 20, doc.footer || '', { size: 7.5, color: MUTED });
+    const pg = `Page ${p + 1} / ${pages}`;
+    pdf.text(M + 770 - textWidth(pg, 7.5), 595 - 20, pg, { size: 7.5, color: MUTED });
+  }
+  return pdf.build();
+}
+
+/* ---------- storyboard sheet ---------- */
+/* doc as for buildShotListPdf. The grid adapts to the frame aspect ratio. */
+export function buildStoryboardPdf(doc) {
+  const pdf = new Pdf(842, 595), M = 36, TOP = 100, BOTTOM = 595 - 44, ar = doc.aspect || 1.778;
+  const cols = ar >= 1.5 ? 3 : ar >= 1 ? 5 : 6, gap = 12, cw = (770 - gap * (cols - 1)) / cols, fh = cw / ar, CAP = 50, cellH = fh + CAP + 10;
+  const rows = Math.max(1, Math.floor((BOTTOM - TOP + 10) / cellH)), perPage = cols * rows, pages = Math.max(1, Math.ceil(doc.shots.length / perPage));
+  for (let p = 0; p < pages; p++) {
+    pdf.addPage();
+    pdf.rect(0, 0, 842, 8, { fill: ACCENT });
+    pdf.text(M, 48, doc.title || 'Untitled scene', { size: 20, bold: true, color: INK });
+    pdf.text(M, 66, 'STORYBOARD', { size: 8.5, bold: true, color: ACCENT });
+    pdf.text(M, 82, doc.meta.join('   |   '), { size: 8.5, color: MUTED });
+    doc.shots.slice(p * perPage, (p + 1) * perPage).forEach((s, k) => {
+      const x = M + (k % cols) * (cw + gap), y = TOP + Math.floor(k / cols) * cellH;
+      if (s.jpeg) pdf.image(s.jpeg, s.jw, s.jh, x, y, cw, fh); else pdf.rect(x, y, cw, fh, { fill: HEAD });
+      pdf.rect(x, y, cw, fh, { stroke: RULE });
+      const tag = String(s.n); pdf.rect(x, y, textWidth(tag, 9, true) + 12, 15, { fill: ACCENT });
+      pdf.text(x + 6, y + 11, tag, { size: 9, bold: true, color: [255, 255, 255] });
+      const fit = (t, size, bold) => { let o = latin(t); while (o.length > 1 && textWidth(o, size, bold) > cw) o = o.slice(0, -2) + '.'; return o; };
+      pdf.text(x, y + fh + 13, fit(s.name, 9.5, true), { size: 9.5, bold: true, color: INK });
+      pdf.text(x, y + fh + 24, fit(`${s.move}  |  ${s.lens} mm  |  ${s.sizeCode || s.size}  |  ${s.duration} s`, 7.5), { size: 7.5, color: ACCENT });
+      wrap(s.notes || s.why, cw, 7.5).slice(0, 2).forEach((ln, i) => pdf.text(x, y + fh + 35 + i * 9, ln, { size: 7.5, color: s.notes ? INK : MUTED }));
     });
     pdf.line(M, 595 - 34, M + 770, 595 - 34, { color: RULE });
     pdf.text(M, 595 - 20, doc.footer || '', { size: 7.5, color: MUTED });
