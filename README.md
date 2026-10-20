@@ -1,17 +1,69 @@
-# KALKI-simulator
-cinema-simulator
+# Kalai · கலை — Camera Studio
 
+**See your shot before you shoot it.**
 
-# Kalai
+Kalai is an offline camera-movement simulator for Indian filmmakers, YouTubers and film students. Block out camera moves on a 3D set, tune the lens and lighting, and export a shot list or preview video, all from a single HTML file. No install, no account, no network.
 
-Offline, CPU-friendly camera-movement simulator for Indian filmmakers, YouTubers and film students. Ships as one self-contained HTML file.
+**Latest release: v0.3.1** — [`Kalai-versions/Kalai-v0.3.1.html`](Kalai-versions/Kalai-v0.3.1.html) (or the zipped package, [`Kalai-v0.3.1.zip`](Kalai-versions/Kalai-v0.3.1.zip), which includes the README and licence notices).
 
-## Build
+## Quick start
 
-```
+1. Download `Kalai-v0.3.1.html`.
+2. Double-click it. It opens in your browser (Chrome or Edge recommended) and runs fully offline.
+
+## Features
+
+- **18 camera moves** — push in, orbit, dolly zoom, crane and more — on a timeline
+- **Shot controls** — lens, shot size, subject, height, angle, speed and easing
+- **Live views** — camera frame plus a top-right set view that updates as you edit
+- **No-code and Code modes** — edit the scene visually or as structured JSON
+- **Cinematic looks** — Golden hour, Teal & orange, Night, Noir, Neutral
+- **Real lens behaviour** — aperture f/1.4–f/11 drives depth of field; plus bloom, motion blur and film grain
+- **Lighting** — window light with sun shafts on a 3D chai-stall set
+- **Realistic actors** — animated idle and walk cycles (Microsoft Rocketbox avatars)
+- **Frame for any format** — cinema 2.39:1, YouTube 16:9, Reels/Shorts 9:16, square
+- **Export** — shot list (`.csv`), frame (`.png`), preview video (`.webm`); save and open projects (`.kalai.json`)
+- **Undo / redo**, and **automatic Light mode** on slow CPUs (also toggled by the lightning button)
+
+## Version history
+
+| Version | Highlights |
+|---------|------------|
+| v0.1 | First prototype: 18 camera moves, timeline, no-code and code modes, onboarding, exports |
+| v0.2 | Cinematic look: window light and sun shafts, depth of field, bloom, motion blur, grain, 5 looks |
+| v0.3 | Realistic animated actors (some browsers failed to load textures) |
+| **v0.3.1** | **Latest.** Actor textures fixed for all browsers, brighter wide shots |
+
+All builds are in [`Kalai-versions/`](Kalai-versions/). See [`VERSIONS.txt`](Kalai-versions/VERSIONS.txt).
+
+## Building from source
+
+Requires Node.js.
+
+```bash
 npm install
-node build.mjs            # -> dist/Kalai.html
-DEBUG=1 node build.mjs    # unobfuscated build
+node build.mjs            # -> dist/Kalai.html (obfuscated)
+DEBUG=1 node build.mjs    # unobfuscated build for debugging
 ```
 
-See CLAUDE.md for layout and design notes. Third-party licences: THIRD-PARTY-NOTICES.txt.
+`optimize.mjs` and `texfix.mjs` rebuild the actor assets; they need the original FBX/TGA files, which are not included.
+
+```
+src/index.html    UI shell, CSS, onboarding, strict CSP (no network)
+src/app.js        cinema grammar, pose solver, 3D set, lighting, post-processing, timeline, exports
+build.mjs         bundles three.js, obfuscates app.js, inlines actor assets as base64
+assets_src/       actor GLBs, animation GLBs, tex.json (textures as data URIs)
+```
+
+Design notes are in [`DEVELOPMENT.md`](DEVELOPMENT.md).
+
+## Privacy
+
+Kalai never connects to the internet and collects no data. Files are saved only where you choose to download them.
+
+## Credits and licences
+
+- [three.js](https://threejs.org) — MIT
+- [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox) avatars and animations (Female_Adult_11, Male_Adult_17) — MIT
+
+Full notices: [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt). See [`LICENSE`](LICENSE) for this project's licence.
