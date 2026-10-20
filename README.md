@@ -4,11 +4,11 @@
 
 Kalki is an offline camera-movement simulator for Indian filmmakers, YouTubers and film students. Block out camera moves on a 3D set, tune the lens and lighting, and export a shot list or preview video, all from a single HTML file. No install, no account, no network.
 
-**Latest release: v0.3.1** — [`Kalki-versions/Kalki-v0.3.1.html`](Kalki-versions/Kalki-v0.3.1.html) (or the zipped package, [`Kalki-v0.3.1.zip`](Kalki-versions/Kalki-v0.3.1.zip), which includes the README and licence notices).
+**Latest release: v0.4** — [`Kalki-versions/Kalki-v0.4.html`](Kalki-versions/Kalki-v0.4.html) (or the zipped package, [`Kalki-v0.4.zip`](Kalki-versions/Kalki-v0.4.zip), which includes the README and licence notices).
 
 ## Quick start
 
-1. Download `Kalki-v0.3.1.html`.
+1. Download `Kalki-v0.4.html`.
 2. Double-click it. It opens in your browser (Chrome or Edge recommended) and runs fully offline.
 
 ## Features
@@ -22,7 +22,9 @@ Kalki is an offline camera-movement simulator for Indian filmmakers, YouTubers a
 - **Lighting** — window light with sun shafts on a 3D chai-stall set
 - **Realistic actors** — animated idle and walk cycles (Microsoft Rocketbox avatars)
 - **Frame for any format** — cinema 2.39:1, YouTube 16:9, Reels/Shorts 9:16, square
-- **Export** — shot list (`.csv`), frame (`.png`), preview video (`.webm`); save and open projects (`.kalki.json`)
+- **Camera sensors** — Super 35, Full frame, APS-C, Micro Four Thirds, 1-inch; lenses show their full-frame equivalent
+- **Export** — printable shot-list PDF with frames, lens and timing; spreadsheet (`.csv`); frame (`.png`); preview video (`.webm`)
+- **Projects** — save and open `.kalki.json`; the file format is versioned so older projects keep opening
 - **Undo / redo**, and **automatic Light mode** on slow CPUs (also toggled by the lightning button)
 
 ## Version history
@@ -32,7 +34,8 @@ Kalki is an offline camera-movement simulator for Indian filmmakers, YouTubers a
 | v0.1 | First prototype: 18 camera moves, timeline, no-code and code modes, onboarding, exports |
 | v0.2 | Cinematic look: window light and sun shafts, depth of field, bloom, motion blur, grain, 5 looks |
 | v0.3 | Realistic animated actors (some browsers failed to load textures) |
-| **v0.3.1** | **Latest.** Actor textures fixed for all browsers, brighter wide shots |
+| v0.3.1 | Actor textures fixed for all browsers, brighter wide shots |
+| **v0.4** | **Latest.** Shot-list PDF, sensor presets with full-frame equivalents, versioned project files |
 
 All builds are in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 
@@ -42,7 +45,7 @@ Kalki Simulator is built in small, shippable steps, each a single offline file. 
 
 | Phase | Release | Focus | Key features |
 |-------|---------|-------|--------------|
-| 1 | v0.4 | Hand-off and credibility | Shot-list PDF, lens and sensor presets, versioned project files; then storyboard sheet, shot notes, frame guides |
+| 1 | v0.4 (released), v0.4.x | Hand-off and credibility | Done in v0.4: shot-list PDF, sensor presets, versioned files. Next: storyboard sheet, shot notes, frame guides |
 | 2 | v0.5 | Performers and actions | Actor picker, actions (sit, talk, sip chai), action timeline, blocking diagram |
 | 3 | v0.6 | Indian content and language | Tamil and Hindi UI, costume, set and prop packs, time-of-day lighting |
 | 4 | v0.7 | Reach | Phone and touch layout, PWA, Windows installer (Tauri) |

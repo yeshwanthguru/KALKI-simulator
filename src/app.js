@@ -1,10 +1,21 @@
+import { buildShotListPdf } from './pdf.js';
 (function () {
 'use strict';
 const T = window.THREE;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
-const D2R = Math.PI / 180, SENSOR_H = 14;
+const D2R = Math.PI / 180;
+/* sensor presets: h = sensor height used for the vertical field of view, w = width used for the full-frame equivalent */
+const SENSORS = {
+  S35: { label: 'Super 35', w: 24.9, h: 14 }, FF: { label: 'Full frame', w: 36, h: 24 }, APSC: { label: 'APS-C', w: 23.6, h: 15.6 },
+  M43: { label: 'Micro Four Thirds', w: 17.3, h: 13 }, ONE: { label: '1-inch', w: 13.2, h: 8.8 }
+};
+const DEFAULT_SENSOR = 'S35', SCHEMA = 2;
+const sensorOf = () => SENSORS[P.sensor] || SENSORS[DEFAULT_SENSOR];
+const sensorH = () => sensorOf().h;
+const crop = () => 36 / sensorOf().w;
+const eqMm = l => Math.round(l * crop());
 
 /* ---------- cinema grammar ---------- */
 const SIZES = {
@@ -62,7 +73,7 @@ function normShot(o, errs, i) {
   s.action = o.action === 'walk' ? 'walk' : 'idle';
   return s;
 }
-const DEMO = () => ({ kalki: '0.1', title: 'Chai stall – first meeting', aspect: '2.39', look: 'golden', shots: [
+const DEMO = () => ({ schemaVersion: SCHEMA, sensor: DEFAULT_SENSOR, title: 'Chai stall – first meeting', aspect: '2.39', look: 'golden', shots: [
   newShot({ fstop: 5.6, name: 'Establish the stall', move: 'reveal', duration: 5, lens: 24, size: 'WS', subject: 'both', height: 'eye', angle: 15, amount: .7 }),
   newShot({ fstop: 1.8, name: 'Meera notices', move: 'push_in', duration: 4.5, lens: 50, size: 'MS', subject: 'A', angle: 25, amount: .7 }),
   newShot({ fstop: 2.8, name: 'Arjun walks in', move: 'follow', duration: 5, lens: 35, size: 'FS', subject: 'B', angle: 25, action: 'walk' }),
@@ -248,7 +259,7 @@ function subjPos(sh, t) {
 function solve(sh, t, sec) {
   const mv = MV[sh.move] || MV.static, te = mv.raw ? t : EF[sh.easing](t);
   const sp = subjPos(sh, t), sz = SIZES[sh.size];
-  const vf = 2 * Math.atan(SENSOR_H / (2 * sh.lens));
+  const vf = 2 * Math.atan(sensorH() / (2 * sh.lens));
   const frameH = sz.h * (sh.subject === 'both' ? 1.5 : 1);
   const d0 = (frameH / 2) / Math.tan(vf / 2);
   const eye = { A: 1.59, B: 1.69, both: 1.64 }[sh.subject], face = h => Math.max(.9, eye - h / 6);
@@ -316,8 +327,8 @@ function layout() {
 }
 const clk = new T.Clock(); let clock = 0, last = 0;
 const DEMO_SHOT = newShot({ fstop: 2.8, move: 'orbit', size: 'WS', subject: 'both', lens: 24, height: 'high', amount: .35, duration: 30 });
-function frame() {
-  requestAnimationFrame(frame);
+function frame() { requestAnimationFrame(frame); step(); }
+function step() {
   const dt = Math.min(clk.getDelta(), .1); clock += dt;
   const tot = total();
   let sh = null, t = 0, sec = 0, idx = -1;
@@ -337,7 +348,7 @@ function frame() {
   }
   proxy.visible = helper.visible = path.visible = !demo && P.shots.length > 0;
   cam.updateMatrixWorld();
-  const fl = SENSOR_H / (2 * Math.tan(cam.fov * D2R / 2));
+  const fl = sensorH() / (2 * Math.tan(cam.fov * D2R / 2));
   bokeh.uniforms.focus.value = focus; bokeh.uniforms.aperture.value = 4.5e-7 * fl * fl / fstop * clamp(2.5 / focus, .35, 2.5);
   const cut = (demo ? -1 : idx) !== prevIdx || !playing && !demo; prevIdx = demo ? -1 : idx;
   const fw = V(0, 0, -10).applyQuaternion(cam.quaternion).add(cam.position).applyMatrix4(prevVP);
@@ -388,7 +399,7 @@ const FIELDS = [
   ['name', 'text', 'Shot name'],
   ['move', 'sel', 'Camera move', () => MOVES.map(m => [m.id, m.name])],
   ['duration', 'rng', 'Duration', 1, 20, .5, v => v.toFixed(1) + ' s'],
-  ['lens', 'sel', 'Lens', () => LENSES.map(l => [l, l + ' mm' + (l <= 24 ? ' · wide' : l >= 85 ? ' · tele' : ' · normal')])],
+  ['lens', 'sel', 'Lens', () => LENSES.map(l => [l, l + ' mm' + (crop() > 1.01 ? ` (≈${eqMm(l)} mm FF)` : '') + (l <= 24 ? ' · wide' : l >= 85 ? ' · tele' : ' · normal')])],
   ['fstop', 'sel', 'Aperture', () => FSTOPS.map(f => [f, 'f/' + f + (f <= 2 ? ' · dreamy' : f >= 8 ? ' · all sharp' : '')])],
   ['size', 'sel', 'Shot size', () => Object.entries(SIZES).map(([k, v]) => [k, `${k} · ${v.label}`])],
   ['subject', 'sel', 'Subject', () => Object.entries(SUBJ)],
@@ -414,7 +425,7 @@ function buildInsp() {
   };
   const F = Object.fromEntries(FIELDS.map(x => [x[0], f(x)]));
   box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + (mv.walk ? '' : F.action) +
-    `<div class="learn" style="--c:${catColor(mv.cat)}"><h4>Why “${mv.name}”</h4><p>${mv.why}</p><p><i>Try:</i> ${mv.tip}</p><p><i>${sh.lens} mm:</i> ${lensNote(sh.lens)}</p><p><i>f/${sh.fstop}:</i> ${sh.fstop <= 2 ? 'Shallow focus melts the background and isolates the subject: the classic cinematic look.' : sh.fstop >= 8 ? 'Deep focus keeps everything sharp, so the audience can explore the whole frame.' : 'Moderate depth: subject sharp, background softly separated.'}</p></div>`;
+    `<div class="learn" style="--c:${catColor(mv.cat)}"><h4>Why “${mv.name}”</h4><p>${mv.why}</p><p><i>Try:</i> ${mv.tip}</p><p><i>${sh.lens} mm on ${sensorOf().label}${crop() > 1.01 ? ' (≈' + eqMm(sh.lens) + ' mm full-frame equivalent)' : ''}:</i> ${lensNote(sh.lens)}</p><p><i>f/${sh.fstop}:</i> ${sh.fstop <= 2 ? 'Shallow focus melts the background and isolates the subject: the classic cinematic look.' : sh.fstop >= 8 ? 'Deep focus keeps everything sharp, so the audience can explore the whole frame.' : 'Moderate depth: subject sharp, background softly separated.'}</p></div>`;
 }
 let editing = false;
 $('#insp').addEventListener('input', e => {
@@ -470,6 +481,8 @@ $('#bDup').onclick = () => { if (!P.shots.length) return; commit(); P.shots.spli
 $('#title').oninput = e => { P.title = e.target.value; };
 $('#look').innerHTML = Object.entries(LOOKS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
 $('#look').onchange = e => { commit(); P.look = e.target.value; applyLook(P.look); toast(LOOKS[P.look].label + ' look'); };
+$('#sensor').innerHTML = Object.entries(SENSORS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+$('#sensor').onchange = e => { commit(); P.sensor = e.target.value; buildInsp(); pathKey = ''; toast(`${sensorOf().label} sensor · 35 mm equivalent ×${crop().toFixed(2)}`); };
 $('#aspect').onchange = e => { commit(); P.aspect = e.target.value; layout(); updTime(); };
 
 function setMode(m) {
@@ -483,12 +496,14 @@ $('#modeSeg').onclick = e => { const b = e.target.closest('button'); if (b) setM
 
 /* code mode */
 const ta = $('#ta');
-function loadCode() { ta.value = JSON.stringify({ kalki: '0.1', title: P.title, aspect: P.aspect, look: P.look, shots: P.shots }, null, 2); $('#cerr').textContent = ''; }
+function loadCode() { ta.value = JSON.stringify({ schemaVersion: SCHEMA, title: P.title, aspect: P.aspect, look: P.look, sensor: P.sensor, shots: P.shots }, null, 2); $('#cerr').textContent = ''; }
 function applyCode() {
   let o; try { o = JSON.parse(ta.value); } catch (e) { $('#cerr').textContent = '✕ ' + e.message; return; }
   if (!o || !Array.isArray(o.shots)) { $('#cerr').textContent = '✕ The scene needs a "shots" list.'; return; }
   const errs = []; const shots = o.shots.slice(0, 60).map((s, i) => normShot(s || {}, errs, i));
-  commit(); P = { kalki: '0.1', look: LOOKS[o.look] ? o.look : 'golden', title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
+  commit(); P = { schemaVersion: SCHEMA, look: LOOKS[o.look] ? o.look : 'golden', sensor: SENSORS[o.sensor] ? o.sensor : DEFAULT_SENSOR, title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
+  if (o.sensor !== undefined && !SENSORS[o.sensor]) errs.push('sensor must be ' + Object.keys(SENSORS).join('/'));
+  if (+o.schemaVersion > SCHEMA) errs.push(`made with a newer Kalki (schema ${o.schemaVersion}); some settings were ignored`);
   sel = clamp(sel, 0, shots.length - 1); time = 0; refreshAll(false);
   $('#cerr').textContent = errs.length ? '⚠ ' + errs.slice(0, 3).join(' · ') + ' (fixed automatically)' : '';
   toast(`Applied · ${shots.length} shots`); setPlay(true);
@@ -503,7 +518,7 @@ ta.addEventListener('keydown', e => {
 });
 $('#cDoc').onclick = () => {
   const row = (k, v) => `<div><b style="color:var(--ac)">${k}</b> &nbsp;${v}</div>`;
-  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('action', 'idle, walk') + row('aspect', '"2.39", "1.778", "0.5625", "1"') +
+  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('action', 'idle, walk') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
     '<pre style="margin-top:12px;background:#0c0c11;padding:10px;border-radius:8px;color:#d8e3ff;white-space:pre-wrap">{ "move": "orbit", "duration": 6, "lens": 24,\n  "size": "WS", "subject": "both", "amount": 0.5 }</pre>';
   $('#mDoc').classList.add('on');
 };
@@ -515,7 +530,7 @@ function download(blob, name) { const u = URL.createObjectURL(blob); const a = d
 function menu(id, fn) { const m = $(id); m.querySelector('.btn').onclick = e => { e.stopPropagation(); $$('.menu').forEach(x => x !== m && x.classList.remove('open')); m.classList.toggle('open'); }; m.querySelector('.dd').onclick = e => { const b = e.target.closest('button'); if (b) { m.classList.remove('open'); fn(b.dataset.a); } }; }
 document.addEventListener('click', () => $$('.menu').forEach(x => x.classList.remove('open')));
 menu('#mFile', a => {
-  if (a === 'new') { commit(); P = { kalki: '0.1', title: 'Untitled scene', aspect: P.aspect, look: P.look, shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
+  if (a === 'new') { commit(); P = { schemaVersion: SCHEMA, title: 'Untitled scene', aspect: P.aspect, look: P.look, sensor: P.sensor || DEFAULT_SENSOR, shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
   if (a === 'open') $('#fileIn').click();
   if (a === 'save') { download(new Blob([JSON.stringify(P, null, 2)], { type: 'application/json' }), fname('.kalki.json')); toast('Project saved'); }
 });
@@ -531,8 +546,31 @@ menu('#mExport', a => {
     download(new Blob(['﻿' + rows.map(r => r.map(q).join(',')).join('\r\n')], { type: 'text/csv' }), fname('-shotlist.csv')); toast('Shot list exported');
   }
   if (a === 'png') { render(true); const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = film.w * r; c.height = film.h * r; c.getContext('2d').drawImage(cv, film.x * r, film.y * r, c.width, c.height, 0, 0, c.width, c.height); c.toBlob(b => { download(b, fname(`-shot${sel + 1}.png`)); toast('Frame saved'); }); }
+  if (a === 'pdf') exportPdf();
   if (a === 'rec') startRec();
 });
+function exportPdf() {
+  if (!P.shots.length) return toast('Add a shot first');
+  if (recording) return;
+  toast('Building shot list PDF…');
+  const wasPlaying = playing, t0 = time, st = starts(), r = R.getPixelRatio(), shots = [];
+  setPlay(false);
+  for (let i = 0; i < P.shots.length; i++) {
+    const s = P.shots[i];
+    time = st[i] + s.duration * .55; step(); step(); render(true);
+    const tw = 480, th = Math.max(1, Math.round(tw * film.h / film.w)), c = document.createElement('canvas'); c.width = tw; c.height = th;
+    c.getContext('2d').drawImage(cv, film.x * r, film.y * r, film.w * r, film.h * r, 0, 0, tw, th);
+    const bin = atob(c.toDataURL('image/jpeg', .85).split(',')[1]), jpeg = new Uint8Array(bin.length);
+    for (let k = 0; k < bin.length; k++) jpeg[k] = bin.charCodeAt(k);
+    shots.push({ n: i + 1, name: s.name, move: MV[s.move].name, why: MV[s.move].why, start: tcf(st[i]), duration: s.duration, lens: s.lens, eq: crop() > 1.01 ? eqMm(s.lens) : 0, fstop: s.fstop,
+      size: SIZES[s.size].label, height: HEIGHTS[s.height], angle: s.angle, subject: SUBJ[s.subject], action: s.action === 'walk' ? 'Walking' : 'Idle', amount: Math.round(s.amount * 100),
+      easing: s.easing[0].toUpperCase() + s.easing.slice(1), jpeg, jw: tw, jh: th });
+  }
+  time = t0; setPlay(wasPlaying);
+  const meta = [`${{ '2.39': '2.39:1 Cinema', '1.778': '16:9', '0.5625': '9:16 Vertical', '1': '1:1 Square' }[P.aspect] || P.aspect}`, `${LOOKS[P.look].label} look`, `${sensorOf().label} sensor`, `${P.shots.length} shots`, `Runtime ${tcf(total())}`, new Date().toLocaleDateString('en-IN')];
+  download(new Blob([buildShotListPdf({ title: P.title, meta, aspect: film.w / film.h, shots, footer: 'Made with Kalki Simulator  |  Offline camera-movement previsualisation' })], { type: 'application/pdf' }), fname('-shotlist.pdf'));
+  toast('Shot list PDF saved');
+}
 function startRec() {
   if (!P.shots.length) return toast('Add a shot first');
   if (!window.MediaRecorder) return toast('Video export is not supported here');
@@ -577,7 +615,7 @@ $('#obNext').onclick = () => { $('#obStep1').style.display = 'none'; $('#obStep2
 $$('.mode').forEach(b => b.onclick = () => endIntro(b.dataset.m));
 $('#obSkip').onclick = () => endIntro('nocode');
 
-function refreshAll(code = true) { P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
+function refreshAll(code = true) { P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
 new ResizeObserver(layout).observe($('#view'));
 buildLib(); refreshAll();
 if (store.get('kalki.onboarded')) { demo = false; $('#ob').style.display = 'none'; setPlay(true); }

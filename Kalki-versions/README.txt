@@ -1,4 +1,4 @@
-KALKI · கல்கி — Camera Studio (prototype v0.1)
+KALKI · கல்கி — Camera Studio (v0.4)
 See your shot before you shoot it.
 
 HOW TO START
@@ -13,7 +13,8 @@ WHAT YOU CAN DO
   - Cinematic looks: Golden hour, Teal & orange, Night, Noir, Neutral
   - Real lens behaviour: aperture (f/1.4–f/11) controls background blur
   - Frame for cinema 2.39:1, YouTube 16:9, Reels/Shorts 9:16 or square
-  - Export a shot list (.csv), a frame (.png) or a preview video (.webm)
+  - Pick a camera sensor (Super 35, Full frame, APS-C, Micro 4/3, 1-inch); lenses show full-frame equivalents
+  - Export a printable shot list (.pdf), a spreadsheet (.csv), a frame (.png) or a preview video (.webm)
   - Save and open projects (.kalki.json)
 
 LOW-END LAPTOPS

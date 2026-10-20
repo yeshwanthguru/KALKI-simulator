@@ -17,7 +17,7 @@ window.THREE = Object.assign({}, T, { EffectComposer, RenderPass, BokehPass, Unr
 const v = await build({ entryPoints: ['src/vendor.js'], bundle: true, minify: true, format: 'iife', write: false, legalComments: 'inline', target: 'es2020' });
 const vendor = v.outputFiles[0].text;
 
-const appMin = (await build({ entryPoints: ['src/app.js'], minify: true, write: false, target: 'es2020' })).outputFiles[0].text;
+const appMin = (await build({ entryPoints: ['src/app.js'], bundle: true, format: 'iife', minify: true, write: false, target: 'es2020' })).outputFiles[0].text;
 const app = process.env.DEBUG ? appMin : JO.obfuscate(appMin, {
   compact: true, controlFlowFlattening: true, controlFlowFlatteningThreshold: 0.4,
   deadCodeInjection: true, deadCodeInjectionThreshold: 0.15, stringArray: true, stringArrayEncoding: ['base64'],
