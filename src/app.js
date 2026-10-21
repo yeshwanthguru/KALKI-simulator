@@ -11,7 +11,7 @@ const SENSORS = {
   S35: { label: 'Super 35', w: 24.9, h: 14 }, FF: { label: 'Full frame', w: 36, h: 24 }, APSC: { label: 'APS-C', w: 23.6, h: 15.6 },
   M43: { label: 'Micro Four Thirds', w: 17.3, h: 13 }, ONE: { label: '1-inch', w: 13.2, h: 8.8 }
 };
-const DEFAULT_SENSOR = 'S35', SCHEMA = 2, NOTE_MAX = 240;
+const DEFAULT_SENSOR = 'S35', SCHEMA = 3, NOTE_MAX = 240;
 const sensorOf = () => SENSORS[P.sensor] || SENSORS[DEFAULT_SENSOR];
 const sensorH = () => sensorOf().h;
 const crop = () => 36 / sensorOf().w;
@@ -24,6 +24,9 @@ const SIZES = {
   MCU: { h: 0.7, ty: 1.5, label: 'Medium close-up' }, CU: { h: 0.42, ty: 1.64, label: 'Close-up' },
   ECU: { h: 0.2, ty: 1.7, label: 'Extreme close-up' }
 };
+const ACTION_LABEL = { stand: 'Standing', walk: 'Walking across', sit: 'Sitting', think: 'Sitting, thinking', talk: 'Talking', listen: 'Listening', nod: 'Nodding', sip: 'Sipping chai', wave: 'Waving', look: 'Looking around', shrug: 'Shrugging', invite: 'Inviting to sit' };
+const SEATED = { sit: 1, think: 1 };
+const ACTOR_NAME = { A: 'Meera', B: 'Arjun' };
 const HEIGHTS = { ground: 'Ground level', low: 'Low angle', eye: 'Eye level', high: 'High angle', top: "Bird's eye" };
 const LENSES = [14, 18, 24, 35, 50, 85, 135], FSTOPS = [1.4, 1.8, 2.8, 4, 5.6, 8, 11];
 const EASES = { smooth: 'Smooth (ease in-out)', linear: 'Linear (mechanical)', in: 'Ease in (accelerate)', out: 'Ease out (settle)' };
@@ -54,7 +57,7 @@ const MOVES = [
 const MV = Object.fromEntries(MOVES.map(m => [m.id, m]));
 
 /* ---------- state ---------- */
-const newShot = (o = {}) => normShot(Object.assign({ name: '', move: 'static', duration: 4, lens: 35, size: 'MS', subject: 'A', height: 'eye', angle: 0, amount: .6, dir: 1, easing: 'smooth', action: 'idle' }, o));
+const newShot = (o = {}) => normShot(Object.assign({ name: '', move: 'static', duration: 4, lens: 35, size: 'MS', subject: 'A', height: 'eye', angle: 0, amount: .6, dir: 1, easing: 'smooth', actionA: 'stand', actionB: 'stand' }, o));
 function normShot(o, errs, i) {
   const e = (m) => errs && errs.push(`Shot ${i + 1}: ${m}`);
   const s = {};
@@ -70,14 +73,15 @@ function normShot(o, errs, i) {
   s.amount = clamp(o.amount === undefined ? .6 : +o.amount, 0, 1);
   s.dir = +o.dir < 0 ? -1 : 1;
   s.easing = EASES[o.easing] ? o.easing : 'smooth';
-  s.action = o.action === 'walk' ? 'walk' : 'idle';
+  const lw = o.action === 'walk' ? (o.subject === 'B' ? 'B' : 'A') : null; // files from before v0.5 had one action for the whole shot
+  for (const k of ['A', 'B']) { const v = o['action' + k] === 'idle' ? 'stand' : o['action' + k]; s['action' + k] = ACTION_LABEL[v] ? v : (lw === k ? 'walk' : 'stand'); }
   s.notes = String(o.notes || '').replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
   return s;
 }
 const DEMO = () => ({ schemaVersion: SCHEMA, sensor: DEFAULT_SENSOR, title: 'Chai stall – first meeting', aspect: '2.39', look: 'golden', shots: [
   newShot({ fstop: 5.6, name: 'Establish the stall', move: 'reveal', duration: 5, lens: 24, size: 'WS', subject: 'both', height: 'eye', angle: 15, amount: .7 }),
   newShot({ fstop: 1.8, name: 'Meera notices', move: 'push_in', duration: 4.5, lens: 50, size: 'MS', subject: 'A', angle: 25, amount: .7 }),
-  newShot({ fstop: 2.8, name: 'Arjun walks in', move: 'follow', duration: 5, lens: 35, size: 'FS', subject: 'B', angle: 25, action: 'walk' }),
+  newShot({ fstop: 2.8, name: 'Arjun walks in', move: 'follow', duration: 5, lens: 35, size: 'FS', subject: 'B', angle: 25, actionB: 'walk' }),
   newShot({ fstop: 1.4, name: 'The realisation', move: 'dolly_zoom', duration: 4, lens: 50, size: 'CU', subject: 'A', angle: -10, amount: .8 })
 ] });
 let P = DEMO(), sel = 0, time = 0, playing = false, loop = true, mode = 'nocode', guides = 'off', showSet = true, demo = true, recording = null;
@@ -213,6 +217,33 @@ function skinMat(mm) {
   get(t.c, true).then(x => { if (x) { mm.map = x; mm.color.set(0xffffff); mm.visible = true; mm.needsUpdate = true; } });
   if (t.n) get(t.n, false).then(x => { if (x) { mm.normalMap = x; mm.needsUpdate = true; } });
 }
+
+/* action clips: compact quaternion tracks from assets_src/actions.json (Rocketbox animations, MIT), played ping-pong so any shot length works */
+function actionClip(name, d, bones, fps) {
+  const dec = s => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return new Int16Array(u.buffer); };
+  const q = dec(d.q), y = dec(d.y), nb = bones.length, times = new Float32Array(d.n);
+  for (let i = 0; i < d.n; i++) times[i] = Math.min(i / fps, d.dur);
+  const tr = bones.map((b, j) => { const v = new Float32Array(d.n * 4); for (let i = 0; i < d.n; i++) for (let c = 0; c < 4; c++) v[i * 4 + c] = q[(i * nb + j) * 4 + c] / 32767; return new T.QuaternionKeyframeTrack(b + '.quaternion', times, v); });
+  const pv = new Float32Array(d.n * 3); for (let i = 0; i < d.n; i++) pv[i * 3 + 1] = y[i] / 1000;
+  tr.push(new T.VectorKeyframeTrack('Bip01.position', times, pv));
+  return new T.AnimationClip(name, d.dur, tr);
+}
+const pingPong = (t, dur) => { const p = ((t % (2 * dur)) + 2 * dur) % (2 * dur); return p < dur ? p : 2 * dur - p; };
+/* props: plastic chair for seated actions, chai glass in the hand for sipping */
+function makeChair() {
+  const g = new T.Group(), mat = new T.MeshStandardMaterial({ color: 0xc0392b, roughness: .55 });
+  const seat = new T.Mesh(new T.BoxGeometry(.42, .035, .4), mat); seat.position.set(0, .45, -.08);
+  const back = new T.Mesh(new T.BoxGeometry(.4, .3, .03), mat); back.position.set(0, .66, -.27); back.rotation.x = -.12;
+  g.add(seat, back);
+  for (const [x, z] of [[-.17, .08], [.17, .08], [-.17, -.22], [.17, -.22]]) { const l = new T.Mesh(new T.CylinderGeometry(.016, .016, .45, 8), mat); l.position.set(x, .225, z); g.add(l); }
+  g.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; }); g.visible = false; return g;
+}
+function makeGlass() {
+  const g = new T.Group();
+  const body = new T.Mesh(new T.CylinderGeometry(.034, .027, .085, 16), new T.MeshStandardMaterial({ color: 0xe9eef0, transparent: true, opacity: .55, roughness: .1 }));
+  const tea = new T.Mesh(new T.CylinderGeometry(.031, .026, .06, 16), new T.MeshStandardMaterial({ color: 0xb8742e, roughness: .4 })); tea.position.y = -.01;
+  g.add(body, tea); g.visible = false; return g;
+}
 function loadReal() {
   const A = window.__KA; try { delete window.__KA; } catch (e) {} if (!A || !T.GLTFLoader) return;
   Object.assign(TXD, A.tex || {});
@@ -229,7 +260,11 @@ function loadReal() {
       const w = new T.Group(); w.add(m); m.scale.multiplyScalar(sc); m.position.set(-(bx.min.x + bx.max.x) / 2 * sc, -bx.min.y * sc, -(bx.min.z + bx.max.z) / 2 * sc); w.rotation.y = REAL_YAW;
       m.traverse(o => { if (!o.isMesh) return; o.castShadow = o.receiveShadow = true; o.frustumCulled = false; const mm = o.material; if (!mm) return; mm.envMapIntensity = .7; skinMat(mm); });
       const g = AC[k]; g.children.forEach(c => c.visible = false); g.add(w);
-      REAL[k] = { mx, ia, wa, iD: ic.animations[0].duration, wD: wc.animations[0].duration };
+      const act = {}, AD = A.actions;
+      if (AD) for (const nm of Object.keys(ACTION_LABEL)) { const d = AD.clips[(k === 'A' ? 'f_' : 'm_') + nm]; if (!d) continue; const a = mx.clipAction(actionClip(nm, d, AD.bones, AD.fps)); a.play(); a.weight = 0; act[nm] = { a, dur: d.dur }; }
+      const chair = makeChair(); g.add(chair);
+      const glass = makeGlass(), hand = m.getObjectByName('Bip01_R_Hand'); if (hand) { glass.position.set(.09, .02, .03); hand.add(glass); } else g.add(glass);
+      REAL[k] = { mx, ia, wa, act, chair, glass, sc, iD: ic.animations[0].duration, wD: wc.animations[0].duration };
     }
     pathKey = '';
   });
@@ -251,11 +286,11 @@ for (const o of [proxy, helper, path]) o.traverse(c => c.layers.set(1));
 const V = (x, y, z) => new T.Vector3(x, y, z);
 function subjPos(sh, t) {
   const k = sh.subject === 'both' ? null : sh.subject;
-  const walk = (sh.action === 'walk' || MV[sh.move].walk) ? (k || 'A') : null;
+  const walkers = ['A', 'B'].filter(a => sh['action' + a] === 'walk' || (MV[sh.move].walk && a === (k || 'A')));
   const pos = {}; for (const a of ['A', 'B']) pos[a] = HOME[a].clone();
-  if (walk) { pos[walk].x += lerp(-2.2, 2.2, t) * sh.dir; pos[walk].z += 1.1; }
+  for (const w of walkers) { pos[w].x += lerp(-2.2, 2.2, t) * sh.dir; pos[w].z += 1.1; }
   const target = k ? pos[k] : pos.A.clone().add(pos.B).multiplyScalar(.5);
-  return { target: target.clone(), pos, walk };
+  return { target: target.clone(), pos, walkers };
 }
 function solve(sh, t, sec) {
   const mv = MV[sh.move] || MV.static, te = mv.raw ? t : EF[sh.easing](t);
@@ -278,9 +313,9 @@ function solve(sh, t, sec) {
 }
 function applyCam(c, p) { c.position.copy(p.pos); c.up.set(0, 1, 0); c.lookAt(p.tg); c.rotateY(p.yaw); c.rotateX(p.pitch); c.rotateZ(p.roll); c.fov = clamp(p.fov, 3, 120); c.updateProjectionMatrix(); }
 function poseActors(sh, t, sec, clock) {
-  const sp = sh ? subjPos(sh, t) : { pos: { A: HOME.A, B: HOME.B }, walk: null };
+  const sp = sh ? subjPos(sh, t) : { pos: { A: HOME.A, B: HOME.B }, walkers: [] };
   for (const k of ['A', 'B']) {
-    const g = AC[k], u = g.userData, w = sp.walk === k;
+    const g = AC[k], u = g.userData, w = sp.walkers.includes(k), an = w ? 'walk' : (sh && sh['action' + k]) || 'stand';
     g.position.copy(sp.pos[k]);
     g.rotation.y = w ? (sh.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : FACE[k];
     const ph = w ? sec * 7.5 : 0, br = Math.sin(clock * 1.6 + (k === 'A' ? 0 : 2)) * .012;
@@ -288,7 +323,15 @@ function poseActors(sh, t, sec, clock) {
     u.arms[0].rotation.x = -Math.sin(ph) * .45; u.arms[1].rotation.x = Math.sin(ph) * .45;
     u.arms[0].rotation.z = -.08; u.arms[1].rotation.z = .08;
     g.position.y = w ? Math.abs(Math.sin(ph)) * .03 : br;
-    const Q = REAL[k]; if (Q) { Q.wa.weight = w ? 1 : 0; Q.ia.weight = w ? 0 : 1; Q.ia.time = (clock + (k === 'A' ? 0 : 1.3)) % Q.iD; Q.wa.time = (sec * 1.1) % Q.wD; Q.mx.update(0); g.position.y = 0; }
+    const Q = REAL[k];
+    if (Q) {
+      Q.wa.weight = an === 'walk' ? 1 : 0; Q.ia.weight = an === 'stand' ? 1 : 0;
+      for (const nm in Q.act) Q.act[nm].a.weight = nm === an ? 1 : 0;
+      Q.ia.time = (clock + (k === 'A' ? 0 : 1.3)) % Q.iD; Q.wa.time = (sec * 1.1) % Q.wD;
+      const x = Q.act[an]; if (x) x.a.time = pingPong(sec + (k === 'A' ? 0 : .7), x.dur);
+      Q.mx.update(0); g.position.y = 0;
+      Q.chair.visible = !!SEATED[an]; Q.glass.visible = an === 'sip';
+    }
   }
 }
 let pathFor = -1, pathKey = '';
@@ -390,7 +433,8 @@ $('#moves').onclick = e => {
   const b = e.target.closest('.mv'); if (!b) return;
   const m = MV[b.dataset.id], base = P.shots[sel] || {};
   commit();
-  const sh = newShot({ move: m.id, lens: base.lens || 35, size: base.size || 'MS', subject: base.subject || 'A', angle: base.angle || 0, action: m.walk ? 'walk' : 'idle', angle2: 0 });
+  const sh = newShot({ move: m.id, lens: base.lens || 35, size: base.size || 'MS', subject: base.subject || 'A', angle: base.angle || 0, angle2: 0 });
+  if (m.walk) sh['action' + (sh.subject === 'B' ? 'B' : 'A')] = 'walk';
   if (m.walk && !base.angle) sh.angle = 80;
   const at2 = P.shots.length ? sel + 1 : 0; P.shots.splice(at2, 0, sh); sel = at2; time = starts()[sel] + .001; setPlay(true);
   refreshAll(); toast(`Added “${m.name}”`);
@@ -409,7 +453,8 @@ const FIELDS = [
   ['amount', 'rng', 'Move intensity', 0, 1, .05, v => Math.round(v * 100) + '%'],
   ['dir', 'sel', 'Direction', () => [[1, 'Right · up · forward'], [-1, 'Left · down · back']]],
   ['easing', 'sel', 'Easing', () => Object.entries(EASES)],
-  ['action', 'sel', 'Actor action', () => [['idle', 'Standing'], ['walk', 'Walking across']]],
+  ['actionA', 'sel', 'Meera: action', () => Object.entries(ACTION_LABEL)],
+  ['actionB', 'sel', 'Arjun: action', () => Object.entries(ACTION_LABEL)],
   ['notes', 'area', 'Shot notes']
 ];
 function lensNote(l) { return l <= 18 ? 'Ultra-wide: exaggerates space and speed; faces distort up close.' : l <= 24 ? 'Wide: shows the environment; great for establishing and movement.' : l <= 50 ? 'Normal: close to how the eye sees; honest and natural.' : l <= 85 ? 'Portrait: flattering faces, soft separated backgrounds.' : 'Telephoto: compresses depth; feels voyeuristic or intense.'; }
@@ -427,7 +472,7 @@ function buildInsp() {
     return `<div class="f"><label>${label}<em data-o="${k}">${c ? fmt(+v) : v}</em></label><input type="range" data-k="${k}" min="${a}" max="${b}" step="${c}" value="${v}"></div>`;
   };
   const F = Object.fromEntries(FIELDS.map(x => [x[0], f(x)]));
-  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + (mv.walk ? '' : F.action) + F.notes +
+  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.actionA + F.actionB + F.notes +
     `<div class="learn" style="--c:${catColor(mv.cat)}"><h4>Why “${mv.name}”</h4><p>${mv.why}</p><p><i>Try:</i> ${mv.tip}</p><p><i>${sh.lens} mm on ${sensorOf().label}${crop() > 1.01 ? ' (≈' + eqMm(sh.lens) + ' mm full-frame equivalent)' : ''}:</i> ${lensNote(sh.lens)}</p><p><i>f/${sh.fstop}:</i> ${sh.fstop <= 2 ? 'Shallow focus melts the background and isolates the subject: the classic cinematic look.' : sh.fstop >= 8 ? 'Deep focus keeps everything sharp, so the audience can explore the whole frame.' : 'Moderate depth: subject sharp, background softly separated.'}</p></div>`;
 }
 let editing = false;
@@ -440,7 +485,7 @@ $('#insp').addEventListener('input', e => {
   if (fd[1] === 'area') { const o = $(`[data-o="${k}"]`); if (o) o.textContent = `${v.length}/${NOTE_MAX}`; return; }
   if (k === 'name') { buildTL(); return; }
   if (fd[1] === 'rng') { const o = $(`[data-o="${k}"]`); if (o) o.textContent = fd[6](v); buildTL(); }
-  else { if (k === 'move' && MV[v].walk) sh.action = 'walk'; buildInsp(); buildTL(); }
+  else { if (k === 'move' && MV[v].walk) sh['action' + (sh.subject === 'B' ? 'B' : 'A')] = 'walk'; buildInsp(); buildTL(); }
   if (!playing) time = clamp(time, starts()[sel], starts()[sel] + sh.duration - .001);
 });
 $('#insp').addEventListener('change', () => { editing = false; });
@@ -544,7 +589,7 @@ ta.addEventListener('keydown', e => {
 });
 $('#cDoc').onclick = () => {
   const row = (k, v) => `<div><b style="color:var(--ac)">${k}</b> &nbsp;${v}</div>`;
-  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('action', 'idle, walk') + row('notes', 'free text, up to ' + NOTE_MAX + ' characters (shown in the PDFs and CSV)') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
+  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('actionA', Object.keys(ACTION_LABEL).join(', ') + ' (what Meera does)') + row('actionB', 'same list (what Arjun does)') + row('notes', 'free text, up to ' + NOTE_MAX + ' characters (shown in the PDFs and CSV)') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
     '<pre style="margin-top:12px;background:#0c0c11;padding:10px;border-radius:8px;color:#d8e3ff;white-space:pre-wrap">{ "move": "orbit", "duration": 6, "lens": 24,\n  "size": "WS", "subject": "both", "amount": 0.5 }</pre>';
   $('#mDoc').classList.add('on');
 };
@@ -576,8 +621,8 @@ $('#fileIn').onchange = e => {
 menu('#mExport', a => {
   if (a === 'csv') {
     const q = v => `"${String(v).replace(/"/g, '""')}"`, st = starts();
-    const rows = [['Shot', 'Name', 'Start', 'Duration (s)', 'Move', 'Lens (mm)', 'Aperture', 'Size', 'Subject', 'Height', 'Angle', 'Intensity', 'Easing', 'Action', 'Notes', 'Why this move']]
-      .concat(P.shots.map((s, i) => [i + 1, s.name, tcf(st[i]), s.duration, MV[s.move].name, s.lens, 'f/' + s.fstop, SIZES[s.size].label, SUBJ[s.subject], HEIGHTS[s.height], s.angle, Math.round(s.amount * 100) + '%', s.easing, s.action, s.notes, MV[s.move].why]));
+    const rows = [['Shot', 'Name', 'Start', 'Duration (s)', 'Move', 'Lens (mm)', 'Aperture', 'Size', 'Subject', 'Height', 'Angle', 'Intensity', 'Easing', 'Meera', 'Arjun', 'Notes', 'Why this move']]
+      .concat(P.shots.map((s, i) => [i + 1, s.name, tcf(st[i]), s.duration, MV[s.move].name, s.lens, 'f/' + s.fstop, SIZES[s.size].label, SUBJ[s.subject], HEIGHTS[s.height], s.angle, Math.round(s.amount * 100) + '%', s.easing, ACTION_LABEL[s.actionA], ACTION_LABEL[s.actionB], s.notes, MV[s.move].why]));
     download(new Blob(['﻿' + rows.map(r => r.map(q).join(',')).join('\r\n')], { type: 'text/csv' }), fname('-shotlist.csv')); toast('Shot list exported');
   }
   if (a === 'png') { render(true); const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = film.w * r; c.height = film.h * r; c.getContext('2d').drawImage(cv, film.x * r, film.y * r, c.width, c.height, 0, 0, c.width, c.height); c.toBlob(b => { download(b, fname(`-shot${sel + 1}.png`)); toast('Frame saved'); }); }
@@ -598,7 +643,7 @@ function exportPdf(kind) {
     const bin = atob(c.toDataURL('image/jpeg', .85).split(',')[1]), jpeg = new Uint8Array(bin.length);
     for (let k = 0; k < bin.length; k++) jpeg[k] = bin.charCodeAt(k);
     shots.push({ n: i + 1, name: s.name, move: MV[s.move].name, why: MV[s.move].why, notes: s.notes, start: tcf(st[i]), duration: s.duration, lens: s.lens, eq: crop() > 1.01 ? eqMm(s.lens) : 0, fstop: s.fstop,
-      size: SIZES[s.size].label, sizeCode: s.size, height: HEIGHTS[s.height], angle: s.angle, subject: SUBJ[s.subject], action: s.action === 'walk' ? 'Walking' : 'Idle', amount: Math.round(s.amount * 100),
+      size: SIZES[s.size].label, sizeCode: s.size, height: HEIGHTS[s.height], angle: s.angle, subject: SUBJ[s.subject], actions: [`${ACTOR_NAME.A}: ${ACTION_LABEL[s.actionA]}`, `${ACTOR_NAME.B}: ${ACTION_LABEL[s.actionB]}`], amount: Math.round(s.amount * 100),
       easing: s.easing[0].toUpperCase() + s.easing.slice(1), jpeg, jw: tw, jh: th });
   }
   time = t0; setPlay(wasPlaying);
@@ -659,7 +704,7 @@ if (location.hash === '#selftest') runSelfTest();
 if (store.get('kalki.onboarded')) { demo = false; $('#ob').style.display = 'none'; setPlay(true); }
 
 /* ---------- self test: open the page with #selftest, results go to the title and #selftestOut (used by tests/smoke.mjs) ---------- */
-function runSelfTest() {
+async function runSelfTest() {
   const res = [];
   const t = (name, fn) => { try { const r = fn(); res.push([name, r === undefined || r === true, r === false ? 'returned false' : '']); } catch (e) { res.push([name, false, String(e && e.message || e)]); } };
   const near = (a, b, eps = 1e-6) => Math.abs(a - b) < eps;
@@ -693,9 +738,26 @@ function runSelfTest() {
     setGuides('off'); return ok1 && seen2.includes('ui');
   });
   t('guides draw into the frame', () => { setGuides('safe'); const a = $('#gd').querySelectorAll('rect').length === 2; setGuides('ui'); const b = $('#gd').querySelectorAll('rect.z').length === 3; setGuides('off'); return a && b && $('#gd').style.display === 'none'; });
+  t('legacy single action becomes a per-actor action', () => { const a = normShot({ action: 'walk', subject: 'B' }), b = normShot({ action: 'walk' }), c = normShot({ action: 'idle' }); return a.actionB === 'walk' && a.actionA === 'stand' && b.actionA === 'walk' && c.actionA === 'stand' && c.actionB === 'stand'; });
+  t('unknown actions fall back to standing', () => { const s = normShot({ actionA: 'dance', actionB: 'sit' }); return s.actionA === 'stand' && s.actionB === 'sit'; });
+  t('every action has a label', () => Object.keys(ACTION_LABEL).length === 12 && Object.keys(SEATED).every(k => ACTION_LABEL[k]));
+  t('both actors can walk in one shot', () => { const sh = newShot({ actionA: 'walk', actionB: 'walk' }); const p0 = subjPos(sh, 0), p1 = subjPos(sh, 1); return p0.walkers.length === 2 && p1.pos.A.x > p0.pos.A.x && p1.pos.B.x > p0.pos.B.x; });
+  t('only the subject walks on a follow move', () => { const sh = newShot({ move: 'follow', subject: 'B' }); const w = subjPos(sh, .5).walkers; return w.length === 1 && w[0] === 'B'; });
+  t('actions survive a project round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ actionA: 'sit', actionB: 'sip' }] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value).shots[0]; return o.actionA === 'sit' && o.actionB === 'sip'; });
   t('PDF writer is wired in', () => typeof buildShotListPdf === 'function' && typeof buildStoryboardPdf === 'function');
   t('desktop save helper exists', () => typeof download === 'function' && typeof browserDownload === 'function');
 
+  for (let i = 0; i < 160 && !(REAL.A && REAL.B); i++) await new Promise(r => setTimeout(r, 100));
+  t('both actors loaded', () => !!(REAL.A && REAL.B));
+  t('every action clip is bound for both actors', () => ['A', 'B'].every(k => Object.keys(ACTION_LABEL).filter(n => n !== 'stand' && n !== 'walk').every(n => REAL[k].act[n] && REAL[k].act[n].dur > 1)));
+  t('seated and sip props exist', () => ['A', 'B'].every(k => REAL[k].chair && REAL[k].glass));
+  t('actions pose the skeleton differently', () => {
+    const sh = newShot({ subject: 'A', actionA: 'stand' }); poseActors(sh, .5, 1, 0); const bone = AC.A.getObjectByName('Bip01_R_Hand'); AC.A.updateMatrixWorld(true);
+    const p0 = bone.getWorldPosition(new T.Vector3()); sh.actionA = 'wave'; poseActors(sh, .5, 1, 0); AC.A.updateMatrixWorld(true);
+    const p1 = bone.getWorldPosition(new T.Vector3()); sh.actionA = 'sit'; poseActors(sh, .5, 1, 0); const seated = REAL.A.chair.visible; const root = AC.A.getObjectByName('Bip01').position.y;
+    poseActors(null, 0, 0, 0);
+    return p0.distanceTo(p1) > .2 && seated && root < .8;
+  });
   const pass = res.filter(r => r[1]).length;
   const out = document.createElement('pre'); out.id = 'selftestOut';
   out.textContent = res.map(r => `${r[1] ? 'PASS' : 'FAIL'}  ${r[0]}${r[2] ? '  (' + r[2] + ')' : ''}`).join('\n') + `\nSELFTEST ${pass === res.length ? 'PASS' : 'FAIL'} ${pass}/${res.length}`;

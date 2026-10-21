@@ -27,7 +27,8 @@ const app = process.env.DEBUG ? appMin : JO.obfuscate(appMin, {
 
 const safe = s => s.replace(/<\/script/gi, '<\\/script');
 let html = fs.readFileSync('src/index.html', 'utf8');
-const assets = 'window.__KA={' + ['meera','arjun','f_idle','f_walk','m_idle','m_walk'].map(k => `${k}:'${fs.readFileSync('assets_src/'+k+'.glb').toString('base64')}'`).join(',') + ',tex:' + fs.readFileSync('assets_src/tex.json','utf8') + '};';
+const actions = fs.readFileSync('assets_src/actions.json', 'utf8');
+const assets = 'window.__KA={actions:' + actions + ',' + ['meera','arjun','f_idle','f_walk','m_idle','m_walk'].map(k => `${k}:'${fs.readFileSync('assets_src/'+k+'.glb').toString('base64')}'`).join(',') + ',tex:' + fs.readFileSync('assets_src/tex.json','utf8') + '};';
 html = html.replace('<!--APP-->', () => `<script>${assets}</script>\n<!--APP-->`);
 html = html.replace('<!--VENDOR-->', () => `<script>${safe(vendor)}</script>`).replace('<!--APP-->', () => `<script>${safe(app)}</script>`);
 fs.writeFileSync('dist/Kalki.html', html);

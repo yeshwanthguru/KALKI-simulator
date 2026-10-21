@@ -10,8 +10,10 @@ v0.4    Shot-list PDF export, camera sensor presets with full-frame equivalents,
         versioned project files (older files still open)
 v0.4.1  Storyboard sheet PDF (frame grid with captions), per-shot notes in the PDFs and CSV,
         Windows desktop app
-v0.4.2  Latest: frame guides (thirds, safe areas, Reels/Shorts zones), built-in self-test,
-        PDF text ends with "..." instead of cutting off  << recommended
+v0.4.2  Frame guides (thirds, safe areas, Reels/Shorts zones), built-in self-test,
+        PDF text ends with "..." instead of cutting off
+v0.5    Latest: actions for each actor (stand, walk, sit, talk, listen, nod, sip chai, wave,
+        look around, shrug, invite to sit), plastic chair and chai glass props  << recommended
 
 ZIP PACKAGES (same versions, each with README + license notices)
-  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip
+  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip, Kalki-v0.5.zip

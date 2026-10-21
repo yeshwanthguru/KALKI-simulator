@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.4.2-ff6b4a?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.5.0-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
   <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
@@ -30,12 +30,12 @@
 
 **In the browser** (nothing to install)
 
-1. Download [`Kalki-versions/Kalki-v0.4.2.html`](Kalki-versions/Kalki-v0.4.2.html), or the zipped package [`Kalki-v0.4.2.zip`](Kalki-versions/Kalki-v0.4.2.zip) with notices.
+1. Download [`Kalki-versions/Kalki-v0.5.html`](Kalki-versions/Kalki-v0.5.html), or the zipped package [`Kalki-v0.5.zip`](Kalki-versions/Kalki-v0.5.zip) with notices.
 2. Double-click it. It opens in Chrome or Edge and runs fully offline.
 
 **On Windows** (native app, about 3 MB)
 
-1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.4.2_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.4.2_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
+1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.5.0_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.5.0_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
 2. The installer is **not code-signed yet**, so Windows SmartScreen may warn on first run: choose **More info, Run anyway**.
 3. Exports open a native **Save as** dialog. It uses the WebView2 runtime that ships with Windows 11 (Windows 10 may prompt to install it).
 
@@ -62,7 +62,8 @@ flowchart LR
 | **Real lens behaviour** | Focal length 14 to 135 mm, aperture f/1.4 to f/11 driving depth of field, plus bloom, motion blur and film grain. |
 | **Camera sensors** | Super 35, Full frame, APS-C, Micro Four Thirds, 1-inch. Lenses show their full-frame equivalent. |
 | **Cinematic looks** | Golden hour, Teal and orange, Night, Noir, Neutral, with window light and sun shafts. |
-| **Realistic actors** | Animated idle and walk cycles on a 3D chai-stall set (Microsoft Rocketbox avatars). |
+| **Realistic actors** | Animated characters on a 3D chai-stall set (Microsoft Rocketbox avatars). |
+| **Actions for each actor** | Choose what Meera and Arjun do in every shot: stand, walk, sit on a plastic chair, talk, listen, nod, sip chai, wave, look around, shrug, or invite the other to sit. See the [contact sheet](docs/samples/actions-contact-sheet.pdf). |
 | **Any frame** | Cinema 2.39:1, YouTube 16:9, Reels and Shorts 9:16, square. |
 | **Frame guides** | Press **G** to cycle rule of thirds, action and title safe areas with a centre mark, and (on 9:16) approximate Reels and Shorts interface zones. |
 | **Shot notes** | A notes field on every shot for intent, blocking and references. |
@@ -113,7 +114,8 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | v0.3.1 | Actor textures fixed for all browsers, brighter wide shots |
 | v0.4 | Shot-list PDF, sensor presets with full-frame equivalents, versioned project files |
 | v0.4.1 | Storyboard sheet PDF, per-shot notes, Windows desktop app |
-| **v0.4.2** | **Latest.** Frame guides (thirds, safe areas, Reels zones), built-in self-test, PDF text fix |
+| v0.4.2 | Frame guides (thirds, safe areas, Reels zones), built-in self-test, PDF text fix |
+| **v0.5** | **Latest.** Actions for each actor (sit, talk, listen, nod, sip chai, wave, look, shrug, invite), chair and glass props |
 
 Every build is kept in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 
@@ -124,7 +126,7 @@ Kalki is built in small, shippable steps. Full detail, effort estimates and rati
 ```mermaid
 flowchart LR
     P1["<b>Phase 1 · v0.4.x</b><br/>Hand-off<br/>shot list, storyboard,<br/>notes, sensors"]:::done
-    P2["<b>Phase 2 · v0.5</b><br/>Performers<br/>actor picker, actions,<br/>action timeline"]:::next
+    P2["<b>Phase 2 · v0.5.x</b><br/>Performers<br/>actions (done), actor picker,<br/>action timeline"]:::next
     P3["<b>Phase 3 · v0.6</b><br/>Indian content<br/>Tamil and Hindi UI,<br/>costumes, sets"]:::todo
     P4["<b>Phase 4 · v0.7</b><br/>Reach<br/>phone layout, PWA,<br/>signed installer"]:::todo
     P5["<b>Phase 5 · v0.8</b><br/>Teaching<br/>lesson scenes,<br/>instructor kit"]:::todo

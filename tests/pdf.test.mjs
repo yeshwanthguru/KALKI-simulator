@@ -5,7 +5,7 @@ import sharp from 'sharp';
 import { buildShotListPdf, buildStoryboardPdf, textWidth, wrap, wrapMax, latin } from '../src/pdf.js';
 
 const jpeg = new Uint8Array(await sharp({ create: { width: 64, height: 36, channels: 3, background: '#c85' } }).jpeg().toBuffer());
-const shot = n => ({ n, name: 'Shot ' + n + ' (café) — “quotes”', move: 'Push in', why: 'A slow push-in tightens attention on the performer and builds intensity.', start: '00:00:00', duration: 4, lens: 50, eq: 73, fstop: 2.8, size: 'Medium', height: 'Eye level', angle: 15, subject: 'Meera', action: 'idle', amount: 60, easing: 'smooth', jpeg, jw: 64, jh: 36 });
+const shot = n => ({ n, name: 'Shot ' + n + ' (café) — “quotes”', move: 'Push in', why: 'A slow push-in tightens attention on the performer and builds intensity.', start: '00:00:00', duration: 4, lens: 50, eq: 73, fstop: 2.8, size: 'Medium', height: 'Eye level', angle: 15, subject: 'Meera', actions: ['Meera: Sitting', 'Arjun: Sipping chai'], amount: 60, easing: 'smooth', jpeg, jw: 64, jh: 36 });
 const bin = buildShotListPdf({ title: 'Test (scene)', meta: ['2.39:1', 'Golden hour'], aspect: 2.39, footer: 'Made with Kalki Simulator', shots: Array.from({ length: 12 }, (_, i) => shot(i + 1)) });
 const s = Buffer.from(bin).toString('latin1');
 

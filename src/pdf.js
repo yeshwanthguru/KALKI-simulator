@@ -147,8 +147,8 @@ export function buildShotListPdf(doc) {
       cx += cols[4].w;
       /* subject */
       pdf.text(cx + 6, y + 14, s.subject, { size: 10, bold: true, color: INK });
-      pdf.text(cx + 6, y + 27, s.action, { size: 9, color: INK });
-      pdf.text(cx + 6, y + 39, `Move intensity ${s.amount}%`, { size: 7.5, color: MUTED });
+      (s.actions || [s.action || '']).forEach((ln, i) => pdf.text(cx + 6, y + 26 + i * 10, ln, { size: 8, color: INK }));
+      pdf.text(cx + 6, y + 49, `Move intensity ${s.amount}%`, { size: 7.5, color: MUTED });
     });
     pdf.line(M, 595 - 34, M + 770, 595 - 34, { color: RULE });
     pdf.text(M, 595 - 20, doc.footer || '', { size: 7.5, color: MUTED });
