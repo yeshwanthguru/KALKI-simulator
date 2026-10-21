@@ -31,6 +31,16 @@ export function wrap(s, maxW, size, bold) {
   return out;
 }
 
+/* wrap to at most n lines; if the text does not fit, the last line ends with "..." */
+export function wrapMax(s, maxW, size, n, bold) {
+  const l = wrap(s, maxW, size, bold);
+  if (l.length <= n) return l;
+  const r = l.slice(0, n); let t = r[n - 1];
+  while (t && textWidth(t + '...', size, bold) > maxW) t = t.replace(/\s*\S+$/, '');
+  r[n - 1] = t + '...';
+  return r;
+}
+
 const bytes = s => { const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i) & 255; return u; };
 
 export class Pdf {
@@ -117,8 +127,8 @@ export function buildShotListPdf(doc) {
       /* shot */
       pdf.text(cx + 6, y + 14, `${s.n}. ${s.name}`, { size: 10.5, bold: true, color: INK });
       pdf.text(cx + 6, y + 27, s.move, { size: 9, bold: true, color: ACCENT });
-      wrap(s.why, cols[1].w - 12, 7.5).slice(0, 2).forEach((ln, i) => pdf.text(cx + 6, y + 39 + i * 9, ln, { size: 7.5, color: MUTED }));
-      if (s.notes) wrap('Note: ' + s.notes, cols[1].w - 12, 7.5).slice(0, 2).forEach((ln, i) => pdf.text(cx + 6, y + 61 + i * 9, ln, { size: 7.5, color: INK }));
+      wrapMax(s.why, cols[1].w - 12, 7.5, 2).forEach((ln, i) => pdf.text(cx + 6, y + 39 + i * 9, ln, { size: 7.5, color: MUTED }));
+      if (s.notes) wrapMax('Note: ' + s.notes, cols[1].w - 12, 7.5, 2).forEach((ln, i) => pdf.text(cx + 6, y + 61 + i * 9, ln, { size: 7.5, color: INK }));
       cx += cols[1].w;
       /* timing */
       pdf.text(cx + 6, y + 14, s.start, { size: 10, bold: true, color: INK });
@@ -169,7 +179,7 @@ export function buildStoryboardPdf(doc) {
       const fit = (t, size, bold) => { let o = latin(t); while (o.length > 1 && textWidth(o, size, bold) > cw) o = o.slice(0, -2) + '.'; return o; };
       pdf.text(x, y + fh + 13, fit(s.name, 9.5, true), { size: 9.5, bold: true, color: INK });
       pdf.text(x, y + fh + 24, fit(`${s.move}  |  ${s.lens} mm  |  ${s.sizeCode || s.size}  |  ${s.duration} s`, 7.5), { size: 7.5, color: ACCENT });
-      wrap(s.notes || s.why, cw, 7.5).slice(0, 2).forEach((ln, i) => pdf.text(x, y + fh + 35 + i * 9, ln, { size: 7.5, color: s.notes ? INK : MUTED }));
+      wrapMax(s.notes || s.why, cw, 7.5, 2).forEach((ln, i) => pdf.text(x, y + fh + 35 + i * 9, ln, { size: 7.5, color: s.notes ? INK : MUTED }));
     });
     pdf.line(M, 595 - 34, M + 770, 595 - 34, { color: RULE });
     pdf.text(M, 595 - 20, doc.footer || '', { size: 7.5, color: MUTED });
