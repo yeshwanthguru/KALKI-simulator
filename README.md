@@ -6,7 +6,7 @@
   <img alt="Version" src="https://img.shields.io/badge/version-0.4.1-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
-  <img alt="Licence" src="https://img.shields.io/badge/licence-MIT-blue?style=flat-square">
+  <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
 </p>
 
 <p align="center">
@@ -15,7 +15,7 @@
   <a href="#exports">Exports</a> ·
   <a href="#roadmap">Roadmap</a> ·
   <a href="#building-from-source">Build</a> ·
-  <a href="#contributing">Contributing</a>
+  <a href="#feedback">Feedback</a>
 </p>
 
 **Kalki Simulator** is an offline camera-movement simulator for Indian filmmakers, YouTubers and film students. Block out camera moves on a 3D set, tune the lens and lighting, and hand your crew a printable shot list and storyboard. It runs from a single HTML file or a small Windows app: no account, no internet, no tracking.
@@ -23,6 +23,8 @@
 <p align="center">
   <img src="docs/images/editor.jpg" alt="Kalki Simulator editor: move library, camera frame with set view, shot inspector and timeline" width="90%">
 </p>
+
+> **Private repository.** This repository holds the source code and is not public. Downloads for users are published separately.
 
 ## Quick start
 
@@ -173,9 +175,9 @@ flowchart TB
 
 `optimize.mjs` and `texfix.mjs` rebuild the actor assets; they need the original FBX/TGA files, which are not included. Design notes are in [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
-## Contributing
+## Feedback
 
-Contributions are welcome from filmmakers, film teachers, translators (Tamil, Hindi and beyond) and developers. Open an issue to share feedback or a feature idea, or send a pull request against the `develop` branch. Good first areas: translations, camera-move descriptions, sets and costumes made from CC0 or MIT assets, and bug reports from real shoots.
+Kalki Simulator is a closed-source project and does not accept code contributions. Feedback from filmmakers, film teachers and translators is very welcome: tell the author what would make it more useful on your shoots.
 
 ## Privacy
 
@@ -186,4 +188,4 @@ Kalki never connects to the internet and collects no data. Files are saved only 
 - [three.js](https://threejs.org), MIT
 - [Microsoft Rocketbox](https://github.com/microsoft/Microsoft-Rocketbox) avatars and animations (Female_Adult_11, Male_Adult_17), MIT
 
-Full notices: [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt). Kalki Simulator is released under the [MIT licence](LICENSE).
+Full notices: [`THIRD-PARTY-NOTICES.txt`](THIRD-PARTY-NOTICES.txt). Kalki Simulator itself is proprietary software: see [`LICENSE`](LICENSE). The third-party components above keep their own licences.
