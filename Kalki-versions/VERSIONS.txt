@@ -14,7 +14,8 @@ v0.4.2  Frame guides (thirds, safe areas, Reels/Shorts zones), built-in self-tes
         PDF text ends with "..." instead of cutting off
 v0.5    Actions for each actor (stand, walk, sit, talk, listen, nod, sip chai, wave,
         look around, shrug, invite to sit), plastic chair and chai glass props
-v0.5.1  Latest: click-to-place actors on the set view, facing control, top-down blocking diagram PDF  << recommended
+v0.5.1  Click-to-place actors on the set view, facing control, top-down blocking diagram PDF
+v0.5.2  Latest: action lane (timed action changes inside a shot, with blending)  << recommended
 
 ZIP PACKAGES (same versions, each with README + license notices)
-  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip, Kalki-v0.5.zip, Kalki-v0.5.1.zip
+  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip, Kalki-v0.5.zip, Kalki-v0.5.1.zip, Kalki-v0.5.2.zip

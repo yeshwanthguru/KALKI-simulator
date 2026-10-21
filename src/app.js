@@ -11,7 +11,7 @@ const SENSORS = {
   S35: { label: 'Super 35', w: 24.9, h: 14 }, FF: { label: 'Full frame', w: 36, h: 24 }, APSC: { label: 'APS-C', w: 23.6, h: 15.6 },
   M43: { label: 'Micro Four Thirds', w: 17.3, h: 13 }, ONE: { label: '1-inch', w: 13.2, h: 8.8 }
 };
-const DEFAULT_SENSOR = 'S35', SCHEMA = 4, NOTE_MAX = 240;
+const DEFAULT_SENSOR = 'S35', SCHEMA = 5, NOTE_MAX = 240;
 const sensorOf = () => SENSORS[P.sensor] || SENSORS[DEFAULT_SENSOR];
 const sensorH = () => sensorOf().h;
 const crop = () => 36 / sensorOf().w;
@@ -25,6 +25,7 @@ const SIZES = {
   ECU: { h: 0.2, ty: 1.7, label: 'Extreme close-up' }
 };
 const ACTION_LABEL = { stand: 'Standing', walk: 'Walking across', sit: 'Sitting', think: 'Sitting, thinking', talk: 'Talking', listen: 'Listening', nod: 'Nodding', sip: 'Sipping chai', wave: 'Waving', look: 'Looking around', shrug: 'Shrugging', invite: 'Inviting to sit' };
+const ACTION_SHORT = { stand: 'Stand', walk: 'Walk', sit: 'Sit', think: 'Think', talk: 'Talk', listen: 'Listen', nod: 'Nod', sip: 'Sip chai', wave: 'Wave', look: 'Look', shrug: 'Shrug', invite: 'Invite' };
 const SEATED = { sit: 1, think: 1 };
 const ACTOR_NAME = { A: 'Meera', B: 'Arjun' };
 const HEIGHTS = { ground: 'Ground level', low: 'Low angle', eye: 'Eye level', high: 'High angle', top: "Bird's eye" };
@@ -77,6 +78,11 @@ function normShot(o, errs, i) {
   for (const k of ['A', 'B']) { const v = o['action' + k] === 'idle' ? 'stand' : o['action' + k]; s['action' + k] = ACTION_LABEL[v] ? v : (lw === k ? 'walk' : 'stand'); }
   const pl = v => v && Number.isFinite(+v.x) && Number.isFinite(+v.z) ? { x: +clamp(+v.x, -7, 7).toFixed(2), z: +clamp(+v.z, -3.6, 5.5).toFixed(2) } : null;
   const fc = v => v === null || v === undefined || v === '' || !Number.isFinite(+v) ? null : clamp(Math.round(+v), -180, 180);
+  for (const k of ['A', 'B']) {
+    const seen = new Set(), c = Array.isArray(o['cues' + k]) && s['action' + k] !== 'walk' ? o['cues' + k] : [];
+    s['cues' + k] = c.map(x => ({ t: +(Math.round(clamp(+(x && x.t) || 0, 0, s.duration) * 2) / 2).toFixed(1), a: x && ACTION_LABEL[x.a === 'idle' ? 'stand' : x.a] && x.a !== 'walk' ? (x.a === 'idle' ? 'stand' : x.a) : null }))
+      .filter(x => x.a && x.t > 0 && x.t < s.duration && !seen.has(x.t) && seen.add(x.t)).sort((p, q) => p.t - q.t).slice(0, 7);
+  }
   s.placeA = pl(o.placeA); s.placeB = pl(o.placeB); s.faceA = fc(o.faceA); s.faceB = fc(o.faceB);
   s.notes = String(o.notes || '').replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
   return s;
@@ -315,6 +321,59 @@ function solve(sh, t, sec) {
   return { pos, tg, fov: fov / D2R, yaw: s.yaw, pitch: s.pitch, roll: s.roll, sp };
 }
 function applyCam(c, p) { c.position.copy(p.pos); c.up.set(0, 1, 0); c.lookAt(p.tg); c.rotateY(p.yaw); c.rotateX(p.pitch); c.rotateZ(p.roll); c.fov = clamp(p.fov, 3, 120); c.updateProjectionMatrix(); }
+
+/* ---------- action lane: timed action changes inside one shot ---------- */
+const BLEND = .25;
+const actionColor = a => `hsl(${(Object.keys(ACTION_LABEL).indexOf(a) * 31 + 12) % 360} 55% 42%)`;
+function segmentsOf(sh, k) {
+  const base = { t: 0, a: sh['action' + k] };
+  if (base.a === 'walk') return [base];
+  return [base].concat((sh['cues' + k] || []).filter(c => c.t > 0 && c.t < sh.duration).sort((x, y) => x.t - y.t));
+}
+const seqText = (sh, k) => { const g = segmentsOf(sh, k); return g.length === 1 ? ACTION_LABEL[g[0].a] : g.map((x, i) => i ? `${ACTION_SHORT[x.a]} (${+x.t.toFixed(1)} s)` : ACTION_SHORT[x.a]).join(' > '); };
+const describeActions = (sh, k) => `${ACTOR_NAME[k]}: ${seqText(sh, k)}`;
+let lane = { k: 'A', i: 0 };
+function laneBars(sh) {
+  return ['A', 'B'].map(k => {
+    const segs = segmentsOf(sh, k);
+    return `<div class="lane"><span>${ACTOR_NAME[k]}</span><div class="lbar">${segs.map((g, i) => { const end = i + 1 < segs.length ? segs[i + 1].t : sh.duration; return `<button class="lseg${lane.k === k && lane.i === i ? ' on' : ''}" data-seg="${k}:${i}" style="flex:${Math.max(.2, end - g.t)} 1 0;--c:${actionColor(g.a)}" title="${ACTION_LABEL[g.a]} from ${+g.t.toFixed(1)} s">${ACTION_SHORT[g.a]}</button>`; }).join('')}</div></div>`;
+  }).join('');
+}
+function laneEditor(sh) {
+  const segs = segmentsOf(sh, lane.k); lane.i = clamp(lane.i, 0, segs.length - 1); const g = segs[lane.i], first = lane.i === 0, walking = sh['action' + lane.k] === 'walk';
+  const opts = Object.entries(ACTION_LABEL).filter(([a]) => first || a !== 'walk').map(([a, l]) => `<option value="${a}"${a === g.a ? ' selected' : ''}>${l}</option>`).join('');
+  return `<div class="f"><label>${ACTOR_NAME[lane.k]}, part ${lane.i + 1} of ${segs.length}${first ? '' : `<em data-o="cue">from ${+g.t.toFixed(1)} s</em>`}</label><select data-lk="a">${opts}</select></div>`
+    + (first ? '' : `<div class="f"><input type="range" data-lk="t" min=".5" max="${Math.max(.5, sh.duration - .5)}" step=".5" value="${g.t}"></div>`)
+    + `<div class="pl" style="grid-template-columns:1fr 1fr"><button data-lane="add"${walking || segs.length >= 8 ? ' disabled' : ''} title="Add an action change at the playhead">+ Change at playhead</button><button data-lane="del"${first ? ' disabled' : ''}>Remove part</button></div>`;
+}
+const laneHTML = sh => `<div class="f"><label>Action sequence<em>click a part to edit</em></label><div id="laneBars">${laneBars(sh)}</div></div><div id="laneEd">${laneEditor(sh)}</div>`;
+function setSegAction(sh, k, i, v) { if (i === 0) { sh['action' + k] = v; if (v === 'walk') sh['cues' + k] = []; } else sh['cues' + k][i - 1].a = v; }
+{
+  const box = $('#insp');
+  box.addEventListener('click', e => {
+    const sh = P.shots[sel]; if (!sh) return;
+    const sg = e.target.closest('button[data-seg]'); if (sg) { const [k, i] = sg.dataset.seg.split(':'); lane = { k, i: +i }; $('#laneBars').innerHTML = laneBars(sh); $('#laneEd').innerHTML = laneEditor(sh); return; }
+    const b = e.target.closest('button[data-lane]'); if (!b || b.disabled) return;
+    commit(); const k = lane.k, cues = sh['cues' + k] = (sh['cues' + k] || []).slice();
+    if (b.dataset.lane === 'add') {
+      const at = clamp(Math.round((time - starts()[sel]) * 2) / 2, .5, Math.max(.5, sh.duration - .5)), used = new Set(cues.map(c => c.t));
+      let t = at; for (let n = 0; used.has(t) && n < 40; n++) t = clamp(t + .5, .5, Math.max(.5, sh.duration - .5));
+      const cur = segmentsOf(sh, k).slice(-1)[0].a; cues.push({ t, a: cur === 'talk' ? 'listen' : 'talk' }); cues.sort((x, y) => x.t - y.t); lane.i = segmentsOf(sh, k).findIndex(g => g.t === t);
+    } else { cues.splice(lane.i - 1, 1); lane.i = Math.max(0, lane.i - 1); }
+    pathKey = ''; buildInsp(); buildTL();
+  });
+  box.addEventListener('change', e => {
+    const lk = e.target.dataset.lk, sh = P.shots[sel]; if (lk !== 'a' || !sh) return;
+    commit(); setSegAction(sh, lane.k, lane.i, e.target.value); pathKey = ''; buildInsp(); buildTL();
+  });
+  box.addEventListener('input', e => {
+    if (e.target.dataset.lk !== 't') return; const sh = P.shots[sel]; if (!sh) return;
+    if (!editing) { commit(); editing = true; }
+    const cues = sh['cues' + lane.k], c = cues[lane.i - 1]; c.t = +e.target.value; const keep = c; cues.sort((x, y) => x.t - y.t); lane.i = cues.indexOf(keep) + 1;
+    const o = $('[data-o="cue"]'); if (o) o.textContent = `from ${c.t} s`; $('#laneBars').innerHTML = laneBars(sh);
+  });
+}
+
 /* facing in radians: explicit angle, else towards the other actor when either is placed, else the default stance */
 function faceRad(sh, k, pos) {
   const v = sh && sh['face' + k]; if (v !== null && v !== undefined) return v * D2R;
@@ -335,12 +394,15 @@ function poseActors(sh, t, sec, clock) {
     g.position.y = w ? Math.abs(Math.sin(ph)) * .03 : br;
     const Q = REAL[k];
     if (Q) {
-      Q.wa.weight = an === 'walk' ? 1 : 0; Q.ia.weight = an === 'stand' ? 1 : 0;
-      for (const nm in Q.act) Q.act[nm].a.weight = nm === an ? 1 : 0;
+      const segs = w || !sh ? [{ t: 0, a: an }] : segmentsOf(sh, k); let si = segs.length - 1; while (si > 0 && sec < segs[si].t) si--;
+      const cur = segs[si], prev = si > 0 ? segs[si - 1] : null, bw = prev ? clamp((sec - cur.t) / BLEND, 0, 1) : 1, wt = {}, st0 = {};
+      wt[cur.a] = bw; if (prev) { wt[prev.a] = (wt[prev.a] || 0) + 1 - bw; st0[prev.a] = prev.t; } st0[cur.a] = cur.t;
+      Q.wa.weight = wt.walk || 0; Q.ia.weight = wt.stand || 0;
+      for (const nm in Q.act) Q.act[nm].a.weight = wt[nm] || 0;
       Q.ia.time = (clock + (k === 'A' ? 0 : 1.3)) % Q.iD; Q.wa.time = (sec * 1.1) % Q.wD;
-      const x = Q.act[an]; if (x) x.a.time = pingPong(sec + (k === 'A' ? 0 : .7), x.dur);
+      for (const nm in Q.act) if (wt[nm]) Q.act[nm].a.time = pingPong(sec - st0[nm] + (k === 'A' ? 0 : .7), Q.act[nm].dur);
       Q.mx.update(0); g.position.y = 0;
-      Q.chair.visible = !!SEATED[an]; Q.glass.visible = an === 'sip';
+      Q.chair.visible = ((wt.sit || 0) + (wt.think || 0)) > 0; Q.glass.visible = (wt.sip || 0) > 0;
     }
   }
 }
@@ -484,7 +546,7 @@ function buildInsp() {
     return `<div class="f"><label>${label}<em data-o="${k}">${c ? fmt(+v) : v}</em></label><input type="range" data-k="${k}" min="${a}" max="${b}" step="${c}" value="${v}"></div>`;
   };
   const F = Object.fromEntries(FIELDS.map(x => [x[0], f(x)]));
-  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.actionA + F.actionB + `<div class="f"><label>Placement<em>click the set view</em></label><div class="pl"><button data-pl="A" class="${placing === 'A' ? 'on' : ''}">Place Meera</button><button data-pl="B" class="${placing === 'B' ? 'on' : ''}">Place Arjun</button><button data-pl="R">Reset</button></div></div>` + F.faceA + F.faceB + F.notes +
+  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.actionA + F.actionB + laneHTML(sh) + `<div class="f"><label>Placement<em>click the set view</em></label><div class="pl"><button data-pl="A" class="${placing === 'A' ? 'on' : ''}">Place Meera</button><button data-pl="B" class="${placing === 'B' ? 'on' : ''}">Place Arjun</button><button data-pl="R">Reset</button></div></div>` + F.faceA + F.faceB + F.notes +
     `<div class="learn" style="--c:${catColor(mv.cat)}"><h4>Why “${mv.name}”</h4><p>${mv.why}</p><p><i>Try:</i> ${mv.tip}</p><p><i>${sh.lens} mm on ${sensorOf().label}${crop() > 1.01 ? ' (≈' + eqMm(sh.lens) + ' mm full-frame equivalent)' : ''}:</i> ${lensNote(sh.lens)}</p><p><i>f/${sh.fstop}:</i> ${sh.fstop <= 2 ? 'Shallow focus melts the background and isolates the subject: the classic cinematic look.' : sh.fstop >= 8 ? 'Deep focus keeps everything sharp, so the audience can explore the whole frame.' : 'Moderate depth: subject sharp, background softly separated.'}</p></div>`;
 }
 /* click-to-place: click or drag on the set view to put an actor on the floor of the current shot */
@@ -628,7 +690,7 @@ ta.addEventListener('keydown', e => {
 });
 $('#cDoc').onclick = () => {
   const row = (k, v) => `<div><b style="color:var(--ac)">${k}</b> &nbsp;${v}</div>`;
-  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('actionA', Object.keys(ACTION_LABEL).join(', ') + ' (what Meera does)') + row('actionB', 'same list (what Arjun does)') + row('placeA / placeB', '{ "x": -0.85, "z": 0.2 } position on the floor in metres (x right, z towards the audience); omit for the default spot') + row('faceA / faceB', '-180 to 180 degrees the actor turns (0 = towards the audience); omit to face the other actor') + row('notes', 'free text, up to ' + NOTE_MAX + ' characters (shown in the PDFs and CSV)') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
+  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('actionA', Object.keys(ACTION_LABEL).join(', ') + ' (what Meera does)') + row('actionB', 'same list (what Arjun does)') + row('cuesA / cuesB', '[{ "t": 2, "a": "talk" }] action changes during the shot: t = seconds from the start of the shot (0.5 steps), a = any action except walk; walking shots cannot have changes') + row('placeA / placeB', '{ "x": -0.85, "z": 0.2 } position on the floor in metres (x right, z towards the audience); omit for the default spot') + row('faceA / faceB', '-180 to 180 degrees the actor turns (0 = towards the audience); omit to face the other actor') + row('notes', 'free text, up to ' + NOTE_MAX + ' characters (shown in the PDFs and CSV)') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
     '<pre style="margin-top:12px;background:#0c0c11;padding:10px;border-radius:8px;color:#d8e3ff;white-space:pre-wrap">{ "move": "orbit", "duration": 6, "lens": 24,\n  "size": "WS", "subject": "both", "amount": 0.5 }</pre>';
   $('#mDoc').classList.add('on');
 };
@@ -661,7 +723,7 @@ menu('#mExport', a => {
   if (a === 'csv') {
     const q = v => `"${String(v).replace(/"/g, '""')}"`, st = starts();
     const rows = [['Shot', 'Name', 'Start', 'Duration (s)', 'Move', 'Lens (mm)', 'Aperture', 'Size', 'Subject', 'Height', 'Angle', 'Intensity', 'Easing', 'Meera', 'Arjun', 'Notes', 'Why this move']]
-      .concat(P.shots.map((s, i) => [i + 1, s.name, tcf(st[i]), s.duration, MV[s.move].name, s.lens, 'f/' + s.fstop, SIZES[s.size].label, SUBJ[s.subject], HEIGHTS[s.height], s.angle, Math.round(s.amount * 100) + '%', s.easing, ACTION_LABEL[s.actionA], ACTION_LABEL[s.actionB], s.notes, MV[s.move].why]));
+      .concat(P.shots.map((s, i) => [i + 1, s.name, tcf(st[i]), s.duration, MV[s.move].name, s.lens, 'f/' + s.fstop, SIZES[s.size].label, SUBJ[s.subject], HEIGHTS[s.height], s.angle, Math.round(s.amount * 100) + '%', s.easing, seqText(s, 'A'), seqText(s, 'B'), s.notes, MV[s.move].why]));
     download(new Blob(['﻿' + rows.map(r => r.map(q).join(',')).join('\r\n')], { type: 'text/csv' }), fname('-shotlist.csv')); toast('Shot list exported');
   }
   if (a === 'png') { render(true); const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = film.w * r; c.height = film.h * r; c.getContext('2d').drawImage(cv, film.x * r, film.y * r, c.width, c.height, 0, 0, c.width, c.height); c.toBlob(b => { download(b, fname(`-shot${sel + 1}.png`)); toast('Frame saved'); }); }
@@ -683,7 +745,7 @@ function exportPdf(kind) {
     const bin = atob(c.toDataURL('image/jpeg', .85).split(',')[1]), jpeg = new Uint8Array(bin.length);
     for (let k = 0; k < bin.length; k++) jpeg[k] = bin.charCodeAt(k);
     shots.push({ n: i + 1, name: s.name, move: MV[s.move].name, why: MV[s.move].why, notes: s.notes, start: tcf(st[i]), duration: s.duration, lens: s.lens, eq: crop() > 1.01 ? eqMm(s.lens) : 0, fstop: s.fstop,
-      size: SIZES[s.size].label, sizeCode: s.size, height: HEIGHTS[s.height], angle: s.angle, subject: SUBJ[s.subject], actions: [`${ACTOR_NAME.A}: ${ACTION_LABEL[s.actionA]}`, `${ACTOR_NAME.B}: ${ACTION_LABEL[s.actionB]}`], amount: Math.round(s.amount * 100),
+      size: SIZES[s.size].label, sizeCode: s.size, height: HEIGHTS[s.height], angle: s.angle, subject: SUBJ[s.subject], actions: [describeActions(s, 'A'), describeActions(s, 'B')], amount: Math.round(s.amount * 100),
       easing: s.easing[0].toUpperCase() + s.easing.slice(1), jpeg, jw: tw, jh: th });
   }
   time = t0; setPlay(wasPlaying);
@@ -700,7 +762,7 @@ function blockingDoc() {
   const shots = P.shots.map((s, i) => {
     const a = solve(s, 0, 0), b = solve(s, 1, s.duration), pts = []; for (let k = 0; k <= 30; k++) { const p = solve(s, k / 30, k / 30 * s.duration).pos; pts.push([+p.x.toFixed(2), +p.z.toFixed(2)]); }
     const p0 = subjPos(s, 0), p1 = subjPos(s, 1);
-    return { n: i + 1, name: s.name, move: MV[s.move].name, lens: s.lens, sizeCode: s.size, duration: s.duration, actions: [`${ACTOR_NAME.A}: ${ACTION_LABEL[s.actionA]}`, `${ACTOR_NAME.B}: ${ACTION_LABEL[s.actionB]}`],
+    return { n: i + 1, name: s.name, move: MV[s.move].name, lens: s.lens, sizeCode: s.size, duration: s.duration, actions: [describeActions(s, 'A'), describeActions(s, 'B')],
       actors: ['A', 'B'].map(k => ({ k, x0: p0.pos[k].x, z0: p0.pos[k].z, x1: p1.pos[k].x, z1: p1.pos[k].z, face0: faceRad(s, k, p0.pos), face1: faceRad(s, k, p1.pos), walk: p0.walkers.includes(k) })),
       cam: { pts, tgx0: a.tg.x, tgz0: a.tg.z, tgx1: b.tg.x, tgz1: b.tg.z, hfov0: hf(a.fov), hfov1: hf(b.fov) } };
   });
@@ -809,6 +871,11 @@ async function runSelfTest() {
   t('unplaced shots keep the default stance', () => { const sh = newShot({}), p = subjPos(sh, 0).pos; return near(faceRad(sh, 'A', p), FACE.A) && near(p.A.x, HOME.A.x); });
   t('placement survives a project round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ placeA: { x: 1.5, z: 2 }, faceA: 40 }] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value).shots[0]; return o.placeA.x === 1.5 && o.placeA.z === 2 && o.faceA === 40 && o.placeB === null; });
   t('blocking diagram builds for a scene', () => { $('#ta').value = JSON.stringify({ shots: [{ move: 'orbit', actionA: 'walk', placeB: { x: 2, z: 1 } }, { move: 'push_in' }] }); applyCode(); const b = buildBlockingPdf(blockingDoc()); return b.length > 1000 && String.fromCharCode(b[0], b[1], b[2], b[3]) === '%PDF'; });
+  t('cues are validated, sorted and limited', () => { const s = normShot({ duration: 6, actionA: 'sit', cuesA: [{ t: 4, a: 'sip' }, { t: 2.3, a: 'talk' }, { t: 2.4, a: 'nod' }, { t: 0, a: 'wave' }, { t: 9, a: 'wave' }, { t: 3, a: 'walk' }, { t: 3, a: 'dance' }, 'x'] }); return s.cuesA.length === 2 && s.cuesA[0].t === 2.5 && s.cuesA[0].a === 'talk' && s.cuesA[1].t === 4 && s.cuesB.length === 0; });
+  t('walking shots cannot have cues', () => normShot({ actionA: 'walk', cuesA: [{ t: 1, a: 'sit' }] }).cuesA.length === 0);
+  t('segments follow the cues', () => { const s = normShot({ duration: 6, actionA: 'sit', cuesA: [{ t: 2, a: 'talk' }, { t: 4, a: 'sip' }] }); const g = segmentsOf(s, 'A'); return g.length === 3 && g[1].a === 'talk' && seqText(s, 'A') === 'Sit > Talk (2 s) > Sip chai (4 s)' && seqText(s, 'B') === 'Standing'; });
+  t('cues survive a project round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ duration: 6, actionB: 'listen', cuesB: [{ t: 3, a: 'nod' }] }] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value).shots[0]; return o.cuesB.length === 1 && o.cuesB[0].a === 'nod' && o.cuesB[0].t === 3 && o.cuesA.length === 0; });
+  t('mode switch keeps its own styling', () => { const b = [...document.querySelectorAll('#modeSeg button')]; return b.length === 2 && b.every(x => x.getBoundingClientRect().width > 30 && getComputedStyle(x).opacity === '1') && getComputedStyle($('#modeSeg')).paddingLeft === '3px'; });
   t('PDF writer is wired in', () => typeof buildShotListPdf === 'function' && typeof buildStoryboardPdf === 'function');
   t('desktop save helper exists', () => typeof download === 'function' && typeof browserDownload === 'function');
 
@@ -822,6 +889,13 @@ async function runSelfTest() {
     const p1 = bone.getWorldPosition(new T.Vector3()); sh.actionA = 'sit'; poseActors(sh, .5, 1, 0); const seated = REAL.A.chair.visible; const root = AC.A.getObjectByName('Bip01').position.y;
     poseActors(null, 0, 0, 0);
     return p0.distanceTo(p1) > .2 && seated && root < .8;
+  });
+  t('the action lane changes the pose and props over time', () => {
+    const sh = newShot({ duration: 6, actionA: 'stand', cuesA: [{ t: 2, a: 'sit' }] });
+    poseActors(sh, 0, 0, 0); const early = REAL.A.chair.visible; const root0 = AC.A.getObjectByName('Bip01').position.y;
+    poseActors(sh, .5, 2.1, 0); const mid = REAL.A.act.sit.a.weight; poseActors(sh, .9, 5, 0); const late = REAL.A.chair.visible; const root1 = AC.A.getObjectByName('Bip01').position.y;
+    poseActors(null, 0, 0, 0);
+    return !early && late && mid > 0 && mid < 1 && root1 < root0 - .15;
   });
   const pass = res.filter(r => r[1]).length;
   const out = document.createElement('pre'); out.id = 'selftestOut';

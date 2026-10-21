@@ -43,7 +43,7 @@
 |---|---|---|---|---|
 | 2.1 | **Actor picker** (more avatars from existing MIT Rocketbox set; choose per shot/subject; size/skin/height) | M | P0 | Content gap; low legal risk (same source and licence) |
 | 2.2 | ✅ **Actions library v1** (done in v0.5): stand, walk, sit, sit-and-think, talk, listen, nod, sip chai, wave, look around, shrug, invite to sit; hand-over/handshake still open | L | P0 | Highest content value; matches the original idea list; competitors' animatics show actions |
-| 2.3 | **Action timeline lane** (per-actor clips with start/duration) | M | P0 | Needed to sequence actions with camera moves |
+| 2.3 | ✅ **Action timeline lane** (done in v0.5.2: timed changes per actor inside a shot, 0.5 s steps, 0.25 s blend) (per-actor clips with start/duration) | M | P0 | Needed to sequence actions with camera moves |
 | 2.4 | ◐ **Actor placement and path** (click-to-place and facing done in v0.5.1; multi-point waypoints still open) (click-to-place, simple waypoints) | M | P1 | Basic blocking; narrows gap with Shot Designer |
 | 2.5 | ✅ **Top-down blocking diagram export** (done in v0.5.1) (overhead view with camera/actor paths, printable) | M | P1 | Shot Designer's signature feature; reuses set view |
 | 2.6 | ◐ **Performance guard** (animation data adds about 0.9 MB; poly/texture budget still open) (poly/texture budget, auto Light mode thresholds retuned) | S | P0 | Prevents regressions on low-end laptops |

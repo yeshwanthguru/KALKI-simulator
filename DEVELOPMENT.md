@@ -31,3 +31,8 @@ Optional asset rebuild (needs the source FBX/TGA files, not included):
 ## Next ideas
 Actor picker (more Rocketbox avatars), actions (sit, sip chai, talk),
 Indian costumes, Tamil UI, Windows .exe via Tauri, optional local LLM text-to-shot.
+
+## Tools
+- `tools/convert-anim.mjs <fbx-dir>`: rebuilds `assets_src/actions.json` from Rocketbox animation FBX files (MIT).
+- `tools/screenshot.mjs <out.png> [script.js] [w] [h]`: screenshots the built app in headless Edge/Chrome, optionally after running a script (used for README images).
+- `npm test`: PDF writer tests plus an in-page self-test run in headless Edge/Chrome (`#selftest`).
