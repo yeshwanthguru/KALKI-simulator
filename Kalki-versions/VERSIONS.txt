@@ -8,8 +8,10 @@ v0.3    Realistic actors (Microsoft Rocketbox) with real idle/walk animation
 v0.3.1  Fixed actor textures for all browsers, brighter wide shots
 v0.4    Shot-list PDF export, camera sensor presets with full-frame equivalents,
         versioned project files (older files still open)
-v0.4.1  Latest: storyboard sheet PDF (frame grid with captions), per-shot notes in the
-        PDFs and CSV  << recommended
+v0.4.1  Storyboard sheet PDF (frame grid with captions), per-shot notes in the PDFs and CSV,
+        Windows desktop app
+v0.4.2  Latest: frame guides (thirds, safe areas, Reels/Shorts zones), built-in self-test,
+        PDF text ends with "..." instead of cutting off  << recommended
 
 ZIP PACKAGES (same versions, each with README + license notices)
-  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip
+  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip

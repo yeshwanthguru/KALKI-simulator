@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.4.1-ff6b4a?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.4.2-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
   <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
@@ -30,12 +30,12 @@
 
 **In the browser** (nothing to install)
 
-1. Download [`Kalki-versions/Kalki-v0.4.1.html`](Kalki-versions/Kalki-v0.4.1.html), or the zipped package [`Kalki-v0.4.1.zip`](Kalki-versions/Kalki-v0.4.1.zip) with notices.
+1. Download [`Kalki-versions/Kalki-v0.4.2.html`](Kalki-versions/Kalki-v0.4.2.html), or the zipped package [`Kalki-v0.4.2.zip`](Kalki-versions/Kalki-v0.4.2.zip) with notices.
 2. Double-click it. It opens in Chrome or Edge and runs fully offline.
 
 **On Windows** (native app, about 3 MB)
 
-1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.4.1_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.4.1_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
+1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.4.2_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.4.2_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
 2. The installer is **not code-signed yet**, so Windows SmartScreen may warn on first run: choose **More info, Run anyway**.
 3. Exports open a native **Save as** dialog. It uses the WebView2 runtime that ships with Windows 11 (Windows 10 may prompt to install it).
 
@@ -64,6 +64,7 @@ flowchart LR
 | **Cinematic looks** | Golden hour, Teal and orange, Night, Noir, Neutral, with window light and sun shafts. |
 | **Realistic actors** | Animated idle and walk cycles on a 3D chai-stall set (Microsoft Rocketbox avatars). |
 | **Any frame** | Cinema 2.39:1, YouTube 16:9, Reels and Shorts 9:16, square. |
+| **Frame guides** | Press **G** to cycle rule of thirds, action and title safe areas with a centre mark, and (on 9:16) approximate Reels and Shorts interface zones. |
 | **Shot notes** | A notes field on every shot for intent, blocking and references. |
 | **No-code and Code modes** | Edit visually, or edit the whole scene as structured JSON. |
 | **Safe by design** | Versioned `.kalki.json` projects that keep opening, undo and redo, and automatic Light mode on slow CPUs. |
@@ -111,7 +112,8 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | v0.3 | Realistic animated actors (some browsers failed to load textures) |
 | v0.3.1 | Actor textures fixed for all browsers, brighter wide shots |
 | v0.4 | Shot-list PDF, sensor presets with full-frame equivalents, versioned project files |
-| **v0.4.1** | **Latest.** Storyboard sheet PDF, per-shot notes, Windows desktop app |
+| v0.4.1 | Storyboard sheet PDF, per-shot notes, Windows desktop app |
+| **v0.4.2** | **Latest.** Frame guides (thirds, safe areas, Reels zones), built-in self-test, PDF text fix |
 
 Every build is kept in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 
@@ -150,7 +152,7 @@ Requires Node.js. The desktop app additionally needs the [Rust toolchain](https:
 npm install
 node build.mjs            # -> dist/Kalki.html (obfuscated)
 DEBUG=1 node build.mjs    # unobfuscated build for debugging
-npm test                  # PDF writer tests
+npm test                  # PDF writer tests + in-browser smoke test (needs Edge or Chrome)
 npm run desktop:dev       # run the desktop app in development
 npm run desktop:build     # build the Windows installer (src-tauri/target/release/bundle/nsis)
 ```

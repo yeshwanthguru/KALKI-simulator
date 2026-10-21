@@ -80,7 +80,7 @@ const DEMO = () => ({ schemaVersion: SCHEMA, sensor: DEFAULT_SENSOR, title: 'Cha
   newShot({ fstop: 2.8, name: 'Arjun walks in', move: 'follow', duration: 5, lens: 35, size: 'FS', subject: 'B', angle: 25, action: 'walk' }),
   newShot({ fstop: 1.4, name: 'The realisation', move: 'dolly_zoom', duration: 4, lens: 50, size: 'CU', subject: 'A', angle: -10, amount: .8 })
 ] });
-let P = DEMO(), sel = 0, time = 0, playing = false, loop = true, mode = 'nocode', guides = false, showSet = true, demo = true, recording = null;
+let P = DEMO(), sel = 0, time = 0, playing = false, loop = true, mode = 'nocode', guides = 'off', showSet = true, demo = true, recording = null;
 const undo = [], redo = [];
 function commit() { undo.push(JSON.stringify(P)); if (undo.length > 80) undo.shift(); redo.length = 0; }
 function restore(str) { P = JSON.parse(str); sel = clamp(sel, 0, P.shots.length - 1); refreshAll(); }
@@ -475,7 +475,28 @@ $('#bPlay').onclick = () => setPlay(!playing);
 $('#bStart').onclick = () => { time = 0; sel = 0; markSel(); };
 $('#bLoop').onclick = () => { loop = !loop; $('#bLoop').style.color = loop ? 'var(--ac)' : ''; toast(loop ? 'Loop on' : 'Loop off'); };
 $('#bLoop').style.color = 'var(--ac)';
-$('#bGuide').onclick = () => { guides = !guides; $('#frame').classList.toggle('guides', guides); $('#bGuide').style.color = guides ? 'var(--ac)' : ''; };
+const GUIDE_MODES = ['off', 'thirds', 'safe', 'ui'];
+const GUIDE_LABEL = { off: 'Guides off', thirds: 'Rule of thirds', safe: 'Action and title safe areas, centre mark', ui: 'Reels / Shorts interface zones (approximate)' };
+const isVertical = () => P.aspect === '0.5625';
+function setGuides(m) {
+  guides = m;
+  $('#frame').classList.toggle('guides', m === 'thirds');
+  const g = $('#gd');
+  const ln = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+  g.innerHTML = m === 'safe'
+    ? '<rect x="3.5" y="3.5" width="93" height="93"/><rect x="5" y="5" width="90" height="90" stroke-dasharray="4 3"/>' + ln(47, 50, 53, 50) + ln(50, 47, 50, 53)
+    : m === 'ui'
+      ? '<rect class="z" x="0" y="0" width="100" height="13"/><rect class="z" x="0" y="78" width="100" height="22"/><rect class="z" x="84" y="42" width="16" height="36"/>'
+      : '';
+  g.style.display = m === 'safe' || m === 'ui' ? 'block' : 'none';
+  $('#bGuide').style.color = m !== 'off' ? 'var(--ac)' : '';
+}
+function cycleGuides() {
+  let i = GUIDE_MODES.indexOf(guides);
+  do { i = (i + 1) % GUIDE_MODES.length; } while (GUIDE_MODES[i] === 'ui' && !isVertical());
+  setGuides(GUIDE_MODES[i]); toast(GUIDE_LABEL[guides]);
+}
+$('#bGuide').onclick = cycleGuides;
 $('#bSet').onclick = () => { showSet = !showSet; $('#bSet').style.color = showSet ? 'var(--ac)' : ''; layout(); };
 $('#bSet').style.color = 'var(--ac)';
 $('#bPerf').onclick = () => { setLight(!light); toast(light ? 'Light mode: faster on CPU-only laptops' : 'Quality mode: shadows and sharper image'); };
@@ -488,7 +509,7 @@ $('#look').innerHTML = Object.entries(LOOKS).map(([k, v]) => `<option value="${k
 $('#look').onchange = e => { commit(); P.look = e.target.value; applyLook(P.look); toast(LOOKS[P.look].label + ' look'); };
 $('#sensor').innerHTML = Object.entries(SENSORS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
 $('#sensor').onchange = e => { commit(); P.sensor = e.target.value; buildInsp(); pathKey = ''; toast(`${sensorOf().label} sensor · 35 mm equivalent ×${crop().toFixed(2)}`); };
-$('#aspect').onchange = e => { commit(); P.aspect = e.target.value; layout(); updTime(); };
+$('#aspect').onchange = e => { commit(); P.aspect = e.target.value; if (guides === 'ui' && !isVertical()) setGuides('off'); layout(); updTime(); };
 
 function setMode(m) {
   mode = m; $$('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
@@ -634,6 +655,54 @@ $('#obSkip').onclick = () => endIntro('nocode');
 function refreshAll(code = true) { P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
 new ResizeObserver(layout).observe($('#view'));
 buildLib(); refreshAll();
+if (location.hash === '#selftest') runSelfTest();
 if (store.get('kalki.onboarded')) { demo = false; $('#ob').style.display = 'none'; setPlay(true); }
+
+/* ---------- self test: open the page with #selftest, results go to the title and #selftestOut (used by tests/smoke.mjs) ---------- */
+function runSelfTest() {
+  const res = [];
+  const t = (name, fn) => { try { const r = fn(); res.push([name, r === undefined || r === true, r === false ? 'returned false' : '']); } catch (e) { res.push([name, false, String(e && e.message || e)]); } };
+  const near = (a, b, eps = 1e-6) => Math.abs(a - b) < eps;
+
+  t('normShot defaults and clamps', () => { const s = normShot({ duration: 999, lens: 33, angle: 999 }); return s.duration === 20 && s.lens === 35 && s.angle === 180 && s.notes === '' && s.fstop === 2.8; });
+  t('normShot trims and limits notes', () => { const s = normShot({ notes: '  a \n  b ' + 'x'.repeat(500) }); return s.notes.startsWith('a b') && s.notes.length === NOTE_MAX; });
+  t('normShot rejects unknown move', () => { const errs = []; const s = normShot({ move: 'nope' }, errs, 0); return s.move === 'static' && errs.length === 1; });
+  t('18 moves exist', () => MOVES.length === 18);
+  t('every move solves to finite camera values', () => {
+    for (const m of MOVES) for (const sz of Object.keys(SIZES)) for (const tt of [0, .5, 1]) {
+      const sh = newShot({ move: m.id, size: sz, subject: 'both', amount: 1 });
+      const p = solve(sh, tt, tt * sh.duration);
+      if (![p.pos.x, p.pos.y, p.pos.z, p.tg.x, p.tg.y, p.tg.z, p.fov, p.yaw, p.pitch, p.roll].every(Number.isFinite) || p.fov <= 0) throw new Error(`${m.id}/${sz}/${tt}`);
+    }
+  });
+  t('every sensor has a sane crop factor', () => Object.keys(SENSORS).every(k => { P.sensor = k; return crop() >= 1 && eqMm(50) >= 50; }));
+  t('bigger sensor widens the field of view', () => { const sh = newShot({ move: 'static', lens: 50 }); P.sensor = 'S35'; const a = solve(sh, 0, 0).fov; P.sensor = 'FF'; const b = solve(sh, 0, 0).fov; P.sensor = DEFAULT_SENSOR; return b > a; });
+  t('full frame has crop 1', () => { P.sensor = 'FF'; const c = crop(); P.sensor = DEFAULT_SENSOR; return near(c, 1); });
+  t('legacy project (no schemaVersion) opens', () => { $('#ta').value = JSON.stringify({ kalai: '0.1', title: 'Old', shots: [{ move: 'orbit', lens: 35 }] }); applyCode(); return P.schemaVersion === SCHEMA && P.sensor === DEFAULT_SENSOR && P.shots.length === 1 && P.title === 'Old'; });
+  t('project round trip keeps notes, sensor, look', () => {
+    $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, title: 'RT', look: 'noir', aspect: '0.5625', sensor: 'M43', shots: [{ move: 'push_in', notes: 'hold the sip' }] }); applyCode();
+    loadCode(); const o = JSON.parse($('#ta').value);
+    return o.schemaVersion === SCHEMA && o.sensor === 'M43' && o.look === 'noir' && o.aspect === '0.5625' && o.shots[0].notes === 'hold the sip';
+  });
+  t('invalid sensor falls back to default', () => { $('#ta').value = JSON.stringify({ sensor: 'XX', shots: [{}] }); applyCode(); return P.sensor === DEFAULT_SENSOR; });
+  t('newer schema is accepted with a warning', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA + 5, shots: [{}] }); applyCode(); return /newer Kalki/.test($('#cerr').textContent); });
+  t('guides cycle skips the UI zones unless vertical', () => {
+    setGuides('off'); P.aspect = '2.39'; const seen = []; for (let i = 0; i < 5; i++) { cycleGuides(); seen.push(guides); }
+    const ok1 = !seen.includes('ui') && seen.includes('safe') && seen.includes('thirds');
+    P.aspect = '0.5625'; setGuides('off'); const seen2 = []; for (let i = 0; i < 4; i++) { cycleGuides(); seen2.push(guides); }
+    setGuides('off'); return ok1 && seen2.includes('ui');
+  });
+  t('guides draw into the frame', () => { setGuides('safe'); const a = $('#gd').querySelectorAll('rect').length === 2; setGuides('ui'); const b = $('#gd').querySelectorAll('rect.z').length === 3; setGuides('off'); return a && b && $('#gd').style.display === 'none'; });
+  t('PDF writer is wired in', () => typeof buildShotListPdf === 'function' && typeof buildStoryboardPdf === 'function');
+  t('desktop save helper exists', () => typeof download === 'function' && typeof browserDownload === 'function');
+
+  const pass = res.filter(r => r[1]).length;
+  const out = document.createElement('pre'); out.id = 'selftestOut';
+  out.textContent = res.map(r => `${r[1] ? 'PASS' : 'FAIL'}  ${r[0]}${r[2] ? '  (' + r[2] + ')' : ''}`).join('\n') + `\nSELFTEST ${pass === res.length ? 'PASS' : 'FAIL'} ${pass}/${res.length}`;
+  out.style.cssText = 'position:fixed;inset:0;margin:0;padding:16px;background:#fff;color:#000;z-index:99999;white-space:pre-wrap;font:12px monospace';
+  document.body.appendChild(out);
+  document.title = `SELFTEST ${pass === res.length ? 'PASS' : 'FAIL'} ${pass}/${res.length}`;
+}
+
 frame();
 })();

@@ -5,7 +5,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "node tests/pdf.test.mjs",
+    "test": "node tests/pdf.test.mjs && node tests/smoke.mjs",
     "build": "node build.mjs",
     "desktop:dev": "node build.mjs && tauri dev",
     "desktop:build": "node build.mjs && tauri build",

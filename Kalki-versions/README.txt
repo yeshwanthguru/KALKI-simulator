@@ -1,4 +1,4 @@
-KALKI · கல்கி — Camera Studio (v0.4.1)
+KALKI · கல்கி — Camera Studio (v0.4.2)
 See your shot before you shoot it.
 
 HOW TO START
@@ -12,6 +12,7 @@ WHAT YOU CAN DO
   - Switch between No-code and Code (edit the scene as structured data)
   - Cinematic looks: Golden hour, Teal & orange, Night, Noir, Neutral
   - Real lens behaviour: aperture (f/1.4–f/11) controls background blur
+  - Frame guides (G): rule of thirds, safe areas, Reels/Shorts interface zones
   - Frame for cinema 2.39:1, YouTube 16:9, Reels/Shorts 9:16 or square
   - Pick a camera sensor (Super 35, Full frame, APS-C, Micro 4/3, 1-inch); lenses show full-frame equivalents
   - Add notes to each shot; export a printable shot list (.pdf), a storyboard sheet (.pdf), a spreadsheet (.csv), a frame (.png) or a preview video (.webm)

@@ -60,6 +60,9 @@ button{cursor:pointer;border:0;background:none}
 #frame{position:absolute;pointer-events:none}
 #frame .th{position:absolute;inset:0;display:none;background:linear-gradient(90deg,transparent 33.2%,rgba(255,255,255,.22) 33.3%,transparent 33.5%,transparent 66.5%,rgba(255,255,255,.22) 66.6%,transparent 66.8%),linear-gradient(180deg,transparent 33.2%,rgba(255,255,255,.22) 33.3%,transparent 33.5%,transparent 66.5%,rgba(255,255,255,.22) 66.6%,transparent 66.8%)}
 #frame.guides .th{display:block}
+#gd{position:absolute;inset:0;width:100%;height:100%;display:none}
+#gd line,#gd rect{fill:none;stroke:rgba(255,255,255,.6);stroke-width:1;vector-effect:non-scaling-stroke}
+#gd rect.z{fill:rgba(255,64,64,.16);stroke:rgba(255,120,120,.7)}
 .cn{position:absolute;width:18px;height:18px;border:2px solid rgba(255,255,255,.55)}
 .cn.a{left:10px;top:10px;border-right:0;border-bottom:0}.cn.b{right:10px;top:10px;border-left:0;border-bottom:0}.cn.c{left:10px;bottom:10px;border-right:0;border-top:0}.cn.d{right:10px;bottom:10px;border-left:0;border-top:0}
 .hud{position:absolute;font:600 11px var(--m);letter-spacing:.06em;color:rgba(255,255,255,.85);text-shadow:0 1px 6px rgba(0,0,0,.8)}
@@ -154,7 +157,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
     <select class="sel" id="look" title="Cinematic look / lighting"></select>
     <select class="sel" id="aspect" title="Frame aspect ratio"><option value="2.39">2.39 : 1 Cinema</option><option value="1.778">16 : 9 YouTube</option><option value="0.5625">9 : 16 Reels / Shorts</option><option value="1">1 : 1 Square</option></select>
     <select class="sel" id="sensor" title="Camera sensor / film back: changes the field of view of each lens"></select>
-    <button class="btn ic" id="bGuide" title="Rule of thirds (G)">⊞</button>
+    <button class="btn ic" id="bGuide" title="Frame guides (G): thirds, safe areas, Reels interface zones">⊞</button>
     <button class="btn ic" id="bSet" title="Show set view">◩</button>
     <button class="btn ic" id="bPerf" title="Light mode for CPU-only laptops">⚡</button>
     <button class="btn ic" id="bUndo" title="Undo (Ctrl+Z)">↶</button>
@@ -183,7 +186,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
 
   <main id="view">
     <canvas id="cv"></canvas>
-    <div id="frame"><div class="th"></div><div class="cn a"></div><div class="cn b"></div><div class="cn c"></div><div class="cn d"></div>
+    <div id="frame"><div class="th"></div><svg id="gd" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><div class="cn a"></div><div class="cn b"></div><div class="cn c"></div><div class="cn d"></div>
       <div class="hud" id="hudTL"></div><div class="hud" id="hudBL"></div><div class="hud" id="hudBR"></div></div>
     <div id="inset"><span>SET VIEW</span></div>
     <div id="empty"><div><b>Your timeline is empty</b>Pick a camera move from the library to add your first shot.</div></div>
@@ -216,7 +219,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
 <div id="toast"></div>
 
 <div class="modal" id="mHelp"><div class="card">
-  <h2>Kalki · கல்கி <span style="color:var(--mu);font-weight:500;font-size:13px">v0.4.1</span></h2>
+  <h2>Kalki · கல்கி <span style="color:var(--mu);font-weight:500;font-size:13px">v0.4.2</span></h2>
   <p>Plan and learn camera movement before you shoot. Pick a move, shape it, press play.</p>
   <div class="kb"><kbd>Space</kbd><span>Play / pause</span><kbd>← →</kbd><span>Previous / next shot</span><kbd>Home</kbd><span>Back to start</span><kbd>Ctrl Z / Y</kbd><span>Undo / redo</span><kbd>Ctrl D</kbd><span>Duplicate shot</span><kbd>Del</kbd><span>Delete shot</span><kbd>G</kbd><span>Rule-of-thirds guides</span><kbd>⚡</kbd><span>Light mode: smoother on CPU-only laptops (turns on automatically if needed)</span></div>
   <p style="font-size:12px;color:var(--mu)">Works fully offline. No account, no tracking, nothing leaves your computer. Projects are saved only where you choose.<br>3D rendering by three.js (MIT License, © 2010–2026 three.js authors).<br>Actor models and motion: Microsoft Rocketbox (MIT License, © 2020 Microsoft).<br>© 2026 Kalki. All rights reserved.</p>

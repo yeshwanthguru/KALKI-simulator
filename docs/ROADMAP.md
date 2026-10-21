@@ -26,12 +26,12 @@
 | 1.1 | ✅ **Shot-list PDF** (done in v0.4) (shot no., move, lens, size, height, angle, duration, notes, thumbnail) | M | P0 | Standard paid feature in Shot Designer Pro, StudioBinder, Previs Pro; CSV alone is insufficient |
 | 1.2 | ✅ **Storyboard sheet export** (done in v0.4.1) (PNG/PDF grid: N frames per page with caption and lens) | M | P0 | Boords/StudioBinder core function; reuses existing PNG capture |
 | 1.3 | ✅ **Lens + sensor presets** (done in v0.4 except phone presets and anamorphic squeeze, still open) (Super 35, Full-frame, Micro 4/3, phone main/tele, Alexa/RED/BMPCC-style film-back names as generic sizes; crop factor, equivalent focal length, anamorphic squeeze) | S-M | P0 | Realism gap vs FrameForge/Blender; cheap; useful for creators with phones/mirrorless |
-| 1.4 | **Frame guides** (rule of thirds, safe areas, Reels/Shorts UI overlay zones) | S | P1 | Vertical-first positioning |
+| 1.4 | ✅ **Frame guides** (done in v0.4.2) (rule of thirds, safe areas, Reels/Shorts UI overlay zones) | S | P1 | Vertical-first positioning |
 | 1.5 | ✅ **Shot notes + reference field** (notes done in v0.4.1; reference images still open) (free-text per shot, included in PDF/CSV) | S | P1 | Needed for any hand-off |
 | 1.6 | ✅ **Project file versioning/migration** (done in v0.4) (`schemaVersion` in `.kalki.json`) | S | P0 | Prevents breaking files in later phases |
-| 1.7 | **Regression checklist + small smoke-test page** | S | P1 | Reduces risk as features accumulate |
+| 1.7 | ✅ **Regression checklist + small smoke-test page** (done in v0.4.2: `npm test`, 16 in-page checks) | S | P1 | Reduces risk as features accumulate |
 
-**Release plan:** v0.4 = 1.1 + 1.3 + 1.6 (released); v0.4.1 = 1.2 + 1.5 (released); v0.4.2 = 1.4 + 1.7.
+**Release plan:** v0.4 = 1.1 + 1.3 + 1.6 (released); v0.4.1 = 1.2 + 1.5 (released); v0.4.2 = 1.4 + 1.7 (released). **Phase 1 is complete except reference images (part of 1.5), phone sensor presets and anamorphic squeeze (part of 1.3).**
 
 **Done when:** a 5-shot scene exports a PDF a non-user can read and act on; old projects still open.
 
