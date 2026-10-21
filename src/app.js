@@ -1,4 +1,4 @@
-import { buildShotListPdf, buildStoryboardPdf } from './pdf.js';
+import { buildShotListPdf, buildStoryboardPdf, buildBlockingPdf } from './pdf.js';
 (function () {
 'use strict';
 const T = window.THREE;
@@ -11,7 +11,7 @@ const SENSORS = {
   S35: { label: 'Super 35', w: 24.9, h: 14 }, FF: { label: 'Full frame', w: 36, h: 24 }, APSC: { label: 'APS-C', w: 23.6, h: 15.6 },
   M43: { label: 'Micro Four Thirds', w: 17.3, h: 13 }, ONE: { label: '1-inch', w: 13.2, h: 8.8 }
 };
-const DEFAULT_SENSOR = 'S35', SCHEMA = 3, NOTE_MAX = 240;
+const DEFAULT_SENSOR = 'S35', SCHEMA = 4, NOTE_MAX = 240;
 const sensorOf = () => SENSORS[P.sensor] || SENSORS[DEFAULT_SENSOR];
 const sensorH = () => sensorOf().h;
 const crop = () => 36 / sensorOf().w;
@@ -75,6 +75,9 @@ function normShot(o, errs, i) {
   s.easing = EASES[o.easing] ? o.easing : 'smooth';
   const lw = o.action === 'walk' ? (o.subject === 'B' ? 'B' : 'A') : null; // files from before v0.5 had one action for the whole shot
   for (const k of ['A', 'B']) { const v = o['action' + k] === 'idle' ? 'stand' : o['action' + k]; s['action' + k] = ACTION_LABEL[v] ? v : (lw === k ? 'walk' : 'stand'); }
+  const pl = v => v && Number.isFinite(+v.x) && Number.isFinite(+v.z) ? { x: +clamp(+v.x, -7, 7).toFixed(2), z: +clamp(+v.z, -3.6, 5.5).toFixed(2) } : null;
+  const fc = v => v === null || v === undefined || v === '' || !Number.isFinite(+v) ? null : clamp(Math.round(+v), -180, 180);
+  s.placeA = pl(o.placeA); s.placeB = pl(o.placeB); s.faceA = fc(o.faceA); s.faceB = fc(o.faceB);
   s.notes = String(o.notes || '').replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
   return s;
 }
@@ -287,8 +290,8 @@ const V = (x, y, z) => new T.Vector3(x, y, z);
 function subjPos(sh, t) {
   const k = sh.subject === 'both' ? null : sh.subject;
   const walkers = ['A', 'B'].filter(a => sh['action' + a] === 'walk' || (MV[sh.move].walk && a === (k || 'A')));
-  const pos = {}; for (const a of ['A', 'B']) pos[a] = HOME[a].clone();
-  for (const w of walkers) { pos[w].x += lerp(-2.2, 2.2, t) * sh.dir; pos[w].z += 1.1; }
+  const pos = {}; for (const a of ['A', 'B']) pos[a] = sh['place' + a] ? V(sh['place' + a].x, 0, sh['place' + a].z) : HOME[a].clone();
+  for (const w of walkers) { pos[w].x += lerp(-2.2, 2.2, t) * sh.dir; if (!sh['place' + w]) pos[w].z += 1.1; }
   const target = k ? pos[k] : pos.A.clone().add(pos.B).multiplyScalar(.5);
   return { target: target.clone(), pos, walkers };
 }
@@ -312,12 +315,19 @@ function solve(sh, t, sec) {
   return { pos, tg, fov: fov / D2R, yaw: s.yaw, pitch: s.pitch, roll: s.roll, sp };
 }
 function applyCam(c, p) { c.position.copy(p.pos); c.up.set(0, 1, 0); c.lookAt(p.tg); c.rotateY(p.yaw); c.rotateX(p.pitch); c.rotateZ(p.roll); c.fov = clamp(p.fov, 3, 120); c.updateProjectionMatrix(); }
+/* facing in radians: explicit angle, else towards the other actor when either is placed, else the default stance */
+function faceRad(sh, k, pos) {
+  const v = sh && sh['face' + k]; if (v !== null && v !== undefined) return v * D2R;
+  const o = k === 'A' ? 'B' : 'A';
+  return sh && (sh.placeA || sh.placeB) ? Math.atan2(pos[o].x - pos[k].x, pos[o].z - pos[k].z) : FACE[k];
+}
+const defFace = (sh, k) => sh[k] ?? Math.round(faceRad(sh, k.slice(-1), subjPos(sh, 0).pos) / D2R);
 function poseActors(sh, t, sec, clock) {
   const sp = sh ? subjPos(sh, t) : { pos: { A: HOME.A, B: HOME.B }, walkers: [] };
   for (const k of ['A', 'B']) {
     const g = AC[k], u = g.userData, w = sp.walkers.includes(k), an = w ? 'walk' : (sh && sh['action' + k]) || 'stand';
     g.position.copy(sp.pos[k]);
-    g.rotation.y = w ? (sh.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : FACE[k];
+    g.rotation.y = w ? (sh.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : faceRad(sh, k, sp.pos);
     const ph = w ? sec * 7.5 : 0, br = Math.sin(clock * 1.6 + (k === 'A' ? 0 : 2)) * .012;
     u.legs[0].rotation.x = Math.sin(ph) * .55; u.legs[1].rotation.x = -Math.sin(ph) * .55;
     u.arms[0].rotation.x = -Math.sin(ph) * .45; u.arms[1].rotation.x = Math.sin(ph) * .45;
@@ -455,6 +465,8 @@ const FIELDS = [
   ['easing', 'sel', 'Easing', () => Object.entries(EASES)],
   ['actionA', 'sel', 'Meera: action', () => Object.entries(ACTION_LABEL)],
   ['actionB', 'sel', 'Arjun: action', () => Object.entries(ACTION_LABEL)],
+  ['faceA', 'rng', 'Meera faces', -180, 180, 5, v => v + '°'],
+  ['faceB', 'rng', 'Arjun faces', -180, 180, 5, v => v + '°'],
   ['notes', 'area', 'Shot notes']
 ];
 function lensNote(l) { return l <= 18 ? 'Ultra-wide: exaggerates space and speed; faces distort up close.' : l <= 24 ? 'Wide: shows the environment; great for establishing and movement.' : l <= 50 ? 'Normal: close to how the eye sees; honest and natural.' : l <= 85 ? 'Portrait: flattering faces, soft separated backgrounds.' : 'Telephoto: compresses depth; feels voyeuristic or intense.'; }
@@ -465,16 +477,43 @@ function buildInsp() {
   if (!sh) { box.innerHTML = '<p style="color:var(--mu);padding-top:8px">No shot selected. Add one from the move library.</p>'; return; }
   const mv = MV[sh.move];
   const f = ([k, type, label, a, b, c, fmt]) => {
-    const v = sh[k];
+    const v = k === 'faceA' || k === 'faceB' ? defFace(sh, k) : sh[k];
     if (type === 'text') return `<div class="f"><label>${label}</label><input type="text" data-k="${k}" value="${String(v).replace(/"/g, '&quot;')}" maxlength="40"></div>`;
     if (type === 'area') return `<div class="f"><label>${label}<em data-o="notes">${String(v).length}/${NOTE_MAX}</em></label><textarea data-k="${k}" rows="3" maxlength="${NOTE_MAX}" placeholder="Intent, blocking, reference, reminders for the crew…">${esc(v)}</textarea></div>`;
     if (type === 'sel') return `<div class="f"><label>${label}</label><select data-k="${k}">${a().map(([o, l]) => `<option value="${o}"${String(o) === String(v) ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`;
     return `<div class="f"><label>${label}<em data-o="${k}">${c ? fmt(+v) : v}</em></label><input type="range" data-k="${k}" min="${a}" max="${b}" step="${c}" value="${v}"></div>`;
   };
   const F = Object.fromEntries(FIELDS.map(x => [x[0], f(x)]));
-  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.actionA + F.actionB + F.notes +
+  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.actionA + F.actionB + `<div class="f"><label>Placement<em>click the set view</em></label><div class="pl"><button data-pl="A" class="${placing === 'A' ? 'on' : ''}">Place Meera</button><button data-pl="B" class="${placing === 'B' ? 'on' : ''}">Place Arjun</button><button data-pl="R">Reset</button></div></div>` + F.faceA + F.faceB + F.notes +
     `<div class="learn" style="--c:${catColor(mv.cat)}"><h4>Why “${mv.name}”</h4><p>${mv.why}</p><p><i>Try:</i> ${mv.tip}</p><p><i>${sh.lens} mm on ${sensorOf().label}${crop() > 1.01 ? ' (≈' + eqMm(sh.lens) + ' mm full-frame equivalent)' : ''}:</i> ${lensNote(sh.lens)}</p><p><i>f/${sh.fstop}:</i> ${sh.fstop <= 2 ? 'Shallow focus melts the background and isolates the subject: the classic cinematic look.' : sh.fstop >= 8 ? 'Deep focus keeps everything sharp, so the audience can explore the whole frame.' : 'Moderate depth: subject sharp, background softly separated.'}</p></div>`;
 }
+/* click-to-place: click or drag on the set view to put an actor on the floor of the current shot */
+let placing = null;
+const rayPlane = new T.Plane(new T.Vector3(0, 1, 0), 0), rayCaster = new T.Raycaster();
+function setPlacing(k) {
+  placing = k; $('#inset').classList.toggle('placing', !!k);
+  $('#inset span').textContent = k ? `CLICK TO PLACE ${ACTOR_NAME[k].toUpperCase()}  ·  ESC TO FINISH` : 'SET VIEW';
+  if (k && !showSet) $('#bSet').click();
+  buildInsp(); if (k) toast(`Click or drag on the set view to place ${ACTOR_NAME[k]}`);
+}
+function placeAt(e, first) {
+  const sh = P.shots[sel]; if (!placing || !sh) return;
+  const r = $('#inset').getBoundingClientRect(), hit = new T.Vector3();
+  rayCaster.setFromCamera(new T.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), setCam);
+  if (!rayCaster.ray.intersectPlane(rayPlane, hit)) return;
+  if (first) commit();
+  const p = normShot({ placeA: { x: hit.x, z: hit.z } }).placeA; sh['place' + placing] = p; pathKey = '';
+  if (!playing) time = clamp(time, starts()[sel], starts()[sel] + sh.duration - .001);
+}
+{ let down = false; const ins = $('#inset');
+  ins.addEventListener('pointerdown', e => { if (!placing) return; down = true; try { ins.setPointerCapture(e.pointerId); } catch (x) {} placeAt(e, true); e.preventDefault(); });
+  ins.addEventListener('pointermove', e => { if (down) placeAt(e, false); });
+  ins.addEventListener('pointerup', () => { if (down) { down = false; buildInsp(); } }); }
+$('#insp').addEventListener('click', e => {
+  const b = e.target.closest('button[data-pl]'); if (!b) return; const sh = P.shots[sel]; if (!sh) return;
+  if (b.dataset.pl === 'R') { commit(); sh.placeA = sh.placeB = sh.faceA = sh.faceB = null; pathKey = ''; setPlacing(null); toast('Actors back to their default positions'); return; }
+  setPlacing(placing === b.dataset.pl ? null : b.dataset.pl);
+});
 let editing = false;
 $('#insp').addEventListener('input', e => {
   const k = e.target.dataset.k; if (!k) return;
@@ -589,7 +628,7 @@ ta.addEventListener('keydown', e => {
 });
 $('#cDoc').onclick = () => {
   const row = (k, v) => `<div><b style="color:var(--ac)">${k}</b> &nbsp;${v}</div>`;
-  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('actionA', Object.keys(ACTION_LABEL).join(', ') + ' (what Meera does)') + row('actionB', 'same list (what Arjun does)') + row('notes', 'free text, up to ' + NOTE_MAX + ' characters (shown in the PDFs and CSV)') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
+  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('actionA', Object.keys(ACTION_LABEL).join(', ') + ' (what Meera does)') + row('actionB', 'same list (what Arjun does)') + row('placeA / placeB', '{ "x": -0.85, "z": 0.2 } position on the floor in metres (x right, z towards the audience); omit for the default spot') + row('faceA / faceB', '-180 to 180 degrees the actor turns (0 = towards the audience); omit to face the other actor') + row('notes', 'free text, up to ' + NOTE_MAX + ' characters (shown in the PDFs and CSV)') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
     '<pre style="margin-top:12px;background:#0c0c11;padding:10px;border-radius:8px;color:#d8e3ff;white-space:pre-wrap">{ "move": "orbit", "duration": 6, "lens": 24,\n  "size": "WS", "subject": "both", "amount": 0.5 }</pre>';
   $('#mDoc').classList.add('on');
 };
@@ -628,6 +667,7 @@ menu('#mExport', a => {
   if (a === 'png') { render(true); const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = film.w * r; c.height = film.h * r; c.getContext('2d').drawImage(cv, film.x * r, film.y * r, c.width, c.height, 0, 0, c.width, c.height); c.toBlob(b => { download(b, fname(`-shot${sel + 1}.png`)); toast('Frame saved'); }); }
   if (a === 'pdf') exportPdf('shotlist');
   if (a === 'board') exportPdf('storyboard');
+  if (a === 'blocking') exportBlocking();
   if (a === 'rec') startRec();
 });
 function exportPdf(kind) {
@@ -652,6 +692,24 @@ function exportPdf(kind) {
   const doc = { title: P.title, meta, aspect: film.w / film.h, shots, footer: 'Made with Kalki Simulator  |  Offline camera-movement previsualisation' };
   download(new Blob([(board ? buildStoryboardPdf : buildShotListPdf)(doc)], { type: 'application/pdf' }), fname(board ? '-storyboard.pdf' : '-shotlist.pdf'));
   toast(board ? 'Storyboard PDF saved' : 'Shot list PDF saved');
+}
+/* top-down blocking diagram: positions come straight from the solver, no rendering needed */
+function blockingDoc() {
+  const asp = film.w / film.h || 1.778, st = starts();
+  const hf = deg => 2 * Math.atan(Math.tan(deg * D2R / 2) * asp) / D2R;
+  const shots = P.shots.map((s, i) => {
+    const a = solve(s, 0, 0), b = solve(s, 1, s.duration), pts = []; for (let k = 0; k <= 30; k++) { const p = solve(s, k / 30, k / 30 * s.duration).pos; pts.push([+p.x.toFixed(2), +p.z.toFixed(2)]); }
+    const p0 = subjPos(s, 0), p1 = subjPos(s, 1);
+    return { n: i + 1, name: s.name, move: MV[s.move].name, lens: s.lens, sizeCode: s.size, duration: s.duration, actions: [`${ACTOR_NAME.A}: ${ACTION_LABEL[s.actionA]}`, `${ACTOR_NAME.B}: ${ACTION_LABEL[s.actionB]}`],
+      actors: ['A', 'B'].map(k => ({ k, x0: p0.pos[k].x, z0: p0.pos[k].z, x1: p1.pos[k].x, z1: p1.pos[k].z, face0: faceRad(s, k, p0.pos), face1: faceRad(s, k, p1.pos), walk: p0.walkers.includes(k) })),
+      cam: { pts, tgx0: a.tg.x, tgz0: a.tg.z, tgx1: b.tg.x, tgz1: b.tg.z, hfov0: hf(a.fov), hfov1: hf(b.fov) } };
+  });
+  return { title: P.title, meta: [`${P.shots.length} shots`, `Runtime ${tcf(total())}`, `${sensorOf().label} sensor`, new Date().toLocaleDateString('en-IN')], floor: { x0: -8, x1: 8, z0: -6, z1: 6 }, wallZ: -4.3, shots,
+    footer: 'Made with Kalki Simulator  |  Offline camera-movement previsualisation' };
+}
+function exportBlocking() {
+  if (!P.shots.length) return toast('Add a shot first');
+  download(new Blob([buildBlockingPdf(blockingDoc())], { type: 'application/pdf' }), fname('-blocking.pdf')); toast('Blocking diagram saved');
 }
 function startRec() {
   if (!P.shots.length) return toast('Add a shot first');
@@ -681,6 +739,7 @@ document.addEventListener('keydown', e => {
   else if (c && k === 'd') { e.preventDefault(); $('#bDup').click(); }
   else if (k === 'delete' || k === 'backspace') $('#bDel').click();
   else if (k === 'g') $('#bGuide').click();
+  else if (k === 'escape' && placing) setPlacing(null);
   else if (k === 'home') $('#bStart').click();
   else if ((k === 'arrowright' || k === 'arrowleft') && P.shots.length) { sel = clamp(sel + (k === 'arrowright' ? 1 : -1), 0, P.shots.length - 1); time = starts()[sel]; markSel(); }
 });
@@ -744,6 +803,12 @@ async function runSelfTest() {
   t('both actors can walk in one shot', () => { const sh = newShot({ actionA: 'walk', actionB: 'walk' }); const p0 = subjPos(sh, 0), p1 = subjPos(sh, 1); return p0.walkers.length === 2 && p1.pos.A.x > p0.pos.A.x && p1.pos.B.x > p0.pos.B.x; });
   t('only the subject walks on a follow move', () => { const sh = newShot({ move: 'follow', subject: 'B' }); const w = subjPos(sh, .5).walkers; return w.length === 1 && w[0] === 'B'; });
   t('actions survive a project round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ actionA: 'sit', actionB: 'sip' }] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value).shots[0]; return o.actionA === 'sit' && o.actionB === 'sip'; });
+  t('placement is clamped and optional', () => { const a = normShot({ placeA: { x: 99, z: -99 }, placeB: { x: 'x' }, faceA: 999, faceB: 'no' }); return a.placeA.x === 7 && a.placeA.z === -3.6 && a.placeB === null && a.faceA === 180 && a.faceB === null; });
+  t('placed actors move the camera target', () => { const a = subjPos(newShot({ subject: 'A' }), 0).target, b = subjPos(newShot({ subject: 'A', placeA: { x: 3, z: 1 } }), 0).target; return near(b.x, 3) && near(b.z, 1) && !near(a.x, 3); });
+  t('placed actors face each other by default', () => { const sh = newShot({ placeA: { x: -2, z: 0 }, placeB: { x: 2, z: 0 } }), p = subjPos(sh, 0).pos; return faceRad(sh, 'A', p) > 1.5 && faceRad(sh, 'B', p) < -1.5 && near(faceRad({ ...sh, faceA: 90 }, 'A', p), Math.PI / 2); });
+  t('unplaced shots keep the default stance', () => { const sh = newShot({}), p = subjPos(sh, 0).pos; return near(faceRad(sh, 'A', p), FACE.A) && near(p.A.x, HOME.A.x); });
+  t('placement survives a project round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ placeA: { x: 1.5, z: 2 }, faceA: 40 }] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value).shots[0]; return o.placeA.x === 1.5 && o.placeA.z === 2 && o.faceA === 40 && o.placeB === null; });
+  t('blocking diagram builds for a scene', () => { $('#ta').value = JSON.stringify({ shots: [{ move: 'orbit', actionA: 'walk', placeB: { x: 2, z: 1 } }, { move: 'push_in' }] }); applyCode(); const b = buildBlockingPdf(blockingDoc()); return b.length > 1000 && String.fromCharCode(b[0], b[1], b[2], b[3]) === '%PDF'; });
   t('PDF writer is wired in', () => typeof buildShotListPdf === 'function' && typeof buildStoryboardPdf === 'function');
   t('desktop save helper exists', () => typeof download === 'function' && typeof browserDownload === 'function');
 

@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.5.0-ff6b4a?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.5.1-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
   <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
@@ -30,12 +30,12 @@
 
 **In the browser** (nothing to install)
 
-1. Download [`Kalki-versions/Kalki-v0.5.html`](Kalki-versions/Kalki-v0.5.html), or the zipped package [`Kalki-v0.5.zip`](Kalki-versions/Kalki-v0.5.zip) with notices.
+1. Download [`Kalki-versions/Kalki-v0.5.1.html`](Kalki-versions/Kalki-v0.5.1.html), or the zipped package [`Kalki-v0.5.1.zip`](Kalki-versions/Kalki-v0.5.1.zip) with notices.
 2. Double-click it. It opens in Chrome or Edge and runs fully offline.
 
 **On Windows** (native app, about 3 MB)
 
-1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.5.0_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.5.0_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
+1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.5.1_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.5.1_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
 2. The installer is **not code-signed yet**, so Windows SmartScreen may warn on first run: choose **More info, Run anyway**.
 3. Exports open a native **Save as** dialog. It uses the WebView2 runtime that ships with Windows 11 (Windows 10 may prompt to install it).
 
@@ -64,6 +64,7 @@ flowchart LR
 | **Cinematic looks** | Golden hour, Teal and orange, Night, Noir, Neutral, with window light and sun shafts. |
 | **Realistic actors** | Animated characters on a 3D chai-stall set (Microsoft Rocketbox avatars). |
 | **Actions for each actor** | Choose what Meera and Arjun do in every shot: stand, walk, sit on a plastic chair, talk, listen, nod, sip chai, wave, look around, shrug, or invite the other to sit. See the [contact sheet](docs/samples/actions-contact-sheet.pdf). |
+| **Place the actors** | Click or drag on the set view to put Meera and Arjun anywhere on the floor, and set which way they face. The camera follows them. |
 | **Any frame** | Cinema 2.39:1, YouTube 16:9, Reels and Shorts 9:16, square. |
 | **Frame guides** | Press **G** to cycle rule of thirds, action and title safe areas with a centre mark, and (on 9:16) approximate Reels and Shorts interface zones. |
 | **Shot notes** | A notes field on every shot for intent, blocking and references. |
@@ -94,6 +95,7 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 |---|---|---|
 | **Shot list (PDF)** | A landscape A4 sheet: a frame for every shot, with move and intent, timing, lens and full-frame equivalent, aperture, shot size, height, angle, subject and your notes | [`shot-list-sample.pdf`](docs/samples/shot-list-sample.pdf) |
 | **Storyboard sheet (PDF)** | A grid of frames with number, name, move, lens, size, duration and your note. The grid adapts to the aspect ratio | [`storyboard-sample.pdf`](docs/samples/storyboard-sample.pdf) |
+| **Blocking diagram (PDF)** | A top-down map for every shot: where each actor stands and moves, where the camera starts, its view cone and its path | [`blocking-diagram-sample.pdf`](docs/samples/blocking-diagram-sample.pdf) |
 | **Spreadsheet (CSV)** | The same data for Excel or Sheets | |
 | **Frame (PNG)** | The current frame without overlays | [`frame-export-sample.png`](docs/images/frame-export-sample.png) |
 | **Preview video (WebM)** | The whole sequence, recorded in one pass | |
@@ -115,7 +117,8 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | v0.4 | Shot-list PDF, sensor presets with full-frame equivalents, versioned project files |
 | v0.4.1 | Storyboard sheet PDF, per-shot notes, Windows desktop app |
 | v0.4.2 | Frame guides (thirds, safe areas, Reels zones), built-in self-test, PDF text fix |
-| **v0.5** | **Latest.** Actions for each actor (sit, talk, listen, nod, sip chai, wave, look, shrug, invite), chair and glass props |
+| v0.5 | Actions for each actor (sit, talk, listen, nod, sip chai, wave, look, shrug, invite), chair and glass props |
+| **v0.5.1** | **Latest.** Click-to-place actors, facing control, top-down blocking diagram PDF |
 
 Every build is kept in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 
@@ -126,7 +129,7 @@ Kalki is built in small, shippable steps. Full detail, effort estimates and rati
 ```mermaid
 flowchart LR
     P1["<b>Phase 1 · v0.4.x</b><br/>Hand-off<br/>shot list, storyboard,<br/>notes, sensors"]:::done
-    P2["<b>Phase 2 · v0.5.x</b><br/>Performers<br/>actions (done), actor picker,<br/>action timeline"]:::next
+    P2["<b>Phase 2 · v0.5.x</b><br/>Performers<br/>actions, placement, blocking (done),<br/>actor picker, action timeline"]:::next
     P3["<b>Phase 3 · v0.6</b><br/>Indian content<br/>Tamil and Hindi UI,<br/>costumes, sets"]:::todo
     P4["<b>Phase 4 · v0.7</b><br/>Reach<br/>phone layout, PWA,<br/>signed installer"]:::todo
     P5["<b>Phase 5 · v0.8</b><br/>Teaching<br/>lesson scenes,<br/>instructor kit"]:::todo

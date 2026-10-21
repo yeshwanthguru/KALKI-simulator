@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import sharp from 'sharp';
-import { buildShotListPdf, buildStoryboardPdf, textWidth, wrap, wrapMax, latin } from '../src/pdf.js';
+import { buildShotListPdf, buildStoryboardPdf, buildBlockingPdf, textWidth, wrap, wrapMax, latin } from '../src/pdf.js';
 
 const jpeg = new Uint8Array(await sharp({ create: { width: 64, height: 36, channels: 3, background: '#c85' } }).jpeg().toBuffer());
 const shot = n => ({ n, name: 'Shot ' + n + ' (café) — “quotes”', move: 'Push in', why: 'A slow push-in tightens attention on the performer and builds intensity.', start: '00:00:00', duration: 4, lens: 50, eq: 73, fstop: 2.8, size: 'Medium', height: 'Eye level', angle: 15, subject: 'Meera', actions: ['Meera: Sitting', 'Arjun: Sipping chai'], amount: 60, easing: 'smooth', jpeg, jw: 64, jh: 36 });
@@ -32,6 +32,13 @@ for (const [aspect, perPage] of [[2.39, 6], [1.778, 6], [1, 10], [0.5625, 6]]) {
   const b = Buffer.from(buildStoryboardPdf(doc)).toString('latin1');
   assert.equal((b.match(/\/Type \/Page /g) || []).length, Math.ceil(13 / perPage), 'storyboard pages at aspect ' + aspect);
   assert.ok(b.trimEnd().endsWith('%%EOF'));
+}
+{
+  const cam = (x, z) => ({ pts: [[x, z], [x + 1, z - 1], [x + 2, z - 2]], tgx0: 0, tgz0: 0, tgx1: 1, tgz1: 0, hfov0: 40, hfov1: 30 });
+  const shotB = n => ({ n, name: 'Block ' + n, move: 'Orbit', lens: 35, sizeCode: 'WS', duration: 4, actions: ['Meera: Sitting', 'Arjun: Walking across'], actors: [{ k: 'A', x0: -1, z0: 0, x1: -1, z1: 0, face0: .5, face1: .5, walk: false }, { k: 'B', x0: 1, z0: 1, x1: 3, z1: 1, face0: 1.5, face1: 1.5, walk: true }], cam: cam(0, 6) });
+  const b = Buffer.from(buildBlockingPdf({ title: 'Blocking', meta: ['x'], footer: 'f', floor: { x0: -8, x1: 8, z0: -6, z1: 6 }, wallZ: -4.3, shots: Array.from({ length: 8 }, (_, i) => shotB(i + 1)) })).toString('latin1');
+  assert.equal((b.match(/\/Type \/Page /g) || []).length, 2, '8 shots at 6 per page -> 2 pages');
+  assert.ok(b.trimEnd().endsWith('%%EOF') && b.includes(' c ') && b.includes('[4 3] 0 d'));
 }
 fs.mkdirSync('tests/out', { recursive: true });
 fs.writeFileSync('tests/out/sample-shotlist.pdf', bin);
