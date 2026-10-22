@@ -36,3 +36,5 @@ Indian costumes, Tamil UI, Windows .exe via Tauri, optional local LLM text-to-sh
 - `tools/convert-anim.mjs <fbx-dir>`: rebuilds `assets_src/actions.json` from Rocketbox animation FBX files (MIT).
 - `tools/screenshot.mjs <out.png> [script.js] [w] [h]`: screenshots the built app in headless Edge/Chrome, optionally after running a script (used for README images).
 - `npm test`: PDF writer tests plus an in-page self-test run in headless Edge/Chrome (`#selftest`).
+- `tests/analyze.test.mjs`: the analysis engine on synthetic footage with known camera moves. `tests/video-e2e.mjs`: records a real WebM in headless Edge/Chrome and runs it through the importer. The in-page self-test also renders Kalki's own moves and checks the analyser recognises them (this is how the direction signs and thresholds were calibrated).
+- `tools/make-test-clip.mjs <out.webm>`: builds the deterministic test clip (WebCodecs plus a small WebM writer, see `tools/clip-gen.mjs`); `tests/video-e2e.mjs` uses the committed copy.

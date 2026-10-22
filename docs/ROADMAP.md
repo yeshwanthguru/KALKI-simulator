@@ -92,6 +92,33 @@
 | 5.5 | **Camera-rig props** (dolly track, jib, gimbal, handheld shake profiles) with visible rig | M | P1 | Realism vs FrameForge/Cine Designer; teaches how to achieve a move cheaply |
 | 5.6 | **Budget-friendly alternatives hints** ("how to get this move with a phone and a bucket") | S | P2 | India fit, content marketing |
 
+## Phase 5b — Reference video analysis ("Analyse my video") (v0.8.x–v0.9)
+
+**Goal:** the user imports a clip; Kalki reports which camera techniques it detects, suggests improvements, and plays both the *detected* and the *suggested* version as a simulation on the 3D set. Everything runs locally in the browser/exe; the video never leaves the machine.
+
+**What is realistic (feasibility, honest view)** — estimates, not tested:
+- **Reliable with classical computer vision (no ML model):** cut/shot-boundary detection (frame-difference histograms); global camera motion per shot via optical flow or feature tracking (pan, tilt, push-in/pull-out vs zoom approximations, handheld shake level, static); shot duration/pacing; aspect ratio; brightness/contrast and colour mood summary.
+- **Needs a small bundled ML model (still offline, adds MBs):** shot size (close-up/medium/wide) via face/body detection; subject position for headroom/looking-room/rule-of-thirds checks; person count. A WASM/ONNX or similar in-browser runtime is the likely route; model choice and licence need a spike.
+- **Hard / low-confidence:** distinguishing a dolly-in from an optical zoom (needs parallax analysis), exact focal length, aperture/DOF, crane vs tilt, true 3D scene reconstruction. Report these as "likely" with a confidence label, never as fact.
+- **Suggestions** come from transparent, rule-based checks (e.g. 180° rule is not checkable from one clip; but: too many consecutive same-size shots, no motivation for a move, shaky handheld in a calm scene, subject cut off by frame edge, speed too fast for the shot length, 9:16 safe-area violations). Optional later: local LLM to phrase suggestions (item 6.1).
+- **Simulation:** the analysis output is converted to the existing Kalki shot JSON (move type, lens estimate, shot size, height, speed, duration) on a stock set with placeholder actors, so the user sees an *approximation* of the original camera behaviour and a *modified* version side by side. It is not a reconstruction of the real location.
+
+| # | Feature | Effort | Priority | Rationale |
+|---|---|---|---|---|
+| 5b.1 | ✅ **Spike:** accuracy test on ~20 varied clips (pan/tilt/push-in/handheld/static); decide model + runtime; set a size and speed budget (done: replaced by synthetic-footage tests, a calibration against Kalki's own renders and a real-video end-to-end test) | S-M | P0 | De-risks the whole feature before UI work |
+| 5b.2 | ✅ **Video import + shot-cut detection + timeline of detected shots** (WebCodecs/`<video>` frame sampling; analysis in a Worker; progress bar; length cap, e.g. 2–3 min **[Est.]**) (done in v0.5.3: `<video>` frame sampling, cut detection, shot strip; runs on the main thread, not yet in a Worker) | M | P0 | Foundation; also useful alone as an "auto shot list from video" |
+| 5b.3 | ✅ **Camera-motion classifier per shot** (pan/tilt/push/pull/static/handheld with confidence) (done in v0.5.3: pan, tilt, truck, pedestal, push/zoom, pull, handheld, static with confidence; no ML) | M-L | P0 | Core of "how camera techniques are used" |
+| 5b.4 | **Shot-size + subject framing (small ML model)** | M-L | P1 | Enables framing advice; adds asset size |
+| 5b.5 | ◐ **Analysis report** (per-shot cards, pacing chart, technique summary; export PDF/CSV via Phase 1 pipeline) (CSV report and on-screen cards done in v0.5.3; PDF export still open) | M | P0 | Delivers the "output" the user asked for |
+| 5b.6 | ✅ **Rule-based suggestions engine** (explainable, each tip names the rule and the shot) (done in v0.5.3: pacing, move, intensity, easing, shot count, handheld, restraint rules) | M | P0 | The "what changes are needed" part |
+| 5b.7 | ◐ **"Detected vs Suggested" simulation**: generate Kalki shots for both and play/compare side by side, with a one-click "apply suggestion to my project" (done in v0.5.3: simulate the reference, apply one or all suggestions and play; side-by-side compare still open) | L | P0 | The "show as simulation" part; depends on 1.6 (schema), 2.x (actors/actions) and 5.3 (templates) |
+| 5b.8 | ✅ **Privacy and rights notice** (local-only processing; user responsible for clips they import) (done in v0.5.3: notice in the dialog) | S | P0 | Trust; copyright-sensitive use case |
+
+**Dependencies:** 1.6 schema versioning, 1.1/1.2 export pipeline, 5.3 templates for suggested variants. **Sequence:** 5b.1 → 5b.2 → 5b.3 → 5b.5/5b.6 → 5b.7 → 5b.4 (framing advice can follow).
+**Release plan:** v0.8.1 = import + cuts + shot list from video (5b.2); v0.8.2 = motion detection + report (5b.3, 5b.5); v0.9 = suggestions + simulation (5b.6, 5b.7).
+**Done when:** on a test set of clips, detected moves match human labels for the majority of shots (target set after the 5b.1 spike, e.g. ≥70% **[Est. target]**), every suggestion cites its rule, and the simulated suggestion plays in the existing timeline.
+**Competitive note:** none of the tools in BENCHMARK.md offers offline video-to-camera-analysis; generative tools create video but do not critique it. This is a potential differentiator, but also the highest-uncertainty item on the roadmap.
+
 ## Phase 6 — Optional intelligence (v0.9+)
 
 | # | Feature | Effort | Priority | Rationale |
@@ -128,6 +155,7 @@ Ranked by (competitive gap × market evidence) ÷ effort **[Est.]**.
 | 19 | Camera-rig props | 5 | M | P1 |
 | 20 | Shot templates library | 5 | M | P1 |
 | 21 | Instructor kit | 5 | M | P1 |
+| 21b | Reference video analysis + suggested-shot simulation (5b.1–5b.8) | 5b | L (spike first) | P0 for v0.8.x–v0.9, per owner request; high uncertainty |
 | 22 | Local LLM text-to-shot | 6 | L | P2 |
 | 23 | Reference-frame/prompt export | 6 | S | P2 |
 | 24 | Script import | 6 | M | P2 |

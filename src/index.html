@@ -80,6 +80,19 @@ button{cursor:pointer;border:0;background:none}
 .lseg{flex:1 1 0;min-width:0;border:1px solid transparent;border-radius:6px;background:var(--c);color:#fff;font:inherit;font-size:10.5px;font-weight:600;padding:0 4px;line-height:24px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;opacity:.78}
 .lseg.on{opacity:1;border-color:#fff}
 .pl button:disabled{opacity:.4;cursor:default}
+.rf-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.rf-note{font-size:12px;color:var(--mu);line-height:1.5}.rf-note.err{color:#ff8a7a}
+.rf-prog{height:8px;border-radius:5px;background:var(--p2);overflow:hidden;margin:6px 0}.rf-prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff6b4a,#ffb547);transition:width .15s}
+.rf-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:8px 0 12px}
+.rf-sum div{background:var(--p2);border:1px solid var(--ln);border-radius:10px;padding:8px 10px}.rf-sum small{display:block;color:var(--mu);font-size:10.5px}.rf-sum b{font-size:15px}
+#rfRes h3{font-size:13px;margin:16px 0 8px}#rfRes h3 small{color:var(--mu);font-weight:500;margin-left:6px}
+.rf-strip{display:flex;gap:3px;height:74px}.rf-shot{position:relative;min-width:34px;border-radius:7px;background:#000 center/cover;overflow:hidden;border:1px solid var(--ln)}
+.rf-shot b{position:absolute;left:4px;top:3px;font-size:10px;background:rgba(0,0,0,.65);padding:1px 5px;border-radius:5px}.rf-shot span{position:absolute;left:0;right:0;bottom:0;font-size:9.5px;background:rgba(0,0,0,.7);padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rf-tab{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}.rf-tab th{text-align:left;color:var(--mu);font-weight:600;font-size:10.5px;padding:4px 6px;border-bottom:1px solid var(--ln)}.rf-tab td{padding:5px 6px;border-bottom:1px solid var(--ln)}.rf-tab em{color:var(--mu)}
+.rf-conf{display:inline-block;width:46px;height:6px;border-radius:4px;background:var(--p2);vertical-align:middle;overflow:hidden}.rf-conf u{display:block;height:100%;background:#2ea44f}
+.rf-tech{margin-bottom:8px}.rf-tech h4{font-size:12.5px;margin:0}.rf-tech h4 small{color:var(--mu);font-weight:500}.rf-tech p{margin:2px 0 0;font-size:12px;color:#c9c7d4;line-height:1.5}
+.rf-tip{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;background:var(--p2);border:1px solid var(--ln);border-radius:10px;padding:8px 10px;margin-bottom:6px}.rf-tip p{margin:2px 0;font-size:12.5px}.rf-tip small{color:var(--mu);font-size:11px}.rf-tip button{flex:none}
+.rf-act{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 6px}
 #inset span{position:absolute;left:8px;top:6px;font:700 9.5px var(--m);letter-spacing:.14em;color:rgba(255,255,255,.7);background:rgba(0,0,0,.45);padding:2px 6px;border-radius:5px}
 #empty{position:absolute;inset:0;display:none;place-items:center;pointer-events:none;color:var(--mu);text-align:center}
 #empty b{display:block;color:var(--tx);font-size:16px;margin-bottom:4px}
@@ -169,6 +182,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
     <select class="sel" id="sensor" title="Camera sensor / film back: changes the field of view of each lens"></select>
     <button class="btn ic" id="bGuide" title="Frame guides (G): thirds, safe areas, Reels interface zones">⊞</button>
     <button class="btn ic" id="bSet" title="Show set view">◩</button>
+    <button class="btn ic" id="bRef" title="Analyse a reference video: camera moves, pacing and suggestions">🎞</button>
     <button class="btn ic" id="bPerf" title="Light mode for CPU-only laptops">⚡</button>
     <button class="btn ic" id="bUndo" title="Undo (Ctrl+Z)">↶</button>
     <button class="btn ic" id="bRedo" title="Redo (Ctrl+Y)">↷</button>
@@ -230,11 +244,20 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
 <div id="toast"></div>
 
 <div class="modal" id="mHelp"><div class="card">
-  <h2>Kalki · கல்கி <span style="color:var(--mu);font-weight:500;font-size:13px">v0.5.2</span></h2>
+  <h2>Kalki · கல்கி <span style="color:var(--mu);font-weight:500;font-size:13px">v0.5.3</span></h2>
   <p>Plan and learn camera movement before you shoot. Pick a move, shape it, press play.</p>
   <div class="kb"><kbd>Space</kbd><span>Play / pause</span><kbd>← →</kbd><span>Previous / next shot</span><kbd>Home</kbd><span>Back to start</span><kbd>Ctrl Z / Y</kbd><span>Undo / redo</span><kbd>Ctrl D</kbd><span>Duplicate shot</span><kbd>Del</kbd><span>Delete shot</span><kbd>G</kbd><span>Rule-of-thirds guides</span><kbd>⚡</kbd><span>Light mode: smoother on CPU-only laptops (turns on automatically if needed)</span></div>
   <p style="font-size:12px;color:var(--mu)">Works fully offline. No account, no tracking, nothing leaves your computer. Projects are saved only where you choose.<br>3D rendering by three.js (MIT License, © 2010–2026 three.js authors).<br>Actor models and motion: Microsoft Rocketbox (MIT License, © 2020 Microsoft).<br>© 2026 Kalki. All rights reserved.</p>
   <div style="display:flex;gap:8px;margin-top:14px"><button class="btn pri" id="hClose">Got it</button><button class="btn" id="hIntro">Replay intro</button></div>
+</div></div>
+
+<div class="modal" id="mRef"><div class="card" style="width:min(940px,96vw);max-height:92vh;display:flex;flex-direction:column">
+  <h2>Reference video analysis</h2>
+  <p class="rf-note" style="margin:0 0 10px">Import a clip to see how its camera work is built, then play the same moves as a simulation or apply them to your scene. The video stays on your computer and is never uploaded. You are responsible for having the right to use any clip you import.</p>
+  <div class="rf-top"><button class="btn pri" id="rfPick">Choose a video…</button><span class="rf-note">MP4 or WebM, up to 3 minutes are read. Longer clips are cut at 3 minutes.</span><input type="file" id="rfFile" accept="video/*" style="display:none"></div>
+  <div id="rfProgBox" style="display:none"><div class="rf-prog"><i id="rfBar"></i></div><div class="rf-top"><span id="rfMsg" class="rf-note"></span><button class="btn" id="rfCancel">Cancel</button></div></div>
+  <div id="rfRes" style="overflow:auto;margin-top:6px"></div>
+  <button class="btn" style="margin-top:12px;align-self:flex-start" id="rfClose">Close</button>
 </div></div>
 
 <div class="modal" id="mDoc"><div class="card" style="width:min(620px,94vw)">

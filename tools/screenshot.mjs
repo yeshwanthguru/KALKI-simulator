@@ -15,11 +15,11 @@ const browser = candidates.find(p => fs.existsSync(p));
 if (!browser) { console.error('no Chromium-based browser found (set EDGE=<path>)'); process.exit(1); }
 
 const port = 9300 + Math.floor(Math.random() * 500), profile = fs.mkdtempSync(path.join(os.tmpdir(), 'kalki-shot-'));
-const proc = spawn(browser, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files', '--hide-scrollbars', `--window-size=${w},${h}`, 'about:blank'], { stdio: 'ignore' });
+const proc = spawn(browser, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files', '--autoplay-policy=no-user-gesture-required', '--hide-scrollbars', `--window-size=${w},${h}`, 'about:blank'], { stdio: 'ignore' });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let ws, id = 0; const pending = new Map();
 const send = (method, params = {}) => new Promise((res, rej) => { const i = ++id; pending.set(i, [res, rej]); ws.send(JSON.stringify({ id: i, method, params })); });
-const evalJs = async (expression) => { const r = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
+const evalJs = async (expression, ms = 120000) => { const r = await Promise.race([send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }), new Promise((_, rej) => setTimeout(() => rej(new Error('the page script did not finish in ' + ms / 1000 + ' s')), ms))]); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
 
 try {
   let target;
@@ -29,8 +29,9 @@ try {
   await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
   ws.onmessage = m => { const d = JSON.parse(m.data); if (d.id && pending.has(d.id)) { const [res, rej] = pending.get(d.id); pending.delete(d.id); d.error ? rej(new Error(d.error.message)) : res(d.result); } };
   await send('Page.enable');
-  await send('Emulation.setDeviceMetricsOverride', { width: +w, height: +h, deviceScaleFactor: 1, mobile: false });
-  await send('Page.navigate', { url: pathToFileURL(path.resolve(page)).href });
+  if (!process.env.NO_EMULATION) await send('Emulation.setDeviceMetricsOverride', { width: +w, height: +h, deviceScaleFactor: 1, mobile: false }); // NO_EMULATION=1 uses the real window size (needed for MediaRecorder)
+  const [pagePath, hash = ''] = page.split('#'); // the html argument may carry a hash, e.g. dist/Kalki.html#e2e
+  await send('Page.navigate', { url: pathToFileURL(path.resolve(pagePath)).href + (hash ? '#' + hash : '') });
   for (let i = 0; i < 80 && (await evalJs('document.readyState')) !== 'complete'; i++) await sleep(250);
   await sleep(2500); // let the actors load
   if (scriptFile) { const r = await evalJs(`(async () => { ${fs.readFileSync(scriptFile, 'utf8')} })()`); if (r !== undefined) console.log(JSON.stringify(r)); }

@@ -1,4 +1,5 @@
 import { buildShotListPdf, buildStoryboardPdf, buildBlockingPdf } from './pdf.js';
+import { analyzeClip, toShots, suggest, toGray, AW, AH, fmtTime } from './analyze.js';
 (function () {
 'use strict';
 const T = window.THREE;
@@ -11,7 +12,7 @@ const SENSORS = {
   S35: { label: 'Super 35', w: 24.9, h: 14 }, FF: { label: 'Full frame', w: 36, h: 24 }, APSC: { label: 'APS-C', w: 23.6, h: 15.6 },
   M43: { label: 'Micro Four Thirds', w: 17.3, h: 13 }, ONE: { label: '1-inch', w: 13.2, h: 8.8 }
 };
-const DEFAULT_SENSOR = 'S35', SCHEMA = 5, NOTE_MAX = 240;
+const DEFAULT_SENSOR = 'S35', SCHEMA = 6, NOTE_MAX = 240;
 const sensorOf = () => SENSORS[P.sensor] || SENSORS[DEFAULT_SENSOR];
 const sensorH = () => sensorOf().h;
 const crop = () => 36 / sensorOf().w;
@@ -42,7 +43,7 @@ const MOVES = [
   { id: 'zoom_in', name: 'Zoom in', cat: 'basic', g: '⊕', s: 'Lens zooms, camera stays put', why: 'A zoom magnifies without changing perspective, so it feels more “noticed” than “felt”. Compare it with a push-in to see the difference in depth.', tip: 'Fast zooms read as dramatic or comic; slow zooms feel observational, like a documentary.', ap(s, t, a) { s.fovMul = 1 - .62 * a * t; } },
   { id: 'truck', name: 'Truck', cat: 'basic', g: '⇆', s: 'Slide sideways with the action', why: 'Sideways movement creates parallax: near objects pass faster than far ones, which makes a flat set feel deep and alive.', tip: 'Put something in the foreground (a pillar, a plant) to exaggerate the parallax.', dir: 1, ap(s, t, a, d) { s.lat = (t - .5) * 3.2 * a * d; } },
   { id: 'pedestal', name: 'Pedestal', cat: 'basic', g: '⇅', s: 'Raise or lower the camera', why: 'Changing height while staying level shifts how powerful the subject looks. Rising above feels superior; sinking below makes them grow in stature.', tip: 'On a budget, a tripod with a centre column does small pedestal moves.', dir: 1, ap(s, t, a, d) { const v = (t - .5) * 1.8 * a * d; s.camY += v; s.ty += v; } },
-  { id: 'pan', name: 'Pan', cat: 'basic', g: '↔', s: 'Rotate left or right on the spot', why: 'A pan follows attention, like turning your head. It connects two things in the same space without cutting.', tip: 'Pan slowly on wide lenses; fast pans on long lenses judder (strobe).', dir: 1, ap(s, t, a, d) { s.yaw = (t - .5) * 70 * a * d * D2R; } },
+  { id: 'pan', name: 'Pan', cat: 'basic', g: '↔', s: 'Rotate left or right on the spot', why: 'A pan follows attention, like turning your head. It connects two things in the same space without cutting.', tip: 'Pan slowly on wide lenses; fast pans on long lenses judder (strobe).', dir: 1, ap(s, t, a, d) { s.yaw = -(t - .5) * 70 * a * d * D2R; } },
   { id: 'tilt', name: 'Tilt', cat: 'basic', g: '↕', s: 'Rotate up or down on the spot', why: 'Tilting up a person or building emphasises scale and importance. Tilting down can reveal what is at their feet.', tip: 'Start on a detail (shoes, hands) and tilt up to the face for an introduction shot.', dir: 1, ap(s, t, a, d) { s.pitch = (t - .5) * 40 * a * d * D2R; } },
   { id: 'arc', name: 'Arc', cat: 'dynamic', g: '◠', s: 'Curve partly around the subject', why: 'A gentle arc adds energy to a static moment and slowly changes the background behind the actor.', tip: 'Great for a character’s quiet decision. Keep the eyeline in the upper third.', dir: 1, ap(s, t, a, d) { s.az += (t - .5) * 80 * a * d * D2R; } },
   { id: 'orbit', name: 'Orbit', cat: 'dynamic', g: '⟲', s: 'Circle all the way around', why: 'A full circle makes a moment feel heightened: a reunion, a victory, a turning point. The world spins while the subject stays centred.', tip: 'Use a wider lens (18–24mm) so the circle feels big.', dir: 1, ap(s, t, a, d) { s.az += t * 360 * a * d * D2R; } },
@@ -673,6 +674,7 @@ function applyCode() {
   let o; try { o = JSON.parse(ta.value); } catch (e) { $('#cerr').textContent = '✕ ' + e.message; return; }
   if (!o || !Array.isArray(o.shots)) { $('#cerr').textContent = '✕ The scene needs a "shots" list.'; return; }
   const errs = []; const shots = o.shots.slice(0, 60).map((s, i) => normShot(s || {}, errs, i));
+  if ((+o.schemaVersion || 1) < 6) shots.forEach(s => { if (s.move === 'pan') s.dir = -s.dir; }); // before v0.6 a pan with direction Right actually panned left; flipping keeps old scenes playing the same
   commit(); P = { schemaVersion: SCHEMA, look: LOOKS[o.look] ? o.look : 'golden', sensor: SENSORS[o.sensor] ? o.sensor : DEFAULT_SENSOR, title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
   if (o.sensor !== undefined && !SENSORS[o.sensor]) errs.push('sensor must be ' + Object.keys(SENSORS).join('/'));
   if (+o.schemaVersion > SCHEMA) errs.push(`made with a newer Kalki (schema ${o.schemaVersion}); some settings were ignored`);
@@ -809,6 +811,112 @@ document.addEventListener('contextmenu', e => { if (e.target.tagName !== 'TEXTAR
 document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && /\.json$/i.test(f.name)) { const dt = new DataTransfer(); dt.items.add(f); $('#fileIn').files = dt.files; $('#fileIn').dispatchEvent(new Event('change')); } });
 
+
+/* ---------- reference video analysis ---------- */
+const REF_FPS = 6, REF_MAX = 180;
+let ref = null, refBusy = false, refCancel = false;
+const nextFrame = () => new Promise(r => setTimeout(r, 0));
+const DIR_TEXT = { pan: ['to the left', 'to the right'], truck: ['to the left', 'to the right'], tilt: ['down', 'up'], pedestal: ['down', 'up'] };
+const ALSO = { push_in: ' (or a zoom in)', zoom_in: ' (or a push in)', pull_out: ' (or a zoom out)', tilt: ' (or a pedestal move)', pedestal: ' (or a tilt)', truck: ' (or a pan)' };
+const refMoveText = s => `${MV[s.move].name}${DIR_TEXT[s.move] ? ' ' + DIR_TEXT[s.move][s.dir > 0 ? 1 : 0] : ''}${ALSO[s.move] || ''}`;
+function refProgress(p, msg) { $('#rfBar').style.width = Math.round(p * 100) + '%'; $('#rfMsg').textContent = msg; }
+
+/* Reads the video with a hidden <video>, seeks through it and keeps one small grayscale frame per sample. The video never leaves the computer. */
+async function readVideoFrames(file, progress = () => {}) {
+  const url = URL.createObjectURL(file), v = document.createElement('video');
+  v.muted = true; v.preload = 'auto'; v.playsInline = true; v.src = url;
+  try {
+    await new Promise((res, rej) => { v.onloadedmetadata = res; v.onerror = () => rej(new Error('This app cannot decode that file. Try an MP4 (H.264) or WebM clip.')); });
+    if (!isFinite(v.duration)) { // some recorders write no duration: seeking far past the end makes the browser work it out
+      await new Promise(res => { v.ondurationchange = () => { if (isFinite(v.duration)) res(); }; setTimeout(res, 6000); v.currentTime = 1e7; });
+      v.ondurationchange = null; await new Promise(res => { v.onseeked = res; v.currentTime = 0; setTimeout(res, 3000); });
+    }
+    if (!isFinite(v.duration) || !v.videoWidth) throw new Error('That file has no readable video.');
+    const dur = Math.min(v.duration, REF_MAX), n = Math.floor(dur * REF_FPS);
+    if (n < REF_FPS) throw new Error('The clip is too short (under one second).');
+    const c = document.createElement('canvas'); c.width = AW; c.height = AH; const g = c.getContext('2d', { willReadFrequently: true });
+    const seek = t => new Promise((res, rej) => { const to = setTimeout(() => rej(new Error('The video stopped responding while seeking.')), 10000); v.onseeked = () => { clearTimeout(to); res(); }; v.currentTime = t; });
+    const frames = [];
+    for (let i = 0; i < n; i++) {
+      if (refCancel) throw new Error('cancelled');
+      await seek(Math.min(v.duration - .02, i / REF_FPS + .001));
+      g.drawImage(v, 0, 0, AW, AH); frames.push(toGray(g.getImageData(0, 0, AW, AH).data, AW, AH));
+      if (i % 4 === 0) { progress(i / n * .8, `Reading frames ${i + 1} of ${n}`); await nextFrame(); }
+    }
+    const thumb = async t => { await seek(Math.min(v.duration - .02, t)); const tc = document.createElement('canvas'); tc.width = 192; tc.height = 108; tc.getContext('2d').drawImage(v, 0, 0, 192, 108); return tc.toDataURL('image/jpeg', .7); };
+    return { frames, duration: dur, w: v.videoWidth, h: v.videoHeight, thumb };
+  } finally { setTimeout(() => URL.revokeObjectURL(url), 2000); }
+}
+/* the whole pipeline without any UI, so tests can drive it: video file -> frames -> shots -> thumbnails */
+async function computeRef(file, progress = () => {}) {
+  progress(.02, 'Opening the video…');
+  const vid = await readVideoFrames(file, progress);
+  progress(.82, 'Finding cuts and camera moves…'); await nextFrame();
+  const clip = analyzeClip(vid.frames, REF_FPS), thumbs = [];
+  for (let i = 0; i < clip.shots.length; i++) { progress(.86 + .13 * i / clip.shots.length, `Preparing thumbnails ${i + 1} of ${clip.shots.length}`); thumbs.push(await vid.thumb(clip.shots[i].start + clip.shots[i].dur / 2)); }
+  progress(1, 'Done');
+  return { name: (file.name || 'clip').replace(/\.[^.]+$/, ''), clip, thumbs, size: `${vid.w}×${vid.h}` };
+}
+async function analyseRef(file) {
+  if (refBusy) return; refBusy = true; refCancel = false; ref = null;
+  $('#rfRes').innerHTML = ''; $('#rfProgBox').style.display = 'block'; $('#rfPick').disabled = true; $('#rfCancel').style.display = '';
+  try { ref = await computeRef(file, refProgress); renderRef(); }
+  catch (e) { $('#rfRes').innerHTML = e.message === 'cancelled' ? '<p class="rf-note">Analysis cancelled.</p>' : `<p class="rf-note err">${esc(e.message)}</p>`; }
+  finally { refBusy = false; $('#rfPick').disabled = false; $('#rfCancel').style.display = 'none'; setTimeout(() => { if (!refBusy) $('#rfProgBox').style.display = 'none'; }, 600); }
+}
+function refSuggestions() { return ref && P.shots.length && !demo ? suggest(ref.clip, { shots: P.shots }) : []; }
+function renderRef() {
+  const { clip } = ref, S = clip.summary, pct = v => Math.round(v * 100) + '%';
+  const cards = [['Shots', S.shotCount], ['Average shot', S.avgShot.toFixed(1) + ' s'], ['Pace', S.pace], ['Camera moving', pct(S.movingShare)], ['Handheld', pct(S.handheldShare)], ['Most used', MV[S.dominant].name]];
+  const strip = clip.shots.map((s, i) => `<div class="rf-shot" style="flex:${Math.max(.6, s.dur)} 1 0;background-image:url(${ref.thumbs[i]})" title="Shot ${i + 1}: ${esc(refMoveText(s))}, ${s.dur.toFixed(1)} s"><b>${i + 1}</b><span>${esc(refMoveText(s))}</span></div>`).join('');
+  const rows = clip.shots.map((s, i) => `<tr><td>${i + 1}</td><td>${fmtTime(s.start)}</td><td>${s.dur.toFixed(1)} s</td><td><b>${esc(refMoveText(s))}</b>${s.handheld && s.move !== 'handheld' ? ' <em>+ handheld shake</em>' : ''}</td><td>${s.move === 'static' ? '–' : Math.round(s.amount * 100) + '%'}</td><td>${s.move === 'static' || s.move === 'handheld' ? '–' : s.easing}</td><td><i class="rf-conf"><u style="width:${Math.round(s.confidence * 100)}%"></u></i> ${Math.round(s.confidence * 100)}%</td></tr>`).join('');
+  const used = Object.keys(S.byMove).filter(m => m !== 'static').sort((a, b) => S.byMove[b] - S.byMove[a]);
+  const notes = used.map(m => { const at = clip.shots.map((s, i) => s.move === m ? i + 1 : 0).filter(Boolean); return `<div class="rf-tech"><h4>${esc(MV[m].name)} <small>shot${at.length > 1 ? 's' : ''} ${at.join(', ')}</small></h4><p>${esc(MV[m].why)}</p></div>`; }).join('') || '<p class="rf-note">The camera barely moves in this clip: it is mostly locked off.</p>';
+  const sg = refSuggestions();
+  const tips = !P.shots.length || demo ? '<p class="rf-note">Open or create a scene to get suggestions for it. You can still simulate the reference below.</p>'
+    : sg.length ? sg.map((t, i) => `<div class="rf-tip"><div><b>${esc(t.rule)}</b><p>${esc(t.text)}</p><small>${esc(t.why)}</small></div>${t.patch.length ? `<button class="btn" data-rfapply="${i}">Apply</button>` : ''}</div>`).join('')
+      : '<p class="rf-note">Your scene already follows the reference closely. Nothing to change.</p>';
+  $('#rfRes').innerHTML = `<div class="rf-sum">${cards.map(([k, v]) => `<div><small>${k}</small><b>${esc(String(v))}</b></div>`).join('')}</div>
+    <h3>Shots found <small>${esc(ref.name)} · ${ref.size} · ${fmtTime(clip.duration)}</small></h3><div class="rf-strip">${strip}</div>
+    <table class="rf-tab"><thead><tr><th>#</th><th>At</th><th>Length</th><th>Camera technique</th><th>Intensity</th><th>Easing</th><th>Confidence</th></tr></thead><tbody>${rows}</tbody></table>
+    <h3>How the camera is used</h3>${notes}
+    <h3>Suggested changes to your scene</h3>${tips}
+    <div class="rf-act"><button class="btn pri" id="rfSim">Simulate the reference</button>${sg.some(t => t.patch.length) ? '<button class="btn pri" id="rfAll">Apply all suggestions and play</button>' : ''}<button class="btn" id="rfCsv">Download report (.csv)</button></div>
+    <p class="rf-note">These are estimates from picture motion, not from knowing how the shot was made. A push-in and a zoom can look alike, and moving actors can confuse the result. Everything is computed on this computer.</p>`;
+}
+function applySuggestions(list) {
+  commit();
+  for (const sg of list) for (const p of sg.patch) {
+    if (p.scaleDurations) P.shots.forEach(s => { s.duration = clamp(Math.round(s.duration * p.scaleDurations * 2) / 2, 1, 20); });
+    else if (p.set) { const s = P.shots[p.shot]; if (s) Object.assign(s, p.set); }
+    else if (p.addShots) p.addShots.forEach(o => { if (P.shots.length < 60) P.shots.push(newShot(o)); });
+    else if (p.handheldShots) p.handheldShots.forEach((h, i) => { if (h && P.shots[i]) P.shots[i].move = 'handheld'; });
+  }
+  P.shots = P.shots.map(s => normShot(s)); sel = 0; time = 0; refreshAll(); setPlay(true);
+}
+function simulateRef() {
+  commit();
+  P = { schemaVersion: SCHEMA, title: ('Reference: ' + ref.name).slice(0, 60), aspect: P.aspect, look: P.look, sensor: P.sensor || DEFAULT_SENSOR, shots: toShots(ref.clip, 'Ref').map(o => newShot(o)) };
+  sel = 0; time = 0; demo = false; refreshAll(); setPlay(true);
+}
+function refCsv() {
+  const q = v => `"${String(v).replace(/"/g, '""')}"`;
+  const rows = [['Shot', 'Start (s)', 'Length (s)', 'Technique', 'Intensity %', 'Easing', 'Confidence %', 'Handheld shake']].concat(ref.clip.shots.map((s, i) => [i + 1, s.start.toFixed(1), s.dur.toFixed(1), refMoveText(s), Math.round(s.amount * 100), s.easing, Math.round(s.confidence * 100), s.handheld ? 'yes' : 'no']));
+  download(new Blob(['﻿' + rows.map(r => r.map(q).join(',')).join('\r\n')], { type: 'text/csv' }), (ref.name || 'reference').replace(/[^\w\- ]+/g, '').replace(/\s+/g, '-').toLowerCase() + '-camera-analysis.csv'); toast('Report saved');
+}
+$('#bRef').onclick = () => $('#mRef').classList.add('on');
+$('#rfClose').onclick = () => { refCancel = true; $('#mRef').classList.remove('on'); };
+$('#rfPick').onclick = () => $('#rfFile').click();
+$('#rfCancel').onclick = () => { refCancel = true; };
+$('#rfFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) analyseRef(f); };
+$('#rfRes').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || !ref) return;
+  if (b.id === 'rfSim') { simulateRef(); renderRef(); $('#mRef').classList.remove('on'); toast('Playing the reference camera work. Ctrl+Z restores your scene'); }
+  else if (b.id === 'rfAll') { applySuggestions(refSuggestions().filter(t => t.patch.length)); renderRef(); $('#mRef').classList.remove('on'); toast('Applied. Ctrl+Z restores your scene'); }
+  else if (b.id === 'rfCsv') refCsv();
+  else if (b.dataset.rfapply !== undefined) { applySuggestions([refSuggestions()[+b.dataset.rfapply]]); renderRef(); $('#mRef').classList.remove('on'); toast('Suggestion applied and playing. Ctrl+Z undoes it'); }
+});
+
 /* onboarding */
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
 $('#obTitle').innerHTML = 'KALKI'.split('').map((c, i) => `<span style="animation-delay:${.35 + i * .09}s">${c}</span>`).join('');
@@ -821,7 +929,7 @@ $('#obSkip').onclick = () => endIntro('nocode');
 function refreshAll(code = true) { P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
 new ResizeObserver(layout).observe($('#view'));
 buildLib(); refreshAll();
-if (location.hash === '#selftest') runSelfTest();
+if (location.hash === '#selftest' || location.hash === '#e2e') { if (location.hash === '#selftest') runSelfTest(); window.__kalki = { analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
 if (store.get('kalki.onboarded')) { demo = false; $('#ob').style.display = 'none'; setPlay(true); }
 
 /* ---------- self test: open the page with #selftest, results go to the title and #selftestOut (used by tests/smoke.mjs) ---------- */
@@ -876,6 +984,12 @@ async function runSelfTest() {
   t('segments follow the cues', () => { const s = normShot({ duration: 6, actionA: 'sit', cuesA: [{ t: 2, a: 'talk' }, { t: 4, a: 'sip' }] }); const g = segmentsOf(s, 'A'); return g.length === 3 && g[1].a === 'talk' && seqText(s, 'A') === 'Sit > Talk (2 s) > Sip chai (4 s)' && seqText(s, 'B') === 'Standing'; });
   t('cues survive a project round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ duration: 6, actionB: 'listen', cuesB: [{ t: 3, a: 'nod' }] }] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value).shots[0]; return o.cuesB.length === 1 && o.cuesB[0].a === 'nod' && o.cuesB[0].t === 3 && o.cuesA.length === 0; });
   t('mode switch keeps its own styling', () => { const b = [...document.querySelectorAll('#modeSeg button')]; return b.length === 2 && b.every(x => x.getBoundingClientRect().width > 30 && getComputedStyle(x).opacity === '1') && getComputedStyle($('#modeSeg')).paddingLeft === '3px'; });
+  t('pan direction matches its label and old scenes keep their look', () => {
+    const sh = newShot({ move: 'pan', dir: 1, amount: 1 }), yaw0 = solve(sh, 0, 0).yaw, yaw1 = solve(sh, 1, 3).yaw; // yaw decreasing = turning right
+    $('#ta').value = JSON.stringify({ schemaVersion: 5, shots: [{ move: 'pan', dir: 1 }, { move: 'tilt', dir: 1 }] }); applyCode(); const old = P.shots[0].dir === -1 && P.shots[1].dir === 1;
+    $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ move: 'pan', dir: 1 }] }); applyCode(); const cur = P.shots[0].dir === 1;
+    return yaw1 < yaw0 && old && cur;
+  });
   t('PDF writer is wired in', () => typeof buildShotListPdf === 'function' && typeof buildStoryboardPdf === 'function');
   t('desktop save helper exists', () => typeof download === 'function' && typeof browserDownload === 'function');
 
@@ -897,6 +1011,23 @@ async function runSelfTest() {
     poseActors(null, 0, 0, 0);
     return !early && late && mid > 0 && mid < 1 && root1 < root0 - .15;
   });
+
+  /* calibration: Kalki renders its own camera moves and the analyser has to recognise them (this also fixes the direction signs) */
+  const grabGray = (shot, count) => {
+    const keep = { P, demo, playing, time, sel }, frames = [], c = document.createElement('canvas'); c.width = AW; c.height = AH;
+    const g = c.getContext('2d', { willReadFrequently: true }), r = R.getPixelRatio();
+    P = { ...P, shots: [shot] }; demo = false; playing = false; sel = 0;
+    for (let i = 0; i < count; i++) { time = i / (count - 1) * shot.duration * .999; step(); step(); render(true); g.drawImage(cv, film.x * r, film.y * r, film.w * r, film.h * r, 0, 0, AW, AH); frames.push(toGray(g.getImageData(0, 0, AW, AH).data, AW, AH)); }
+    ({ P, demo, playing, time, sel } = keep); return frames;
+  };
+  const OK = { pan: ['pan'], tilt: ['tilt', 'pedestal'], truck: ['truck', 'pan'], pedestal: ['pedestal', 'tilt'], push_in: ['push_in', 'zoom_in'], pull_out: ['pull_out'], zoom_in: ['zoom_in', 'push_in'], static: ['static'] };
+  for (const [mv, dir] of [['pan', 1], ['pan', -1], ['tilt', 1], ['tilt', -1], ['truck', 1], ['truck', -1], ['pedestal', 1], ['pedestal', -1], ['push_in', 1], ['pull_out', 1], ['zoom_in', 1], ['static', 1]]) {
+    const shot = newShot({ move: mv, dir, size: 'WS', subject: 'both', lens: 35, duration: 3, amount: ['pan', 'tilt'].includes(mv) ? .4 : .9, angle: 15, easing: 'linear', fstop: 8 });
+    const res = analyzeClip(grabGray(shot, 19), 6), d = res.shots[0];
+    t(`analyser recognises Kalki's ${mv}${mv === 'static' || mv.includes('_') ? '' : ' (dir ' + dir + ')'}`, () => res.shots.length === 1 && OK[mv].includes(d.move) && (!['pan', 'tilt', 'truck', 'pedestal'].includes(mv) || d.dir === dir) || (() => { throw new Error('got ' + JSON.stringify({ move: d.move, dir: d.dir, cx: +d.cumX.toFixed(3), cy: +d.cumY.toFixed(3), cs: +d.cumS.toFixed(3), par: +d.parallax.toFixed(2), n: res.shots.length })); })());
+  }
+  { const fast = analyzeClip(grabGray(newShot({ move: 'pan', dir: 1, size: 'WS', subject: 'both', lens: 35, duration: 3, amount: .7, angle: 15, easing: 'linear', fstop: 8 }), 19), 6);
+    t('a fast pan is one shot, not a series of cuts', () => fast.shots.length === 1 && ['pan', 'truck'].includes(fast.shots[0].move) || (() => { throw new Error('got ' + JSON.stringify(fast.shots.map(x => [x.move, +x.dur.toFixed(1)]))); })()); }
   const pass = res.filter(r => r[1]).length;
   const out = document.createElement('pre'); out.id = 'selftestOut';
   out.textContent = res.map(r => `${r[1] ? 'PASS' : 'FAIL'}  ${r[0]}${r[2] ? '  (' + r[2] + ')' : ''}`).join('\n') + `\nSELFTEST ${pass === res.length ? 'PASS' : 'FAIL'} ${pass}/${res.length}`;

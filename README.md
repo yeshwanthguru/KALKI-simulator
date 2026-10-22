@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.5.2-ff6b4a?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.5.3-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
   <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
@@ -18,6 +18,8 @@
   <a href="#feedback">Feedback</a>
 </p>
 
+> **Version note:** the Windows installer is still **v0.5.2** and does not include reference video analysis yet (the browser version is v0.5.3). A new installer could not be built on the last attempt because Windows Application Control blocked the build tools.
+
 **Kalki Simulator** is an offline camera-movement simulator for Indian filmmakers, YouTubers and film students. Block out camera moves on a 3D set, tune the lens and lighting, and hand your crew a printable shot list and storyboard. It runs from a single HTML file or a small Windows app: no account, no internet, no tracking.
 
 <p align="center">
@@ -30,7 +32,7 @@
 
 **In the browser** (nothing to install)
 
-1. Download [`Kalki-versions/Kalki-v0.5.2.html`](Kalki-versions/Kalki-v0.5.2.html), or the zipped package [`Kalki-v0.5.2.zip`](Kalki-versions/Kalki-v0.5.2.zip) with notices.
+1. Download [`Kalki-versions/Kalki-v0.5.3.html`](Kalki-versions/Kalki-v0.5.3.html), or the zipped package [`Kalki-v0.5.3.zip`](Kalki-versions/Kalki-v0.5.3.zip) with notices.
 2. Double-click it. It opens in Chrome or Edge and runs fully offline.
 
 **On Windows** (native app, about 3 MB)
@@ -64,6 +66,7 @@ flowchart LR
 | **Cinematic looks** | Golden hour, Teal and orange, Night, Noir, Neutral, with window light and sun shafts. |
 | **Realistic actors** | Animated characters on a 3D chai-stall set (Microsoft Rocketbox avatars). |
 | **Actions for each actor** | Choose what Meera and Arjun do in every shot: stand, walk, sit on a plastic chair, talk, listen, nod, sip chai, wave, look around, shrug, or invite the other to sit. See the [contact sheet](docs/samples/actions-contact-sheet.pdf). |
+| **Reference video analysis** | Import a clip: Kalki finds its shots, names the camera move in each (pan, tilt, truck, push, pull, zoom, handheld or locked off), shows the pacing, suggests changes to your scene with the reason for each, and plays the result as a simulation. It runs on your computer and the video is never uploaded. |
 | **Action lane** | Sequence actions inside one shot: Meera sits, then talks at 2.5 s, then sips chai at 5.5 s, while Arjun listens and nods. Parts blend smoothly and you retime them with a slider. |
 | **Place the actors** | Click or drag on the set view to put Meera and Arjun anywhere on the floor, and set which way they face. The camera follows them. |
 | **Any frame** | Cinema 2.39:1, YouTube 16:9, Reels and Shorts 9:16, square. |
@@ -81,6 +84,16 @@ The same shot under four looks:
 | <img src="docs/images/look-golden.jpg" alt="Golden hour look" width="100%"> | <img src="docs/images/look-teal.jpg" alt="Teal and orange look" width="100%"> |
 | **Night** | **Noir** |
 | <img src="docs/images/look-night.jpg" alt="Night look" width="100%"> | <img src="docs/images/look-noir.jpg" alt="Noir look" width="100%"> |
+
+### Learn from a reference video
+
+Press the film-strip button, choose a clip, and Kalki reports how its camera work is built. It finds each shot, names the move, shows how long each lasts and how confident it is, explains the technique, and compares the clip with your scene. Each suggestion names its rule and its reason, and you can apply one or all, then play the result. Ctrl+Z restores your scene.
+
+<p align="center">
+  <img src="docs/images/reference-analysis.jpg" alt="Reference video analysis: shots found in a clip, camera moves, confidence, and suggested changes to the current scene" width="90%">
+</p>
+
+How it works: cuts are found where no camera motion can explain the change between two frames; camera motion is estimated per shot by following small blocks of the picture and fitting a shift, zoom and roll; depth cues separate a pan from a truck. There is no machine-learning model, so shot size and subject framing are not analysed yet. To try it, import the 8-second test clip [`street-scene-test-clip.webm`](docs/samples/street-scene-test-clip.webm): a pan, a cut, a zoom in, a cut and a locked-off hold. Results are estimates (a push-in and a zoom can look alike), and the report says so.
 
 ### Sequence actions inside a shot
 
@@ -128,7 +141,8 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | v0.4.2 | Frame guides (thirds, safe areas, Reels zones), built-in self-test, PDF text fix |
 | v0.5 | Actions for each actor (sit, talk, listen, nod, sip chai, wave, look, shrug, invite), chair and glass props |
 | v0.5.1 | Click-to-place actors, facing control, top-down blocking diagram PDF |
-| **v0.5.2** | **Latest.** Action lane: timed action changes inside a shot, with blending |
+| v0.5.2 | Action lane: timed action changes inside a shot, with blending |
+| **v0.5.3** | **Latest.** Reference video analysis with suggestions and simulation; Pan direction fix |
 
 Every build is kept in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 
@@ -167,7 +181,7 @@ Requires Node.js. The desktop app additionally needs the [Rust toolchain](https:
 npm install
 node build.mjs            # -> dist/Kalki.html (obfuscated)
 DEBUG=1 node build.mjs    # unobfuscated build for debugging
-npm test                  # PDF writer tests + in-browser smoke test (needs Edge or Chrome)
+npm test                  # PDF and analysis tests, in-browser self-test, real-video end-to-end test (needs Edge or Chrome)
 npm run desktop:dev       # run the desktop app in development
 npm run desktop:build     # build the Windows installer (src-tauri/target/release/bundle/nsis)
 ```
