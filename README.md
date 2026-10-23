@@ -18,7 +18,6 @@
   <a href="#feedback">Feedback</a>
 </p>
 
-> **Version note:** the Windows installer is still **v0.5.2** and does not include reference video analysis yet (the browser version is v0.5.3). A new installer could not be built on the last attempt because Windows Application Control blocked the build tools.
 
 **Kalki Simulator** is an offline camera-movement simulator for Indian filmmakers, YouTubers and film students. Block out camera moves on a 3D set, tune the lens and lighting, and hand your crew a printable shot list and storyboard. It runs from a single HTML file or a small Windows app: no account, no internet, no tracking.
 
@@ -37,7 +36,7 @@
 
 **On Windows** (native app, about 3 MB)
 
-1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.5.2_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.5.2_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
+1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.5.3_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.5.3_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
 2. The installer is **not code-signed yet**, so Windows SmartScreen may warn on first run: choose **More info, Run anyway**.
 3. Exports open a native **Save as** dialog. It uses the WebView2 runtime that ships with Windows 11 (Windows 10 may prompt to install it).
 
