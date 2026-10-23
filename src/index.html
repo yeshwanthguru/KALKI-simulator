@@ -80,6 +80,11 @@ button{cursor:pointer;border:0;background:none}
 .lseg{flex:1 1 0;min-width:0;border:1px solid transparent;border-radius:6px;background:var(--c);color:#fff;font:inherit;font-size:10.5px;font-weight:600;padding:0 4px;line-height:24px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;opacity:.78}
 .lseg.on{opacity:1;border-color:#fff}
 .pl button:disabled{opacity:.4;cursor:default}
+.cast-col h3{font-size:13px;margin:8px 0}.cast-col h3 small{color:var(--mu);font-weight:500;margin-left:6px}
+.cast-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:10px}
+.cast-card{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--p2);border:1px solid var(--ln);border-radius:10px;padding:8px 4px;color:inherit;font:inherit;cursor:pointer}
+.cast-card img{width:56px;height:100px;object-fit:cover;border-radius:6px;background:#20222c}.cast-card b{font-size:12px}.cast-card small{font-size:10.5px;color:var(--mu)}
+.cast-card.on{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset}
 .rf-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 .rf-note{font-size:12px;color:var(--mu);line-height:1.5}.rf-note.err{color:#ff8a7a}
 .rf-prog{height:8px;border-radius:5px;background:var(--p2);overflow:hidden;margin:6px 0}.rf-prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff6b4a,#ffb547);transition:width .15s}
@@ -182,6 +187,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
     <select class="sel" id="sensor" title="Camera sensor / film back: changes the field of view of each lens"></select>
     <button class="btn ic" id="bGuide" title="Frame guides (G): thirds, safe areas, Reels interface zones">⊞</button>
     <button class="btn ic" id="bSet" title="Show set view">◩</button>
+    <button class="btn ic" id="bCast" title="Choose the actors: pick an avatar for each of the two roles">👥</button>
     <button class="btn ic" id="bRef" title="Analyse a reference video: camera moves, pacing and suggestions">🎞</button>
     <button class="btn ic" id="bPerf" title="Light mode for CPU-only laptops">⚡</button>
     <button class="btn ic" id="bUndo" title="Undo (Ctrl+Z)">↶</button>
@@ -244,11 +250,18 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
 <div id="toast"></div>
 
 <div class="modal" id="mHelp"><div class="card">
-  <h2>Kalki · கல்கி <span style="color:var(--mu);font-weight:500;font-size:13px">v0.5.3</span></h2>
+  <h2>Kalki · கல்கி <span style="color:var(--mu);font-weight:500;font-size:13px">v0.5.4</span></h2>
   <p>Plan and learn camera movement before you shoot. Pick a move, shape it, press play.</p>
   <div class="kb"><kbd>Space</kbd><span>Play / pause</span><kbd>← →</kbd><span>Previous / next shot</span><kbd>Home</kbd><span>Back to start</span><kbd>Ctrl Z / Y</kbd><span>Undo / redo</span><kbd>Ctrl D</kbd><span>Duplicate shot</span><kbd>Del</kbd><span>Delete shot</span><kbd>G</kbd><span>Rule-of-thirds guides</span><kbd>⚡</kbd><span>Light mode: smoother on CPU-only laptops (turns on automatically if needed)</span></div>
   <p style="font-size:12px;color:var(--mu)">Works fully offline. No account, no tracking, nothing leaves your computer. Projects are saved only where you choose.<br>3D rendering by three.js (MIT License, © 2010–2026 three.js authors).<br>Actor models and motion: Microsoft Rocketbox (MIT License, © 2020 Microsoft).<br>© 2026 Kalki. All rights reserved.</p>
   <div style="display:flex;gap:8px;margin-top:14px"><button class="btn pri" id="hClose">Got it</button><button class="btn" id="hIntro">Replay intro</button></div>
+</div></div>
+
+<div class="modal" id="mCast"><div class="card" style="width:min(900px,96vw);max-height:90vh;display:flex;flex-direction:column">
+  <h2>Choose your actors</h2>
+  <p class="rf-note" style="margin:0 0 10px">Pick who plays each role. All avatars use the same actions, placement and camera work; the scene keeps your choice when you save it.</p>
+  <div id="castBody" style="overflow:auto"></div>
+  <button class="btn pri" style="margin-top:12px;align-self:flex-start" id="castClose">Done</button>
 </div></div>
 
 <div class="modal" id="mRef"><div class="card" style="width:min(940px,96vw);max-height:92vh;display:flex;flex-direction:column">

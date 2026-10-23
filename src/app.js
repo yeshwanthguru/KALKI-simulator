@@ -12,7 +12,7 @@ const SENSORS = {
   S35: { label: 'Super 35', w: 24.9, h: 14 }, FF: { label: 'Full frame', w: 36, h: 24 }, APSC: { label: 'APS-C', w: 23.6, h: 15.6 },
   M43: { label: 'Micro Four Thirds', w: 17.3, h: 13 }, ONE: { label: '1-inch', w: 13.2, h: 8.8 }
 };
-const DEFAULT_SENSOR = 'S35', SCHEMA = 6, NOTE_MAX = 240;
+const DEFAULT_SENSOR = 'S35', SCHEMA = 7, NOTE_MAX = 240;
 const sensorOf = () => SENSORS[P.sensor] || SENSORS[DEFAULT_SENSOR];
 const sensorH = () => sensorOf().h;
 const crop = () => 36 / sensorOf().w;
@@ -28,12 +28,19 @@ const SIZES = {
 const ACTION_LABEL = { stand: 'Standing', walk: 'Walking across', sit: 'Sitting', think: 'Sitting, thinking', talk: 'Talking', listen: 'Listening', nod: 'Nodding', sip: 'Sipping chai', wave: 'Waving', look: 'Looking around', shrug: 'Shrugging', invite: 'Inviting to sit' };
 const ACTION_SHORT = { stand: 'Stand', walk: 'Walk', sit: 'Sit', think: 'Think', talk: 'Talk', listen: 'Listen', nod: 'Nod', sip: 'Sip chai', wave: 'Wave', look: 'Look', shrug: 'Shrug', invite: 'Invite' };
 const SEATED = { sit: 1, think: 1 };
-const ACTOR_NAME = { A: 'Meera', B: 'Arjun' };
+const KA0 = window.__KA || {}; // captured here: loadReal() clears window.__KA once the assets are parsed
+/* the avatars that can play an actor; the two built-in ones are Rocketbox Female_Adult_11 and Male_Adult_17, the others come from assets_src/avatars */
+const AV = { f11: { g: 'f', first: 'Meera', label: 'Female 11', src: 'meera' }, m17: { g: 'm', first: 'Arjun', label: 'Male 17', src: 'arjun' } };
+const AV_NAMES = { f07: 'Priya', f08: 'Kavya', m04: 'Ravi', m05: 'Suresh', m07: 'Vikram' };
+for (const [id, a] of Object.entries(KA0.avatars || {})) AV[id] = { g: a.g, first: AV_NAMES[id] || a.name, label: a.name, src: null };
+const DEFAULT_CAST = { A: 'f11', B: 'm17' };
+const castOf = () => (typeof P !== 'undefined' && P && P.actors) || DEFAULT_CAST;
+const ACTOR_NAME = { get A() { return AV[castOf().A].first; }, get B() { return AV[castOf().B].first; } };
 const HEIGHTS = { ground: 'Ground level', low: 'Low angle', eye: 'Eye level', high: 'High angle', top: "Bird's eye" };
 const LENSES = [14, 18, 24, 35, 50, 85, 135], FSTOPS = [1.4, 1.8, 2.8, 4, 5.6, 8, 11];
 const EASES = { smooth: 'Smooth (ease in-out)', linear: 'Linear (mechanical)', in: 'Ease in (accelerate)', out: 'Ease out (settle)' };
 const EF = { linear: t => t, smooth: t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, in: t => t * t * t, out: t => 1 - Math.pow(1 - t, 3) };
-const SUBJ = { A: 'Meera (Actor A)', B: 'Arjun (Actor B)', both: 'Both actors' };
+const SUBJ = { get A() { return `${ACTOR_NAME.A} (Actor A)`; }, get B() { return `${ACTOR_NAME.B} (Actor B)`; }, both: 'Both actors' };
 const CATS = { basic: 'Basic', dynamic: 'Dynamic', emotion: 'Emotion' };
 
 const MOVES = [
@@ -68,7 +75,7 @@ function normShot(o, errs, i) {
   s.duration = clamp(+o.duration || 4, 1, 20);
   s.lens = LENSES.includes(+o.lens) ? +o.lens : (o.lens !== undefined && e('lens must be one of ' + LENSES.join(', ')), 35);
   s.size = SIZES[o.size] ? o.size : (o.size !== undefined && e('size must be ' + Object.keys(SIZES).join('/')), 'MS');
-  s.subject = SUBJ[o.subject] ? o.subject : 'A';
+  s.subject = ['A', 'B', 'both'].includes(o.subject) ? o.subject : 'A';
   s.height = HEIGHTS[o.height] ? o.height : 'eye';
   s.angle = clamp(+o.angle || 0, -180, 180);
   s.fstop = FSTOPS.includes(+o.fstop) ? +o.fstop : 2.8;
@@ -88,7 +95,7 @@ function normShot(o, errs, i) {
   s.notes = String(o.notes || '').replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
   return s;
 }
-const DEMO = () => ({ schemaVersion: SCHEMA, sensor: DEFAULT_SENSOR, title: 'Chai stall – first meeting', aspect: '2.39', look: 'golden', shots: [
+const DEMO = () => ({ schemaVersion: SCHEMA, actors: { ...DEFAULT_CAST }, sensor: DEFAULT_SENSOR, title: 'Chai stall – first meeting', aspect: '2.39', look: 'golden', shots: [
   newShot({ fstop: 5.6, name: 'Establish the stall', move: 'reveal', duration: 5, lens: 24, size: 'WS', subject: 'both', height: 'eye', angle: 15, amount: .7 }),
   newShot({ fstop: 1.8, name: 'Meera notices', move: 'push_in', duration: 4.5, lens: 50, size: 'MS', subject: 'A', angle: 25, amount: .7 }),
   newShot({ fstop: 2.8, name: 'Arjun walks in', move: 'follow', duration: 5, lens: 35, size: 'FS', subject: 'B', angle: 25, actionB: 'walk' }),
@@ -254,29 +261,47 @@ function makeGlass() {
   const tea = new T.Mesh(new T.CylinderGeometry(.031, .026, .06, 16), new T.MeshStandardMaterial({ color: 0xb8742e, roughness: .4 })); tea.position.y = -.01;
   g.add(body, tea); g.visible = false; return g;
 }
+/* ---------- cast: which avatar plays actor A and actor B ---------- */
+const normCast = o => ({ A: AV[o && o.A] ? o.A : DEFAULT_CAST.A, B: AV[o && o.B] ? o.B : DEFAULT_CAST.B });
+const bufOf = s => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u.buffer; };
+const GL = T.GLTFLoader ? new T.GLTFLoader() : null;
+const loadGlb = d => new Promise(r => { try { GL.parse(bufOf(d), '', g => r(g), () => r(null)); } catch (e) { r(null); } });
+const AVC = {}, installing = {};
+/* builds one actor from an avatar: model, idle and walk clips for its gender, the action clips, chair and glass props */
+async function installActor(k, id) {
+  const av = AV[id]; if (!av || !GL || !AVC[av.g]) return;
+  installing[k] = id;
+  const src = av.src ? KA0[av.src] : KA0.avatars[id].glb; if (!av.src) Object.assign(TXD, KA0.avatars[id].tex);
+  const gl = await loadGlb(src); if (!gl) { installing[k] = null; return; }
+  const m = gl.scene, { ic, wc } = AVC[av.g], g = AC[k], old = REAL[k];
+  const mx = new T.AnimationMixer(m), ia = mx.clipAction(ic.animations[0]), wa = mx.clipAction(wc.animations[0]); ia.play(); wa.weight = 0; wa.play(); mx.update(0);
+  m.updateMatrixWorld(true); const bx = new T.Box3().setFromObject(m, true), sc = (av.g === 'f' ? 1.66 : 1.78) / (bx.max.y - bx.min.y);
+  const w = new T.Group(); w.add(m); m.scale.multiplyScalar(sc); m.position.set(-(bx.min.x + bx.max.x) / 2 * sc, -bx.min.y * sc, -(bx.min.z + bx.max.z) / 2 * sc); w.rotation.y = REAL_YAW;
+  m.traverse(o => { if (!o.isMesh) return; o.castShadow = o.receiveShadow = true; o.frustumCulled = false; const mm = o.material; if (!mm) return; mm.envMapIntensity = .7; skinMat(mm); });
+  if (old) { g.remove(old.root); g.remove(old.chair); } else g.children.forEach(c => c.visible = false);
+  g.add(w);
+  const act = {}, AD = KA0.actions;
+  if (AD) for (const nm of Object.keys(ACTION_LABEL)) { const d = AD.clips[av.g + '_' + nm]; if (!d) continue; const a = mx.clipAction(actionClip(nm, d, AD.bones, AD.fps)); a.play(); a.weight = 0; act[nm] = { a, dur: d.dur }; }
+  const chair = makeChair(); g.add(chair);
+  const glass = makeGlass(), hand = m.getObjectByName('Bip01_R_Hand'); if (hand) { glass.position.set(.09, .02, .03); hand.add(glass); } else g.add(glass);
+  REAL[k] = { mx, ia, wa, act, chair, glass, sc, bx: [bx.min.toArray().map(v => +v.toFixed(2)), bx.max.toArray().map(v => +v.toFixed(2))], root: w, avatar: id, iD: ic.animations[0].duration, wD: wc.animations[0].duration };
+  installing[k] = null; pathKey = '';
+}
+/* makes the scene's actors match P.actors (called after every change of the project) */
+function syncCast() {
+  const c = castOf();
+  for (const k of ['A', 'B']) if (AVC.f && c[k] && (REAL[k] ? REAL[k].avatar : null) !== c[k] && installing[k] !== c[k]) installActor(k, c[k]).then(() => { if (REAL[k] && REAL[k].avatar !== castOf()[k]) syncCast(); else refreshNames(); });
+}
 function loadReal() {
-  const A = window.__KA; try { delete window.__KA; } catch (e) {} if (!A || !T.GLTFLoader) return;
+  const A = KA0; try { delete window.__KA; } catch (e) {} if (!A.meera || !GL) return;
   Object.assign(TXD, A.tex || {});
-  const ld = new T.GLTFLoader();
-  const buf = s => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u.buffer; };
-  const load = d => new Promise(r => { try { ld.parse(buf(d), '', g => r(g), () => r(null)); } catch (e) { r(null); } });
-  const keys = ['meera', 'arjun', 'f_idle', 'f_walk', 'm_idle', 'm_walk'];
-  Promise.all(keys.map(k => load(A[k]))).then(([gm, ga, fi, fw, mi, mw]) => {
-    for (const [k, gl, ic, wc] of [['A', gm, fi, fw], ['B', ga, mi, mw]]) {
-      if (!gl || !ic || !wc) continue; const m = gl.scene;
-      const wcl = wc.animations[0]; wcl.tracks.forEach(t => { if (/^Bip01(_Footsteps)?\.position$/.test(t.name)) for (let i = 0; i < t.values.length; i += 3) { t.values[i] = t.values[0]; t.values[i + 2] = t.values[2]; } });
-      const mx = new T.AnimationMixer(m), ia = mx.clipAction(ic.animations[0]), wa = mx.clipAction(wcl); ia.play(); wa.weight = 0; wa.play(); mx.update(0);
-      m.updateMatrixWorld(true); const bx = new T.Box3().setFromObject(m, true), sc = (k === 'A' ? 1.66 : 1.78) / (bx.max.y - bx.min.y);
-      const w = new T.Group(); w.add(m); m.scale.multiplyScalar(sc); m.position.set(-(bx.min.x + bx.max.x) / 2 * sc, -bx.min.y * sc, -(bx.min.z + bx.max.z) / 2 * sc); w.rotation.y = REAL_YAW;
-      m.traverse(o => { if (!o.isMesh) return; o.castShadow = o.receiveShadow = true; o.frustumCulled = false; const mm = o.material; if (!mm) return; mm.envMapIntensity = .7; skinMat(mm); });
-      const g = AC[k]; g.children.forEach(c => c.visible = false); g.add(w);
-      const act = {}, AD = A.actions;
-      if (AD) for (const nm of Object.keys(ACTION_LABEL)) { const d = AD.clips[(k === 'A' ? 'f_' : 'm_') + nm]; if (!d) continue; const a = mx.clipAction(actionClip(nm, d, AD.bones, AD.fps)); a.play(); a.weight = 0; act[nm] = { a, dur: d.dur }; }
-      const chair = makeChair(); g.add(chair);
-      const glass = makeGlass(), hand = m.getObjectByName('Bip01_R_Hand'); if (hand) { glass.position.set(.09, .02, .03); hand.add(glass); } else g.add(glass);
-      REAL[k] = { mx, ia, wa, act, chair, glass, sc, iD: ic.animations[0].duration, wD: wc.animations[0].duration };
+  Promise.all(['f_idle', 'f_walk', 'm_idle', 'm_walk'].map(n => loadGlb(A[n]))).then(([fi, fw, mi, mw]) => {
+    for (const [g, ic, wc] of [['f', fi, fw], ['m', mi, mw]]) {
+      if (!ic || !wc) continue;
+      wc.animations[0].tracks.forEach(t => { if (/^Bip01(_Footsteps)?\.position$/.test(t.name)) for (let i = 0; i < t.values.length; i += 3) { t.values[i] = t.values[0]; t.values[i + 2] = t.values[2]; } });
+      AVC[g] = { ic, wc };
     }
-    pathKey = '';
+    syncCast();
   });
 }
 loadReal();
@@ -308,7 +333,7 @@ function solve(sh, t, sec) {
   const vf = 2 * Math.atan(sensorH() / (2 * sh.lens));
   const frameH = sz.h * (sh.subject === 'both' ? 1.5 : 1);
   const d0 = (frameH / 2) / Math.tan(vf / 2);
-  const eye = { A: 1.59, B: 1.69, both: 1.64 }[sh.subject], face = h => Math.max(.9, eye - h / 6);
+  const eyeA = AV[castOf().A].g === 'f' ? 1.59 : 1.69, eyeB = AV[castOf().B].g === 'f' ? 1.59 : 1.69, eye = { A: eyeA, B: eyeB, both: (eyeA + eyeB) / 2 }[sh.subject], face = h => Math.max(.9, eye - h / 6);
   const s = { d: d0, az: sh.angle * D2R, ty: face(frameH), lat: 0, yaw: 0, pitch: 0, roll: 0, fovMul: 1, shake: 0 };
   s.camY = { ground: .22, low: Math.max(.25, s.ty - .35 * d0), eye: 1.55, high: s.ty + .5 * d0 + .3, top: s.ty + d0 }[sh.height];
   const y0 = s.camY; mv.ap(s, te, sh.amount, sh.dir);
@@ -526,10 +551,10 @@ const FIELDS = [
   ['amount', 'rng', 'Move intensity', 0, 1, .05, v => Math.round(v * 100) + '%'],
   ['dir', 'sel', 'Direction', () => [[1, 'Right · up · forward'], [-1, 'Left · down · back']]],
   ['easing', 'sel', 'Easing', () => Object.entries(EASES)],
-  ['actionA', 'sel', 'Meera: action', () => Object.entries(ACTION_LABEL)],
-  ['actionB', 'sel', 'Arjun: action', () => Object.entries(ACTION_LABEL)],
-  ['faceA', 'rng', 'Meera faces', -180, 180, 5, v => v + '°'],
-  ['faceB', 'rng', 'Arjun faces', -180, 180, 5, v => v + '°'],
+  ['actionA', 'sel', '@A: action', () => Object.entries(ACTION_LABEL)],
+  ['actionB', 'sel', '@B: action', () => Object.entries(ACTION_LABEL)],
+  ['faceA', 'rng', '@A faces', -180, 180, 5, v => v + '°'],
+  ['faceB', 'rng', '@B faces', -180, 180, 5, v => v + '°'],
   ['notes', 'area', 'Shot notes']
 ];
 function lensNote(l) { return l <= 18 ? 'Ultra-wide: exaggerates space and speed; faces distort up close.' : l <= 24 ? 'Wide: shows the environment; great for establishing and movement.' : l <= 50 ? 'Normal: close to how the eye sees; honest and natural.' : l <= 85 ? 'Portrait: flattering faces, soft separated backgrounds.' : 'Telephoto: compresses depth; feels voyeuristic or intense.'; }
@@ -539,7 +564,8 @@ function buildInsp() {
   $('#bDup').style.visibility = $('#bDel').style.visibility = sh && mode !== 'code' ? 'visible' : 'hidden';
   if (!sh) { box.innerHTML = '<p style="color:var(--mu);padding-top:8px">No shot selected. Add one from the move library.</p>'; return; }
   const mv = MV[sh.move];
-  const f = ([k, type, label, a, b, c, fmt]) => {
+  const f = ([k, type, label0, a, b, c, fmt]) => {
+    const label = label0.replace('@A', ACTOR_NAME.A).replace('@B', ACTOR_NAME.B);
     const v = k === 'faceA' || k === 'faceB' ? defFace(sh, k) : sh[k];
     if (type === 'text') return `<div class="f"><label>${label}</label><input type="text" data-k="${k}" value="${String(v).replace(/"/g, '&quot;')}" maxlength="40"></div>`;
     if (type === 'area') return `<div class="f"><label>${label}<em data-o="notes">${String(v).length}/${NOTE_MAX}</em></label><textarea data-k="${k}" rows="3" maxlength="${NOTE_MAX}" placeholder="Intent, blocking, reference, reminders for the crew…">${esc(v)}</textarea></div>`;
@@ -547,7 +573,7 @@ function buildInsp() {
     return `<div class="f"><label>${label}<em data-o="${k}">${c ? fmt(+v) : v}</em></label><input type="range" data-k="${k}" min="${a}" max="${b}" step="${c}" value="${v}"></div>`;
   };
   const F = Object.fromEntries(FIELDS.map(x => [x[0], f(x)]));
-  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.actionA + F.actionB + laneHTML(sh) + `<div class="f"><label>Placement<em>click the set view</em></label><div class="pl"><button data-pl="A" class="${placing === 'A' ? 'on' : ''}">Place Meera</button><button data-pl="B" class="${placing === 'B' ? 'on' : ''}">Place Arjun</button><button data-pl="R">Reset</button></div></div>` + F.faceA + F.faceB + F.notes +
+  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.actionA + F.actionB + laneHTML(sh) + `<div class="f"><label>Placement<em>click the set view</em></label><div class="pl"><button data-pl="A" class="${placing === 'A' ? 'on' : ''}">Place ${ACTOR_NAME.A}</button><button data-pl="B" class="${placing === 'B' ? 'on' : ''}">Place ${ACTOR_NAME.B}</button><button data-pl="R">Reset</button></div></div>` + F.faceA + F.faceB + F.notes +
     `<div class="learn" style="--c:${catColor(mv.cat)}"><h4>Why “${mv.name}”</h4><p>${mv.why}</p><p><i>Try:</i> ${mv.tip}</p><p><i>${sh.lens} mm on ${sensorOf().label}${crop() > 1.01 ? ' (≈' + eqMm(sh.lens) + ' mm full-frame equivalent)' : ''}:</i> ${lensNote(sh.lens)}</p><p><i>f/${sh.fstop}:</i> ${sh.fstop <= 2 ? 'Shallow focus melts the background and isolates the subject: the classic cinematic look.' : sh.fstop >= 8 ? 'Deep focus keeps everything sharp, so the audience can explore the whole frame.' : 'Moderate depth: subject sharp, background softly separated.'}</p></div>`;
 }
 /* click-to-place: click or drag on the set view to put an actor on the floor of the current shot */
@@ -669,13 +695,13 @@ $('#modeSeg').onclick = e => { const b = e.target.closest('button'); if (b) setM
 
 /* code mode */
 const ta = $('#ta');
-function loadCode() { ta.value = JSON.stringify({ schemaVersion: SCHEMA, title: P.title, aspect: P.aspect, look: P.look, sensor: P.sensor, shots: P.shots }, null, 2); $('#cerr').textContent = ''; }
+function loadCode() { ta.value = JSON.stringify({ schemaVersion: SCHEMA, title: P.title, aspect: P.aspect, look: P.look, sensor: P.sensor, actors: castOf(), shots: P.shots }, null, 2); $('#cerr').textContent = ''; }
 function applyCode() {
   let o; try { o = JSON.parse(ta.value); } catch (e) { $('#cerr').textContent = '✕ ' + e.message; return; }
   if (!o || !Array.isArray(o.shots)) { $('#cerr').textContent = '✕ The scene needs a "shots" list.'; return; }
   const errs = []; const shots = o.shots.slice(0, 60).map((s, i) => normShot(s || {}, errs, i));
   if ((+o.schemaVersion || 1) < 6) shots.forEach(s => { if (s.move === 'pan') s.dir = -s.dir; }); // before v0.6 a pan with direction Right actually panned left; flipping keeps old scenes playing the same
-  commit(); P = { schemaVersion: SCHEMA, look: LOOKS[o.look] ? o.look : 'golden', sensor: SENSORS[o.sensor] ? o.sensor : DEFAULT_SENSOR, title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
+  commit(); P = { schemaVersion: SCHEMA, actors: normCast(o.actors), look: LOOKS[o.look] ? o.look : 'golden', sensor: SENSORS[o.sensor] ? o.sensor : DEFAULT_SENSOR, title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
   if (o.sensor !== undefined && !SENSORS[o.sensor]) errs.push('sensor must be ' + Object.keys(SENSORS).join('/'));
   if (+o.schemaVersion > SCHEMA) errs.push(`made with a newer Kalki (schema ${o.schemaVersion}); some settings were ignored`);
   sel = clamp(sel, 0, shots.length - 1); time = 0; refreshAll(false);
@@ -692,7 +718,7 @@ ta.addEventListener('keydown', e => {
 });
 $('#cDoc').onclick = () => {
   const row = (k, v) => `<div><b style="color:var(--ac)">${k}</b> &nbsp;${v}</div>`;
-  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('actionA', Object.keys(ACTION_LABEL).join(', ') + ' (what Meera does)') + row('actionB', 'same list (what Arjun does)') + row('cuesA / cuesB', '[{ "t": 2, "a": "talk" }] action changes during the shot: t = seconds from the start of the shot (0.5 steps), a = any action except walk; walking shots cannot have changes') + row('placeA / placeB', '{ "x": -0.85, "z": 0.2 } position on the floor in metres (x right, z towards the audience); omit for the default spot') + row('faceA / faceB', '-180 to 180 degrees the actor turns (0 = towards the audience); omit to face the other actor') + row('notes', 'free text, up to ' + NOTE_MAX + ' characters (shown in the PDFs and CSV)') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
+  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('actionA', Object.keys(ACTION_LABEL).join(', ') + ' (what Meera does)') + row('actionB', 'same list (what Arjun does)') + row('actors', '{ "A": "f11", "B": "m17" } who plays each actor: ' + Object.entries(AV).map(([id, a]) => id + ' = ' + a.first).join(', ')) + row('cuesA / cuesB', '[{ "t": 2, "a": "talk" }] action changes during the shot: t = seconds from the start of the shot (0.5 steps), a = any action except walk; walking shots cannot have changes') + row('placeA / placeB', '{ "x": -0.85, "z": 0.2 } position on the floor in metres (x right, z towards the audience); omit for the default spot') + row('faceA / faceB', '-180 to 180 degrees the actor turns (0 = towards the audience); omit to face the other actor') + row('notes', 'free text, up to ' + NOTE_MAX + ' characters (shown in the PDFs and CSV)') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
     '<pre style="margin-top:12px;background:#0c0c11;padding:10px;border-radius:8px;color:#d8e3ff;white-space:pre-wrap">{ "move": "orbit", "duration": 6, "lens": 24,\n  "size": "WS", "subject": "both", "amount": 0.5 }</pre>';
   $('#mDoc').classList.add('on');
 };
@@ -713,7 +739,7 @@ function download(blob, name) {
 function menu(id, fn) { const m = $(id); m.querySelector('.btn').onclick = e => { e.stopPropagation(); $$('.menu').forEach(x => x !== m && x.classList.remove('open')); m.classList.toggle('open'); }; m.querySelector('.dd').onclick = e => { const b = e.target.closest('button'); if (b) { m.classList.remove('open'); fn(b.dataset.a); } }; }
 document.addEventListener('click', () => $$('.menu').forEach(x => x.classList.remove('open')));
 menu('#mFile', a => {
-  if (a === 'new') { commit(); P = { schemaVersion: SCHEMA, title: 'Untitled scene', aspect: P.aspect, look: P.look, sensor: P.sensor || DEFAULT_SENSOR, shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
+  if (a === 'new') { commit(); P = { schemaVersion: SCHEMA, actors: castOf(), title: 'Untitled scene', aspect: P.aspect, look: P.look, sensor: P.sensor || DEFAULT_SENSOR, shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
   if (a === 'open') $('#fileIn').click();
   if (a === 'save') { download(new Blob([JSON.stringify(P, null, 2)], { type: 'application/json' }), fname('.kalki.json')); toast('Project saved'); }
 });
@@ -724,7 +750,7 @@ $('#fileIn').onchange = e => {
 menu('#mExport', a => {
   if (a === 'csv') {
     const q = v => `"${String(v).replace(/"/g, '""')}"`, st = starts();
-    const rows = [['Shot', 'Name', 'Start', 'Duration (s)', 'Move', 'Lens (mm)', 'Aperture', 'Size', 'Subject', 'Height', 'Angle', 'Intensity', 'Easing', 'Meera', 'Arjun', 'Notes', 'Why this move']]
+    const rows = [['Shot', 'Name', 'Start', 'Duration (s)', 'Move', 'Lens (mm)', 'Aperture', 'Size', 'Subject', 'Height', 'Angle', 'Intensity', 'Easing', ACTOR_NAME.A, ACTOR_NAME.B, 'Notes', 'Why this move']]
       .concat(P.shots.map((s, i) => [i + 1, s.name, tcf(st[i]), s.duration, MV[s.move].name, s.lens, 'f/' + s.fstop, SIZES[s.size].label, SUBJ[s.subject], HEIGHTS[s.height], s.angle, Math.round(s.amount * 100) + '%', s.easing, seqText(s, 'A'), seqText(s, 'B'), s.notes, MV[s.move].why]));
     download(new Blob(['﻿' + rows.map(r => r.map(q).join(',')).join('\r\n')], { type: 'text/csv' }), fname('-shotlist.csv')); toast('Shot list exported');
   }
@@ -896,7 +922,7 @@ function applySuggestions(list) {
 }
 function simulateRef() {
   commit();
-  P = { schemaVersion: SCHEMA, title: ('Reference: ' + ref.name).slice(0, 60), aspect: P.aspect, look: P.look, sensor: P.sensor || DEFAULT_SENSOR, shots: toShots(ref.clip, 'Ref').map(o => newShot(o)) };
+  P = { schemaVersion: SCHEMA, actors: castOf(), title: ('Reference: ' + ref.name).slice(0, 60), aspect: P.aspect, look: P.look, sensor: P.sensor || DEFAULT_SENSOR, shots: toShots(ref.clip, 'Ref').map(o => newShot(o)) };
   sel = 0; time = 0; demo = false; refreshAll(); setPlay(true);
 }
 function refCsv() {
@@ -917,6 +943,21 @@ $('#rfRes').addEventListener('click', e => {
   else if (b.dataset.rfapply !== undefined) { applySuggestions([refSuggestions()[+b.dataset.rfapply]]); renderRef(); $('#mRef').classList.remove('on'); toast('Suggestion applied and playing. Ctrl+Z undoes it'); }
 });
 
+
+/* ---------- cast picker ---------- */
+const refreshNames = () => { if (typeof buildInsp === 'function') { buildInsp(); buildTL(); } };
+function renderCast() {
+  const c = castOf(), th = KA0.thumbs || {};
+  $('#castBody').innerHTML = ['A', 'B'].map(k => `<div class="cast-col"><h3>Actor ${k} <small>${esc(ACTOR_NAME[k])}</small></h3><div class="cast-grid">${Object.entries(AV).map(([id, a]) => `<button class="cast-card${c[k] === id ? ' on' : ''}" data-cast="${k}:${id}" title="${esc(a.first)}: ${a.g === 'f' ? 'female' : 'male'} ${esc(a.label)}">${th[id] ? `<img alt="" src="${th[id]}">` : ''}<b>${esc(a.first)}</b><small>${a.g === 'f' ? 'Female' : 'Male'} ${esc(a.label.replace(/^(Fe)?[Mm]ale /, ''))}</small></button>`).join('')}</div></div>`).join('');
+}
+$('#bCast').onclick = () => { renderCast(); $('#mCast').classList.add('on'); };
+$('#castClose').onclick = () => $('#mCast').classList.remove('on');
+$('#castBody').addEventListener('click', e => {
+  const b = e.target.closest('button[data-cast]'); if (!b) return; const [k, id] = b.dataset.cast.split(':');
+  if (castOf()[k] === id) return;
+  commit(); P.actors = { ...castOf(), [k]: id }; syncCast(); renderCast(); toast(`${AV[id].first} now plays Actor ${k}`);
+});
+
 /* onboarding */
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
 $('#obTitle').innerHTML = 'KALKI'.split('').map((c, i) => `<span style="animation-delay:${.35 + i * .09}s">${c}</span>`).join('');
@@ -926,7 +967,7 @@ $('#obNext').onclick = () => { $('#obStep1').style.display = 'none'; $('#obStep2
 $$('.mode').forEach(b => b.onclick = () => endIntro(b.dataset.m));
 $('#obSkip').onclick = () => endIntro('nocode');
 
-function refreshAll(code = true) { P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
+function refreshAll(code = true) { P.actors = normCast(P.actors); syncCast(); P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
 new ResizeObserver(layout).observe($('#view'));
 buildLib(); refreshAll();
 if (location.hash === '#selftest' || location.hash === '#e2e') { if (location.hash === '#selftest') runSelfTest(); window.__kalki = { analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
@@ -1028,6 +1069,26 @@ async function runSelfTest() {
   }
   { const fast = analyzeClip(grabGray(newShot({ move: 'pan', dir: 1, size: 'WS', subject: 'both', lens: 35, duration: 3, amount: .7, angle: 15, easing: 'linear', fstop: 8 }), 19), 6);
     t('a fast pan is one shot, not a series of cuts', () => fast.shots.length === 1 && ['pan', 'truck'].includes(fast.shots[0].move) || (() => { throw new Error('got ' + JSON.stringify(fast.shots.map(x => [x.move, +x.dur.toFixed(1)]))); })()); }
+  t('cast is normalised, saved and loaded', () => {
+    $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, actors: { A: 'm04', B: 'nope' }, shots: [{}] }); applyCode(); const a = P.actors.A === 'm04' && P.actors.B === DEFAULT_CAST.B;
+    loadCode(); const o = JSON.parse($('#ta').value); $('#ta').value = JSON.stringify({ shots: [{}] }); applyCode();
+    return a && o.actors.A === 'm04' && P.actors.A === 'f11' && P.actors.B === 'm17';
+  });
+  t('every avatar has a name and a gender', () => Object.values(AV).length >= 7 && Object.values(AV).every(a => a.first && (a.g === 'f' || a.g === 'm')));
+  t('actor names and subject labels follow the cast', () => { P.actors = { A: 'f07', B: 'm07' }; const ok = ACTOR_NAME.A === 'Priya' && ACTOR_NAME.B === 'Vikram' && SUBJ.A.startsWith('Priya') && describeActions(newShot({}), 'B').startsWith('Vikram'); P.actors = { ...DEFAULT_CAST }; return ok; });
+  for (const id of Object.keys(AV)) {
+    const k = AV[id].g === 'f' ? 'A' : 'B';
+    await installActor(k, id);
+    t(`avatar ${id} (${AV[id].first}) installs, binds every action and stands at a sensible height`, () => {
+      const Q = REAL[k]; if (!Q || Q.avatar !== id) throw new Error('not installed');
+      const missing = Object.keys(ACTION_LABEL).filter(n => n !== 'stand' && n !== 'walk' && !Q.act[n]); if (missing.length) throw new Error('missing ' + missing.join());
+      AC[k].updateMatrixWorld(true); const box = new T.Box3().setFromObject(AC[k].children.find(c => c === Q.root), true), h = box.max.y - box.min.y;
+      const info = { h: +h.toFixed(2), w: +(box.max.x - box.min.x).toFixed(2), d: +(box.max.z - box.min.z).toFixed(2), hand: !!AC[k].getObjectByName('Bip01_R_Hand'), bx: Q.bx, bip: !!AC[k].getObjectByName('Bip01'), sc: +Q.sc.toFixed(3) };
+      if (!(h > 1.5 && h < 1.9 && info.hand && info.bip)) throw new Error(JSON.stringify(info));
+      return true;
+    });
+  }
+  await installActor('A', 'f11'); await installActor('B', 'm17');
   const pass = res.filter(r => r[1]).length;
   const out = document.createElement('pre'); out.id = 'selftestOut';
   out.textContent = res.map(r => `${r[1] ? 'PASS' : 'FAIL'}  ${r[0]}${r[2] ? '  (' + r[2] + ')' : ''}`).join('\n') + `\nSELFTEST ${pass === res.length ? 'PASS' : 'FAIL'} ${pass}/${res.length}`;

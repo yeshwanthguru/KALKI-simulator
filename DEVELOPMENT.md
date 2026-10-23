@@ -38,3 +38,4 @@ Indian costumes, Tamil UI, Windows .exe via Tauri, optional local LLM text-to-sh
 - `npm test`: PDF writer tests plus an in-page self-test run in headless Edge/Chrome (`#selftest`).
 - `tests/analyze.test.mjs`: the analysis engine on synthetic footage with known camera moves. `tests/video-e2e.mjs`: records a real WebM in headless Edge/Chrome and runs it through the importer. The in-page self-test also renders Kalki's own moves and checks the analyser recognises them (this is how the direction signs and thresholds were calibrated).
 - `tools/make-test-clip.mjs <out.webm>`: builds the deterministic test clip (WebCodecs plus a small WebM writer, see `tools/clip-gen.mjs`); `tests/video-e2e.mjs` uses the committed copy.
+- `tools/convert-avatar.mjs <avatar-dir> <id> <f|m> <name>`: converts a Rocketbox adult avatar (FBX plus TGA textures, MIT) to a quantised GLB and small textures in `assets_src/avatars/`. `tools/make-thumbs.mjs <preview-dir>` builds the picker thumbnails.

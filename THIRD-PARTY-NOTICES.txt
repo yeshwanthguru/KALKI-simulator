@@ -27,7 +27,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ----------------------------------------
-Microsoft Rocketbox avatars and animations (Female_Adult_11, Male_Adult_17, and the idle, walk, sitting, talking, listening, nodding, drinking, waving, looking, shrugging and inviting animation clips) — MIT License
+Microsoft Rocketbox avatars and animations (Female_Adult_07, Female_Adult_08, Female_Adult_11, Male_Adult_04, Male_Adult_05, Male_Adult_07, Male_Adult_17, and the idle, walk, sitting, talking, listening, nodding, drinking, waving, looking, shrugging and inviting animation clips) — MIT License
 
 MIT License
 

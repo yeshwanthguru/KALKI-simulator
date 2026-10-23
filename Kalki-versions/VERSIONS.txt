@@ -16,8 +16,9 @@ v0.5    Actions for each actor (stand, walk, sit, talk, listen, nod, sip chai, w
         look around, shrug, invite to sit), plastic chair and chai glass props
 v0.5.1  Click-to-place actors on the set view, facing control, top-down blocking diagram PDF
 v0.5.2  Action lane (timed action changes inside a shot, with blending)
-v0.5.3  Latest: reference video analysis (shots, camera moves, pacing, suggestions, simulation); fixed Pan
-        so "Right" pans right (older files are converted automatically)  << recommended
+v0.5.3  Reference video analysis (shots, camera moves, pacing, suggestions, simulation); fixed Pan
+        so "Right" pans right (older files are converted automatically)
+v0.5.4  Latest: actor picker, seven avatars (names follow your choice; the cast is saved in the project)  << recommended
 
 ZIP PACKAGES (same versions, each with README + license notices)
-  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip, Kalki-v0.5.zip, Kalki-v0.5.1.zip, Kalki-v0.5.2.zip, Kalki-v0.5.3.zip
+  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip, Kalki-v0.5.zip, Kalki-v0.5.1.zip, Kalki-v0.5.2.zip, Kalki-v0.5.3.zip, Kalki-v0.5.4.zip

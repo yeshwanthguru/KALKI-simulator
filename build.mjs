@@ -28,7 +28,13 @@ const app = process.env.DEBUG ? appMin : JO.obfuscate(appMin, {
 const safe = s => s.replace(/<\/script/gi, '<\\/script');
 let html = fs.readFileSync('src/index.html', 'utf8');
 const actions = fs.readFileSync('assets_src/actions.json', 'utf8');
-const assets = 'window.__KA={actions:' + actions + ',' + ['meera','arjun','f_idle','f_walk','m_idle','m_walk'].map(k => `${k}:'${fs.readFileSync('assets_src/'+k+'.glb').toString('base64')}'`).join(',') + ',tex:' + fs.readFileSync('assets_src/tex.json','utf8') + '};';
+let avatars = '{}', thumbs = '{}'; // extra actors for the cast picker (tools/convert-avatar.mjs, tools/make-thumbs.mjs)
+if (fs.existsSync('assets_src/avatars/avatars.json')) {
+  const meta = JSON.parse(fs.readFileSync('assets_src/avatars/avatars.json', 'utf8')), o = {};
+  for (const [id, a] of Object.entries(meta)) o[id] = { g: a.g, name: a.name, tex: a.tex, glb: fs.readFileSync(`assets_src/avatars/${id}.glb`).toString('base64') };
+  avatars = JSON.stringify(o); thumbs = fs.readFileSync('assets_src/avatars/thumbs.json', 'utf8');
+}
+const assets = 'window.__KA={actions:' + actions + ',avatars:' + avatars + ',thumbs:' + thumbs + ',' + ['meera','arjun','f_idle','f_walk','m_idle','m_walk'].map(k => `${k}:'${fs.readFileSync('assets_src/'+k+'.glb').toString('base64')}'`).join(',') + ',tex:' + fs.readFileSync('assets_src/tex.json','utf8') + '};';
 html = html.replace('<!--APP-->', () => `<script>${assets}</script>\n<!--APP-->`);
 html = html.replace('<!--VENDOR-->', () => `<script>${safe(vendor)}</script>`).replace('<!--APP-->', () => `<script>${safe(app)}</script>`);
 fs.writeFileSync('dist/Kalki.html', html);
