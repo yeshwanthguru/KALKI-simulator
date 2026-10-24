@@ -1,4 +1,5 @@
 import { buildShotListPdf, buildStoryboardPdf, buildBlockingPdf } from './pdf.js';
+import { LANGS, makeTranslator } from './i18n.js';
 import { analyzeClip, toShots, suggest, toGray, AW, AH, fmtTime } from './analyze.js';
 (function () {
 'use strict';
@@ -140,6 +141,9 @@ const LOOKS = {
   teal: { label: 'Teal & orange', sun: [0xffc48a, 3.6], hemi: [0x9fc7ff, 0x1a1210, .35], fill: .3, bulb: 2.6, glass: 0xffd4a0, shaft: .8, fog: 0x0f1618, dust: .4, g: [[0, .045, .065], [1.1, .98, .86], 1.18, 1.14, .6, .03, .003] },
   night: { label: 'Night', sun: [0x7fa6ff, .45], hemi: [0x34507f, 0x05060a, .2], fill: .1, bulb: 7, glass: 0x24427f, shaft: 0, fog: 0x06080e, dust: .22, g: [[0, .015, .05], [1.02, .97, 1.04], .95, 1.15, .7, .06, .003] },
   noir: { label: 'Noir', sun: [0xffffff, 4.8], hemi: [0xffffff, 0x111111, .16], fill: .2, bulb: 2.4, glass: 0xffffff, shaft: 1.3, fog: 0x0c0c0c, dust: .6, g: [[0, 0, 0], [1, 1, 1], 0, 1.38, .75, .08, 0] },
+  dawn: { label: 'Dawn', sun: [0xff9f8a, 2.6], hemi: [0xc7d3ff, 0x1d1418, .45], fill: .5, bulb: 4.5, glass: 0xffc2a8, shaft: 1.1, fog: 0x1a1520, dust: .5, g: [[.03, .005, .05], [1.05, .96, .94], 1.04, 1.04, .5, .03, .0025] },
+  noon: { label: 'Noon', sun: [0xfff6ea, 5.4], hemi: [0xdfeaff, 0x1b1a16, .55], fill: .55, bulb: 1.2, glass: 0xffffff, shaft: .35, fog: 0x1b1a16, dust: .22, g: [[0, 0, 0], [1.02, 1.01, 1], 1.1, 1.04, .3, .02, .001] },
+  dusk: { label: 'Dusk', sun: [0xff7a4a, 3.0], hemi: [0x7a63b5, 0x1a1018, .35], fill: .25, bulb: 5.5, glass: 0xff9a6a, shaft: .9, fog: 0x120c14, dust: .5, g: [[.03, 0, .06], [1.12, .94, .86], 1.15, 1.1, .6, .035, .003] },
   neutral: { label: 'Neutral', sun: [0xfff1e0, 3.4], hemi: [0xeef3ff, 0x1a1714, .4], fill: .4, bulb: 2.5, glass: 0xfff3e0, shaft: .5, fog: 0x15140f, dust: .3, g: [[0, 0, 0], [1, 1, 1], 1, 1.03, .35, .025, .0015] }
 };
 
@@ -725,10 +729,11 @@ $('#cDoc').onclick = () => {
 $('#dClose').onclick = () => $('#mDoc').classList.remove('on');
 
 /* files & export */
-const fname = ext => (P.title || 'kalki-scene').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-').toLowerCase() + ext;
+const fname = ext => ((P.title || '').replace(/[^\p{L}\p{M}\p{N}\- ]+/gu, '').trim().replace(/\s+/g, '-').toLowerCase() || 'kalki-scene') + ext;
 function browserDownload(blob, name) { const u = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 4000); }
 /* inside the Windows desktop app: native "Save as" dialog, then write the chosen file; in a browser: normal download */
 function download(blob, name) {
+  if (window.__kalki) { window.__kalki.last = { blob, name }; return; } // test mode: keep the file instead of saving it
   const TA = window.__TAURI__;
   if (!(TA && TA.dialog && TA.fs)) return browserDownload(blob, name);
   const ext = name.split('.').pop();
@@ -779,7 +784,7 @@ function exportPdf(kind) {
   time = t0; setPlay(wasPlaying);
   const meta = [`${{ '2.39': '2.39:1 Cinema', '1.778': '16:9', '0.5625': '9:16 Vertical', '1': '1:1 Square' }[P.aspect] || P.aspect}`, `${LOOKS[P.look].label} look`, `${sensorOf().label} sensor`, `${P.shots.length} shots`, `Runtime ${tcf(total())}`, new Date().toLocaleDateString('en-IN')];
   const board = kind === 'storyboard';
-  const doc = { title: P.title, meta, aspect: film.w / film.h, shots, footer: 'Made with Kalki Simulator  |  Offline camera-movement previsualisation' };
+  const doc = { raster: rasterText, title: P.title, meta, aspect: film.w / film.h, shots, footer: 'Made with Kalki Simulator  |  Offline camera-movement previsualisation' };
   download(new Blob([(board ? buildStoryboardPdf : buildShotListPdf)(doc)], { type: 'application/pdf' }), fname(board ? '-storyboard.pdf' : '-shotlist.pdf'));
   toast(board ? 'Storyboard PDF saved' : 'Shot list PDF saved');
 }
@@ -794,7 +799,7 @@ function blockingDoc() {
       actors: ['A', 'B'].map(k => ({ k, x0: p0.pos[k].x, z0: p0.pos[k].z, x1: p1.pos[k].x, z1: p1.pos[k].z, face0: faceRad(s, k, p0.pos), face1: faceRad(s, k, p1.pos), walk: p0.walkers.includes(k) })),
       cam: { pts, tgx0: a.tg.x, tgz0: a.tg.z, tgx1: b.tg.x, tgz1: b.tg.z, hfov0: hf(a.fov), hfov1: hf(b.fov) } };
   });
-  return { title: P.title, meta: [`${P.shots.length} shots`, `Runtime ${tcf(total())}`, `${sensorOf().label} sensor`, new Date().toLocaleDateString('en-IN')], floor: { x0: -8, x1: 8, z0: -6, z1: 6 }, wallZ: -4.3, shots,
+  return { raster: rasterText, title: P.title, meta: [`${P.shots.length} shots`, `Runtime ${tcf(total())}`, `${sensorOf().label} sensor`, new Date().toLocaleDateString('en-IN')], floor: { x0: -8, x1: 8, z0: -6, z1: 6 }, wallZ: -4.3, shots,
     footer: 'Made with Kalki Simulator  |  Offline camera-movement previsualisation' };
 }
 function exportBlocking() {
@@ -958,6 +963,62 @@ $('#castBody').addEventListener('click', e => {
   commit(); P.actors = { ...castOf(), [k]: id }; syncCast(); renderCast(); toast(`${AV[id].first} now plays Actor ${k}`);
 });
 
+
+/* ---------- interface language (English, Tamil, Hindi) ---------- */
+/* Every piece of visible text is looked up in src/i18n.js. The English original is kept on each node, so the language can be switched back and forth. */
+let LANG = 'en', trFn = s => s;
+const trSkip = n => { const p = n.parentElement; return !p || /^(SCRIPT|STYLE|TEXTAREA|INPUT)$/.test(p.tagName) || !!p.closest('.hud, #ta, #title, #lang'); };
+function trNode(n) {
+  const cur = n.nodeValue;
+  if (n.__tr !== undefined && cur === n.__tr) return; // the text we wrote ourselves
+  if (!/[A-Za-z]{2}/.test(cur) || trSkip(n)) { n.__en = undefined; n.__tr = undefined; return; }
+  n.__en = cur;
+  if (LANG === 'en') { n.__tr = undefined; return; }
+  const out = trFn(cur); n.__tr = out; if (out !== cur) n.nodeValue = out;
+}
+const TR_ATTRS = ['title', 'placeholder', 'aria-label'];
+function trAttrs(e) {
+  for (const a of TR_ATTRS) {
+    const v = e.getAttribute(a); if (!v) continue;
+    if (e.__trA && e.__trA[a] === v) continue;
+    (e.__enA = e.__enA || {})[a] = v;
+    if (LANG === 'en') { if (e.__trA) delete e.__trA[a]; continue; }
+    const out = trFn(v); (e.__trA = e.__trA || {})[a] = out; if (out !== v) e.setAttribute(a, out);
+  }
+}
+function trTree(root) {
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT); while (w.nextNode()) trNode(w.currentNode);
+  if (root.nodeType === 1) { trAttrs(root); root.querySelectorAll('[title],[placeholder],[aria-label]').forEach(trAttrs); }
+}
+function setLang(code) {
+  LANG = LANGS[code] ? code : 'en'; trFn = makeTranslator(LANG);
+  try { localStorage.setItem('kalki.lang', LANG); } catch (e) {}
+  document.documentElement.lang = LANG; const sel = $('#lang'); if (sel) sel.value = LANG;
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  while (w.nextNode()) { const n = w.currentNode; if (n.__en !== undefined) { const out = LANG === 'en' ? n.__en : trFn(n.__en); n.__tr = LANG === 'en' ? undefined : out; if (n.nodeValue !== out) n.nodeValue = out; } }
+  document.querySelectorAll('*').forEach(e => { if (e.__enA) for (const a of Object.keys(e.__enA)) { const out = LANG === 'en' ? e.__enA[a] : trFn(e.__enA[a]); (e.__trA = e.__trA || {})[a] = out; if (e.getAttribute(a) !== out) e.setAttribute(a, out); } });
+  trTree(document.body);
+}
+new MutationObserver(ms => {
+  for (const m of ms) {
+    if (m.type === 'characterData') trNode(m.target);
+    else if (m.type === 'attributes') trAttrs(m.target);
+    else m.addedNodes.forEach(n => { if (n.nodeType === 3) trNode(n); else if (n.nodeType === 1) trTree(n); });
+  }
+}).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: TR_ATTRS });
+$('#lang').innerHTML = Object.entries(LANGS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+$('#lang').onchange = e => { setLang(e.target.value); toast(trFn('Language') + ': ' + LANGS[LANG]); };
+{ let saved = 'en'; try { saved = localStorage.getItem('kalki.lang') || 'en'; } catch (e) {} if (LANGS[saved]) setLang(saved); }
+
+/* text with Tamil, Hindi or other non-Latin letters cannot use the PDF's built-in font, so it is drawn on a canvas and placed as an image */
+function rasterText(text, size, bold, color) {
+  const S = 3, c = document.createElement('canvas'), g = c.getContext('2d'), font = `${bold ? '700 ' : ''}${size * S}px "Nirmala UI","Noto Sans Tamil","Noto Sans Devanagari","Latha","Mangal","Segoe UI",sans-serif`;
+  g.font = font; const w = Math.ceil(g.measureText(text).width) + 6, h = Math.ceil(size * S * 1.45); c.width = w; c.height = h;
+  g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.font = font; g.textBaseline = 'alphabetic'; g.fillStyle = `rgb(${color.join(',')})`; g.fillText(text, 3, size * S * 1.05);
+  const bin = atob(c.toDataURL('image/jpeg', .92).split(',')[1]), data = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) data[i] = bin.charCodeAt(i);
+  return { data, w, h, ptW: w / S, ptH: h / S, ascent: size * 1.05 };
+}
+
 /* onboarding */
 const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
 $('#obTitle').innerHTML = 'KALKI'.split('').map((c, i) => `<span style="animation-delay:${.35 + i * .09}s">${c}</span>`).join('');
@@ -1089,6 +1150,18 @@ async function runSelfTest() {
     });
   }
   await installActor('A', 'f11'); await installActor('B', 'm17');
+  const texts = () => { const out = []; const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); while (w.nextNode()) { const n = w.currentNode; if (/[A-Za-z]{2}/.test(n.nodeValue) || n.__en) out.push((n.__en !== undefined ? n.__en : n.nodeValue).trim()); } return out.sort().join('|'); };
+  t('switching language translates the page and switching back restores it exactly', () => {
+    const before = texts(); setLang('ta'); const ta = $('#bUndo').title, tamilText = /[\u0B80-\u0BFF]/.test(ta) && /[\u0B80-\u0BFF]/.test($('#mFile .btn').textContent);
+    setLang('hi'); const hiOk = /[\u0900-\u097F]/.test($('#bUndo').title) && /[\u0900-\u097F]/.test($('#mExport .btn').textContent);
+    setLang('en'); const after = texts(); document.documentElement.lang; return tamilText && hiOk && before === after && $('#bUndo').title === 'Undo (Ctrl+Z)';
+  });
+  t('text added later is translated too, with numbers and names filled in', () => {
+    setLang('hi'); const probe = document.createElement('span'); probe.textContent = 'Shot 2 of 4'; document.body.appendChild(probe); const sync = trFn(probe.textContent); probe.remove(); setLang('en'); return sync === 'शॉट 2 / 4';
+  });
+  t('time-of-day looks exist and apply', () => { for (const k of ['dawn', 'noon', 'dusk']) { if (!LOOKS[k] || !LOOKS[k].label) return false; applyLook(k); } applyLook(P.look); return true; });
+  t('Indic text becomes an image for PDFs', () => { const r = rasterText('தமிழ் காட்சி · हिन्दी', 10, false, [20, 20, 30]); return r.data[0] === 0xff && r.data[1] === 0xd8 && r.w > 40 && r.ptH > 8; });
+  t('file names keep Tamil and Hindi letters', () => { const keep = P.title; P.title = 'தமிழ் காட்சி'; const a = fname('.json'); P.title = '!!!'; const b = fname('.json'); P.title = keep; return a === 'தமிழ்-காட்சி.json' && b === 'kalki-scene.json'; });
   const pass = res.filter(r => r[1]).length;
   const out = document.createElement('pre'); out.id = 'selftestOut';
   out.textContent = res.map(r => `${r[1] ? 'PASS' : 'FAIL'}  ${r[0]}${r[2] ? '  (' + r[2] + ')' : ''}`).join('\n') + `\nSELFTEST ${pass === res.length ? 'PASS' : 'FAIL'} ${pass}/${res.length}`;

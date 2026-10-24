@@ -15,15 +15,18 @@ const esc = s => latin(s).replace(/[\\()]/g, '\\$&');
 const num = n => (Math.round(n * 100) / 100).toString();
 const rgb = c => c.map(v => num(v / 255)).join(' ');
 
+const NONLATIN = /[^\u0000-\u00ff\u2013\u2014\u2018\u2019\u201c\u201d\u2022\u2026\u2248\u00d7]/;
+export const needsRaster = s => NONLATIN.test(String(s));
 export function textWidth(s, size, bold) {
   let w = 0;
+  if (needsRaster(s)) { for (const ch of String(s)) w += ch.codePointAt(0) > 255 && !/[\u2013\u2014\u2018\u2019\u201c\u201d\u2022\u2026\u2248\u00d7]/.test(ch) ? 620 : 556; return w * size / 1000 * (bold ? 1.06 : 1); }
   for (const ch of latin(s)) { const c = ch.charCodeAt(0); w += c >= 32 && c <= 126 ? W[c - 32] : 556; }
   return w * size / 1000 * (bold ? 1.06 : 1);
 }
 
 export function wrap(s, maxW, size, bold) {
   const out = []; let line = '';
-  for (const word of latin(s).split(' ')) {
+  for (const word of (needsRaster(s) ? String(s).replace(/\s+/g, ' ') : latin(s)).split(' ')) {
     const t = line ? line + ' ' + word : word;
     if (line && textWidth(t, size, bold) > maxW) { out.push(line); line = word; } else line = t;
   }
@@ -47,6 +50,7 @@ export class Pdf {
   constructor(w, h) { this.w = w; this.h = h; this.pages = []; this.images = []; this.cur = null; this.info = {}; }
   addPage() { this.cur = { ops: [], imgs: new Set() }; this.pages.push(this.cur); return this.cur; }
   text(x, y, s, { size = 10, bold = false, color = [0, 0, 0] } = {}) {
+    if (this.raster && needsRaster(s)) { const r = this.raster(String(s), size, bold, color); this.image(r.data, r.w, r.h, x - 1, y - r.ascent, r.ptW, r.ptH); return; } // Tamil, Hindi and other scripts are drawn as images
     this.cur.ops.push(`BT /F${bold ? 2 : 1} ${num(size)} Tf ${rgb(color)} rg ${num(x)} ${num(this.h - y)} Td (${esc(s)}) Tj ET`);
   }
   rect(x, y, w, h, { fill, stroke, lw = 0.5 } = {}) {
@@ -126,7 +130,7 @@ const INK = [24, 24, 30], MUTED = [110, 112, 125], RULE = [210, 212, 220], ACCEN
 /* doc: { title, meta: [string], shots: [{ n, name, move, why, start, duration, lens, eq, fstop, size, height, angle, subject, action, amount, easing,
           jpeg?: Uint8Array, jw?, jh? }], aspect, footer } */
 export function buildShotListPdf(doc) {
-  const pdf = new Pdf(842, 595), M = 36, ROW = 82, TOP = 112, BOTTOM = 595 - 44;
+  const pdf = new Pdf(842, 595); pdf.raster = doc.raster; const M = 36, ROW = 82, TOP = 112, BOTTOM = 595 - 44;
   const cols = [{ k: 'Frame', w: 134 }, { k: 'Shot', w: 200 }, { k: 'Timing', w: 78 }, { k: 'Lens', w: 96 }, { k: 'Framing', w: 138 }, { k: 'Subject', w: 124 }];
   const perPage = Math.max(1, Math.floor((BOTTOM - TOP) / ROW)), pages = Math.max(1, Math.ceil(doc.shots.length / perPage));
   for (let p = 0; p < pages; p++) {
@@ -151,7 +155,7 @@ export function buildShotListPdf(doc) {
       pdf.text(cx + 6, y + 14, `${s.n}. ${s.name}`, { size: 10.5, bold: true, color: INK });
       pdf.text(cx + 6, y + 27, s.move, { size: 9, bold: true, color: ACCENT });
       wrapMax(s.why, cols[1].w - 12, 7.5, 2).forEach((ln, i) => pdf.text(cx + 6, y + 39 + i * 9, ln, { size: 7.5, color: MUTED }));
-      if (s.notes) wrapMax('Note: ' + s.notes, cols[1].w - 12, 7.5, 2).forEach((ln, i) => pdf.text(cx + 6, y + 61 + i * 9, ln, { size: 7.5, color: INK }));
+      if (s.notes) wrapMax('Note: ' + s.notes, cols[1].w - 12, 7.5, 2).forEach((ln, i) => pdf.text(cx + 6, y + 61 + i * (needsRaster(s.notes) ? 10.5 : 9), ln, { size: 7.5, color: INK }));
       cx += cols[1].w;
       /* timing */
       pdf.text(cx + 6, y + 14, s.start, { size: 10, bold: true, color: INK });
@@ -184,7 +188,7 @@ export function buildShotListPdf(doc) {
 /* ---------- storyboard sheet ---------- */
 /* doc as for buildShotListPdf. The grid adapts to the frame aspect ratio. */
 export function buildStoryboardPdf(doc) {
-  const pdf = new Pdf(842, 595), M = 36, TOP = 100, BOTTOM = 595 - 44, ar = doc.aspect || 1.778;
+  const pdf = new Pdf(842, 595); pdf.raster = doc.raster; const M = 36, TOP = 100, BOTTOM = 595 - 44, ar = doc.aspect || 1.778;
   const cols = ar >= 1.5 ? 3 : ar >= 1 ? 5 : 6, gap = 12, cw = (770 - gap * (cols - 1)) / cols, fh = cw / ar, CAP = 50, cellH = fh + CAP + 10;
   const rows = Math.max(1, Math.floor((BOTTOM - TOP + 10) / cellH)), perPage = cols * rows, pages = Math.max(1, Math.ceil(doc.shots.length / perPage));
   for (let p = 0; p < pages; p++) {
@@ -199,10 +203,10 @@ export function buildStoryboardPdf(doc) {
       pdf.rect(x, y, cw, fh, { stroke: RULE });
       const tag = String(s.n); pdf.rect(x, y, textWidth(tag, 9, true) + 12, 15, { fill: ACCENT });
       pdf.text(x + 6, y + 11, tag, { size: 9, bold: true, color: [255, 255, 255] });
-      const fit = (t, size, bold) => { let o = latin(t); while (o.length > 1 && textWidth(o, size, bold) > cw) o = o.slice(0, -2) + '.'; return o; };
+      const fit = (t, size, bold) => { let o = needsRaster(t) ? String(t) : latin(t); while (o.length > 1 && textWidth(o, size, bold) > cw) o = o.slice(0, -2) + '.'; return o; };
       pdf.text(x, y + fh + 13, fit(s.name, 9.5, true), { size: 9.5, bold: true, color: INK });
       pdf.text(x, y + fh + 24, fit(`${s.move}  |  ${s.lens} mm  |  ${s.sizeCode || s.size}  |  ${s.duration} s`, 7.5), { size: 7.5, color: ACCENT });
-      wrapMax(s.notes || s.why, cw, 7.5, 2).forEach((ln, i) => pdf.text(x, y + fh + 35 + i * 9, ln, { size: 7.5, color: s.notes ? INK : MUTED }));
+      wrapMax(s.notes || s.why, cw, 7.5, 2).forEach((ln, i) => pdf.text(x, y + fh + 35 + i * (needsRaster(s.notes || s.why) ? 10.5 : 9), ln, { size: 7.5, color: s.notes ? INK : MUTED }));
     });
     pdf.line(M, 595 - 34, M + 770, 595 - 34, { color: RULE });
     pdf.text(M, 595 - 20, doc.footer || '', { size: 7.5, color: MUTED });
@@ -219,7 +223,7 @@ export function buildStoryboardPdf(doc) {
                     cam: { pts: [[x, z]...], tgx0, tgz0, tgx1, tgz1, hfov0, hfov1 } }] }
    World x runs left to right, world z runs towards the audience (drawn downwards). */
 export function buildBlockingPdf(doc) {
-  const pdf = new Pdf(842, 595), M = 36, TOP = 100, BOTTOM = 595 - 44, GAP = 14, cols = 3, cw = (770 - GAP * (cols - 1)) / cols, MAPH = 168, CAP = 44, cellH = MAPH + CAP + 8;
+  const pdf = new Pdf(842, 595); pdf.raster = doc.raster; const M = 36, TOP = 100, BOTTOM = 595 - 44, GAP = 14, cols = 3, cw = (770 - GAP * (cols - 1)) / cols, MAPH = 168, CAP = 44, cellH = MAPH + CAP + 8;
   const rows = Math.max(1, Math.floor((BOTTOM - TOP + 8) / cellH)), perPage = cols * rows, pages = Math.max(1, Math.ceil(doc.shots.length / perPage));
   /* one shared world window so every cell uses the same scale: zoomed to the actors and the camera start points
      (at least 10 m wide); the rest of the floor and long camera paths are clipped at the cell edge */
@@ -283,7 +287,7 @@ export function buildBlockingPdf(doc) {
       /* caption */
       const tag = String(s.n); pdf.rect(cx, cy, textWidth(tag, 9, true) + 12, 15, { fill: ACCENT });
       pdf.text(cx + 6, cy + 11, tag, { size: 9, bold: true, color: [255, 255, 255] });
-      const fit = (t, size, bold) => { let o = latin(t); while (o.length > 1 && textWidth(o, size, bold) > cw) o = o.slice(0, -2) + '.'; return o; };
+      const fit = (t, size, bold) => { let o = needsRaster(t) ? String(t) : latin(t); while (o.length > 1 && textWidth(o, size, bold) > cw) o = o.slice(0, -2) + '.'; return o; };
       pdf.text(cx, cy + MAPH + 13, fit(s.name, 9.5, true), { size: 9.5, bold: true, color: INK });
       pdf.text(cx, cy + MAPH + 24, fit(`${s.move}  |  ${s.lens} mm  |  ${s.sizeCode}  |  ${s.duration} s`, 7.5), { size: 7.5, color: ACCENT });
       pdf.text(cx, cy + MAPH + 34, fit(s.actions.join('   '), 7.5), { size: 7.5, color: MUTED });

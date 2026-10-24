@@ -57,12 +57,12 @@
 
 | # | Feature | Effort | Priority | Rationale |
 |---|---|---|---|---|
-| 3.1 | **UI localisation framework** (string table, language switch, font loading for Tamil/Devanagari embedded as subsets) | M | P0 | Prerequisite; nobody benchmarked serves Indic languages; 98% of Indian internet users use Indic content ([Kantar-IAMAI via Business Today](https://www.businesstoday.in/amp/technology/news/story/indias-internet-revolution-key-insights-from-kantar-and-iamai-report-461043-2025-01-16)) |
-| 3.2 | **Tamil + Hindi UI** (then Telugu/Malayalam/Kannada/Bengali/Marathi via community contributions) | M | P0 | Table stakes for stated audience; community-translatable |
+| 3.1 | ✅ **UI localisation framework** (done in v0.6.0: the page is translated from `src/i18n.js`, English kept as the source; fonts come from the system rather than being embedded) (string table, language switch, font loading for Tamil/Devanagari embedded as subsets) | M | P0 | Prerequisite; nobody benchmarked serves Indic languages; 98% of Indian internet users use Indic content ([Kantar-IAMAI via Business Today](https://www.businesstoday.in/amp/technology/news/story/indias-internet-revolution-key-insights-from-kantar-and-iamai-report-461043-2025-01-16)) |
+| 3.2 | ✅ **Tamil + Hindi UI** (done in v0.6.0, awaiting native-speaker review; other languages can be added as rows in `src/i18n.js`) (then Telugu/Malayalam/Kannada/Bengali/Marathi via community contributions) | M | P0 | Table stakes for stated audience; community-translatable |
 | 3.3 | **Costume packs v1** (kurta, saree, dhoti/lungi, school uniform, formal shirt; as texture/mesh swaps on existing rigs) | L | P1 | India fit; keep assets self-made/CC0 |
 | 3.4 | **Set packs v1**: tea stall (existing), village street, tiled living room, auto-rickshaw stand, temple courtyard, small office, school classroom | L | P1 | Content depth; ship as optional packs (separate files) to protect size budget |
 | 3.5 | **Props**: chai glass/cup, plastic chair, scooter, auto, lamp | M | P1 | Needed by actions and sets |
-| 3.6 | **Time-of-day lighting presets** (dawn, noon, golden hour, dusk, night with street lights) | S-M | P1 | Cheap, high visual payoff, extends existing looks |
+| 3.6 | ✅ **Time-of-day lighting presets** (done in v0.6.0: dawn, noon, dusk) (dawn, noon, golden hour, dusk, night with street lights) | S-M | P1 | Cheap, high visual payoff, extends existing looks |
 
 **Release plan:** v0.6 = 3.1 + 3.2 (+ 3.6); v0.6.1 = first costumes/props; v0.6.2 = first extra set pack.
 **Done when:** the full UI and onboarding work in Tamil and Hindi without layout breaks.

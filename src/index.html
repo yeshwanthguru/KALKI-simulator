@@ -11,14 +11,14 @@
 html,body{height:100%;background:var(--bg);color:var(--tx);font:13px/1.45 var(--f);overflow:hidden;-webkit-user-select:none;user-select:none}
 button,select,input,textarea{font:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none}
-#app{display:grid;height:100vh;grid-template:52px 1fr 176px/264px 1fr 330px;grid-template-areas:"top top top" "lib view side" "tl tl tl"}
+#app{display:grid;height:100vh;grid-template:minmax(52px,auto) 1fr 176px/264px 1fr 330px;grid-template-areas:"top top top" "lib view side" "tl tl tl"}
 /* top */
-#top{grid-area:top;display:flex;align-items:center;gap:14px;padding:0 14px;border-bottom:1px solid var(--ln);background:linear-gradient(180deg,#121219,#0d0d12)}
+#top{grid-area:top;display:flex;flex-wrap:wrap;row-gap:6px;min-height:52px;align-items:center;gap:14px;padding:6px 14px;border-bottom:1px solid var(--ln);background:linear-gradient(180deg,#121219,#0d0d12)}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.14em;font-size:14px}
 .logo{width:28px;height:28px;border-radius:8px;background:conic-gradient(from 210deg,var(--ac),var(--ac2),#c13cff,var(--ac));display:grid;place-items:center;box-shadow:0 0 22px -4px var(--ac2)}
 .logo i{width:10px;height:10px;border-radius:50%;background:#0b0b0f;box-shadow:0 0 0 3px rgba(255,255,255,.85)}
 .brand small{font-weight:500;letter-spacing:.02em;color:var(--mu);font-size:12px}
-#title{background:transparent;border:1px solid transparent;border-radius:8px;padding:5px 8px;width:220px;color:var(--tx)}
+#title{background:transparent;border:1px solid transparent;border-radius:8px;padding:5px 8px;width:220px;flex:1 1 60px;min-width:60px;max-width:220px;color:var(--tx)}
 #title:hover,#title:focus{border-color:var(--ln2);outline:0;background:var(--p2)}
 .seg{display:flex;background:var(--p2);border:1px solid var(--ln);border-radius:10px;padding:3px}
 .seg button{padding:5px 12px;border-radius:7px;color:var(--mu);font-weight:600;font-size:12px}
@@ -85,6 +85,9 @@ button{cursor:pointer;border:0;background:none}
 .cast-card{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--p2);border:1px solid var(--ln);border-radius:10px;padding:8px 4px;color:inherit;font:inherit;cursor:pointer}
 .cast-card img{width:56px;height:100px;object-fit:cover;border-radius:6px;background:#20222c}.cast-card b{font-size:12px}.cast-card small{font-size:10.5px;color:var(--mu)}
 .cast-card.on{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac) inset}
+html[lang=ta] body,html[lang=hi] body,html[lang=ta] .sel,html[lang=hi] .sel,html[lang=ta] .btn,html[lang=hi] .btn{font-family:"Nirmala UI","Noto Sans Tamil","Noto Sans Devanagari","Latha","Mangal","Segoe UI",system-ui,sans-serif}
+#lang{max-width:104px}
+#top{gap:6px 10px}#top .sel{flex:0 0 auto;max-width:200px;text-overflow:ellipsis}#top .seg{flex:none}#top .sp{flex:1 1 0;min-width:0}
 .rf-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 .rf-note{font-size:12px;color:var(--mu);line-height:1.5}.rf-note.err{color:#ff8a7a}
 .rf-prog{height:8px;border-radius:5px;background:var(--p2);overflow:hidden;margin:6px 0}.rf-prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff6b4a,#ffb547);transition:width .15s}
@@ -205,6 +208,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
       <button data-a="png">Frame snapshot (.png)<small>Current frame, without overlays</small></button>
       <button data-a="rec">Preview video (.webm)<small>Plays and records the whole sequence</small></button>
     </div></div>
+    <select class="sel" id="lang" title="Language"></select>
     <button class="btn ic" id="bHelp" title="Help">?</button>
   </header>
 
@@ -250,7 +254,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
 <div id="toast"></div>
 
 <div class="modal" id="mHelp"><div class="card">
-  <h2>Kalki · கல்கி <span style="color:var(--mu);font-weight:500;font-size:13px">v0.5.4</span></h2>
+  <h2>Kalki · கல்கி <span style="color:var(--mu);font-weight:500;font-size:13px">v0.6.0</span></h2>
   <p>Plan and learn camera movement before you shoot. Pick a move, shape it, press play.</p>
   <div class="kb"><kbd>Space</kbd><span>Play / pause</span><kbd>← →</kbd><span>Previous / next shot</span><kbd>Home</kbd><span>Back to start</span><kbd>Ctrl Z / Y</kbd><span>Undo / redo</span><kbd>Ctrl D</kbd><span>Duplicate shot</span><kbd>Del</kbd><span>Delete shot</span><kbd>G</kbd><span>Rule-of-thirds guides</span><kbd>⚡</kbd><span>Light mode: smoother on CPU-only laptops (turns on automatically if needed)</span></div>
   <p style="font-size:12px;color:var(--mu)">Works fully offline. No account, no tracking, nothing leaves your computer. Projects are saved only where you choose.<br>3D rendering by three.js (MIT License, © 2010–2026 three.js authors).<br>Actor models and motion: Microsoft Rocketbox (MIT License, © 2020 Microsoft).<br>© 2026 Kalki. All rights reserved.</p>

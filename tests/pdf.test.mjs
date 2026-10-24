@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import sharp from 'sharp';
-import { buildShotListPdf, buildStoryboardPdf, buildBlockingPdf, textWidth, wrap, wrapMax, latin } from '../src/pdf.js';
+import { buildShotListPdf, buildStoryboardPdf, buildBlockingPdf, textWidth, wrap, wrapMax, latin, needsRaster } from '../src/pdf.js';
 
 const jpeg = new Uint8Array(await sharp({ create: { width: 64, height: 36, channels: 3, background: '#c85' } }).jpeg().toBuffer());
 const shot = n => ({ n, name: 'Shot ' + n + ' (café) — “quotes”', move: 'Push in', why: 'A slow push-in tightens attention on the performer and builds intensity.', start: '00:00:00', duration: 4, lens: 50, eq: 73, fstop: 2.8, size: 'Medium', height: 'Eye level', angle: 15, subject: 'Meera', actions: ['Meera: Sitting', 'Arjun: Sipping chai'], amount: 60, easing: 'smooth', jpeg, jw: 64, jh: 36 });
@@ -39,6 +39,19 @@ for (const [aspect, perPage] of [[2.39, 6], [1.778, 6], [1, 10], [0.5625, 6]]) {
   const b = Buffer.from(buildBlockingPdf({ title: 'Blocking', meta: ['x'], footer: 'f', floor: { x0: -8, x1: 8, z0: -6, z1: 6 }, wallZ: -4.3, shots: Array.from({ length: 8 }, (_, i) => shotB(i + 1)) })).toString('latin1');
   assert.equal((b.match(/\/Type \/Page /g) || []).length, 2, '8 shots at 6 per page -> 2 pages');
   assert.ok(b.trimEnd().endsWith('%%EOF') && b.includes(' c ') && b.includes('[4 3] 0 d'));
+}
+{
+  /* non-Latin text goes through the raster hook (the app draws it on a canvas); without the hook it falls back to '?' */
+  const lineJpeg = new Uint8Array(await sharp({ create: { width: 30, height: 12, channels: 3, background: '#fff' } }).jpeg().toBuffer());
+  let calls = 0; const raster = (text, size) => { calls++; return { data: lineJpeg, w: 30, h: 12, ptW: 10, ptH: 4, ascent: size }; };
+  const tamil = { ...shot(1), name: 'தேநீர்க் கடை', notes: 'हिन्दी नोट' };
+  const withHook = Buffer.from(buildShotListPdf({ title: 'கல்கி', meta: ['x'], aspect: 2.39, footer: 'f', raster, shots: [tamil] })).toString('latin1');
+  const without = Buffer.from(buildShotListPdf({ title: 'கல்கி', meta: ['x'], aspect: 2.39, footer: 'f', shots: [tamil] })).toString('latin1');
+  assert.ok(calls >= 3, 'title, shot name and notes were rastered, got ' + calls);
+  assert.ok((withHook.match(/\/Subtype \/Image/g) || []).length >= 2 && withHook.trimEnd().endsWith('%%EOF'));
+  assert.ok(/\(\?+\)/.test(without) && !/\/Im1 /.test(without), 'no hook: question marks, no extra images');
+  assert.ok(needsRaster('தமிழ்') && needsRaster('हिन्दी') && !needsRaster('Café “quoted” — ok') && textWidth('தமிழ்', 10) > textWidth('abc', 10));
+  assert.deepEqual(wrap('தமிழ் வணக்கம் உலகம்', textWidth('தமிழ் வணக்கம்', 10) + 1, 10), ['தமிழ் வணக்கம்', 'உலகம்'], 'Indic text wraps on its own words');
 }
 fs.mkdirSync('tests/out', { recursive: true });
 fs.writeFileSync('tests/out/sample-shotlist.pdf', bin);

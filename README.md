@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.5.4-ff6b4a?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.6.0-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
   <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
@@ -31,12 +31,12 @@
 
 **In the browser** (nothing to install)
 
-1. Download [`Kalki-versions/Kalki-v0.5.4.html`](Kalki-versions/Kalki-v0.5.4.html), or the zipped package [`Kalki-v0.5.4.zip`](Kalki-versions/Kalki-v0.5.4.zip) with notices.
+1. Download [`Kalki-versions/Kalki-v0.6.0.html`](Kalki-versions/Kalki-v0.6.0.html), or the zipped package [`Kalki-v0.6.0.zip`](Kalki-versions/Kalki-v0.6.0.zip) with notices.
 2. Double-click it. It opens in Chrome or Edge and runs fully offline.
 
 **On Windows** (native app, about 3 MB)
 
-1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.5.4_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.5.4_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
+1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.6.0_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.6.0_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
 2. The installer is **not code-signed yet**, so Windows SmartScreen may warn on first run: choose **More info, Run anyway**.
 3. Exports open a native **Save as** dialog. It uses the WebView2 runtime that ships with Windows 11 (Windows 10 may prompt to install it).
 
@@ -62,7 +62,8 @@ flowchart LR
 | **18 camera moves** | Push in, pull out, orbit, dolly zoom, crane, tracking follow and more, on a timeline. Each move explains why filmmakers use it. |
 | **Real lens behaviour** | Focal length 14 to 135 mm, aperture f/1.4 to f/11 driving depth of field, plus bloom, motion blur and film grain. |
 | **Camera sensors** | Super 35, Full frame, APS-C, Micro Four Thirds, 1-inch. Lenses show their full-frame equivalent. |
-| **Cinematic looks** | Golden hour, Teal and orange, Night, Noir, Neutral, with window light and sun shafts. |
+| **Cinematic looks** | Golden hour, Teal and orange, Night, Noir, Neutral, plus time-of-day looks (dawn, noon, dusk), with window light and sun shafts. |
+| **Tamil, Hindi and English** | Switch the whole interface between English, தமிழ் and हिन्दी with the language menu. Titles, shot names and notes in any script also come out correctly in the PDFs. |
 | **Choose your actors** | Seven Microsoft Rocketbox avatars (three women, four men, including an older man) play the two roles. Pick them in the cast dialog; names, eye heights and animations follow your choice, and the cast is saved in the project. |
 | **Actions for each actor** | Choose what Meera and Arjun do in every shot: stand, walk, sit on a plastic chair, talk, listen, nod, sip chai, wave, look around, shrug, or invite the other to sit. See the [contact sheet](docs/samples/actions-contact-sheet.pdf). |
 | **Reference video analysis** | Import a clip: Kalki finds its shots, names the camera move in each (pan, tilt, truck, push, pull, zoom, handheld or locked off), shows the pacing, suggests changes to your scene with the reason for each, and plays the result as a simulation. It runs on your computer and the video is never uploaded. |
@@ -83,6 +84,22 @@ The same shot under four looks:
 | <img src="docs/images/look-golden.jpg" alt="Golden hour look" width="100%"> | <img src="docs/images/look-teal.jpg" alt="Teal and orange look" width="100%"> |
 | **Night** | **Noir** |
 | <img src="docs/images/look-night.jpg" alt="Night look" width="100%"> | <img src="docs/images/look-noir.jpg" alt="Noir look" width="100%"> |
+
+### Tamil, Hindi and English
+
+The language menu in the top bar switches every label, tooltip, message and explanation between English, தமிழ் and हिन्दी, and remembers your choice. The translations were written without a native-speaker review, so corrections are welcome.
+
+| தமிழ் | हिन्दी |
+|:-:|:-:|
+| <img src="docs/images/language-tamil.jpg" alt="Kalki Simulator in Tamil" width="100%"> | <img src="docs/images/language-hindi.jpg" alt="Kalki Simulator in Hindi" width="100%"> |
+
+### Time of day
+
+Dawn, noon and dusk join the other lighting looks.
+
+| Dawn | Noon | Dusk |
+|:-:|:-:|:-:|
+| <img src="docs/images/look-dawn.jpg" alt="Dawn look" width="100%"> | <img src="docs/images/look-noon.jpg" alt="Noon look" width="100%"> | <img src="docs/images/look-dusk.jpg" alt="Dusk look" width="100%"> |
 
 ### Choose your actors
 
@@ -150,7 +167,8 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | v0.5.1 | Click-to-place actors, facing control, top-down blocking diagram PDF |
 | v0.5.2 | Action lane: timed action changes inside a shot, with blending |
 | v0.5.3 | Reference video analysis with suggestions and simulation; Pan direction fix |
-| **v0.5.4** | **Latest.** Actor picker with seven avatars |
+| v0.5.4 | Actor picker with seven avatars |
+| **v0.6.0** | **Latest.** Tamil and Hindi interface, Tamil/Hindi text in PDFs, dawn / noon / dusk looks |
 
 Every build is kept in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 
@@ -161,8 +179,8 @@ Kalki is built in small, shippable steps. Full detail, effort estimates and rati
 ```mermaid
 flowchart LR
     P1["<b>Phase 1 · v0.4.x</b><br/>Hand-off<br/>shot list, storyboard,<br/>notes, sensors"]:::done
-    P2["<b>Phase 2 · v0.5.x</b><br/>Performers<br/>actions, placement, blocking,<br/>action lane, actor picker (done)"]:::next
-    P3["<b>Phase 3 · v0.6</b><br/>Indian content<br/>Tamil and Hindi UI,<br/>costumes, sets"]:::todo
+    P2["<b>Phase 2 · v0.5.x</b><br/>Performers<br/>actions, placement, blocking,<br/>action lane, actor picker (done)"]:::done
+    P3["<b>Phase 3 · v0.6.x</b><br/>Indian content<br/>Tamil and Hindi UI (done),<br/>costumes, sets"]:::next
     P4["<b>Phase 4 · v0.7</b><br/>Reach<br/>phone layout, PWA,<br/>signed installer"]:::todo
     P5["<b>Phase 5 · v0.8</b><br/>Teaching<br/>lesson scenes,<br/>instructor kit"]:::todo
     P6["<b>Phase 6 · v0.9+</b><br/>Intelligence<br/>local text-to-shot,<br/>script import"]:::todo
