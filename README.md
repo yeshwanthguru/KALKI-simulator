@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.6.0-ff6b4a?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.6.1-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
   <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
@@ -31,12 +31,12 @@
 
 **In the browser** (nothing to install)
 
-1. Download [`Kalki-versions/Kalki-v0.6.0.html`](Kalki-versions/Kalki-v0.6.0.html), or the zipped package [`Kalki-v0.6.0.zip`](Kalki-versions/Kalki-v0.6.0.zip) with notices.
+1. Download [`Kalki-versions/Kalki-v0.6.1.html`](Kalki-versions/Kalki-v0.6.1.html), or the zipped package [`Kalki-v0.6.1.zip`](Kalki-versions/Kalki-v0.6.1.zip) with notices.
 2. Double-click it. It opens in Chrome or Edge and runs fully offline.
 
 **On Windows** (native app, about 3 MB)
 
-1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.6.0_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.6.0_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
+1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.6.1_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.6.1_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
 2. The installer is **not code-signed yet**, so Windows SmartScreen may warn on first run: choose **More info, Run anyway**.
 3. Exports open a native **Save as** dialog. It uses the WebView2 runtime that ships with Windows 11 (Windows 10 may prompt to install it).
 
@@ -63,6 +63,9 @@ flowchart LR
 | **Real lens behaviour** | Focal length 14 to 135 mm, aperture f/1.4 to f/11 driving depth of field, plus bloom, motion blur and film grain. |
 | **Camera sensors** | Super 35, Full frame, APS-C, Micro Four Thirds, 1-inch. Lenses show their full-frame equivalent. |
 | **Cinematic looks** | Golden hour, Teal and orange, Night, Noir, Neutral, plus time-of-day looks (dawn, noon, dusk), with window light and sun shafts. |
+| **Three sets** | Chai stall, village street (houses, lamp post, auto-rickshaw) and a rooftop terrace (water tank, clothesline, rope cot). The set is saved in the project. |
+| **Costumes** | Dress each actor with a topi and glasses, turban, student bag, marigold garland, dupatta or umbrella. |
+| **Walk paths** | Click up to six points on the set view and the actor walks through them, facing the way they move. The route shows in the set view and the blocking diagram. |
 | **Tamil, Hindi and English** | Switch the whole interface between English, தமிழ் and हिन्दी with the language menu. Titles, shot names and notes in any script also come out correctly in the PDFs. |
 | **Choose your actors** | Seven Microsoft Rocketbox avatars (three women, four men, including an older man) play the two roles. Pick them in the cast dialog; names, eye heights and animations follow your choice, and the cast is saved in the project. |
 | **Actions for each actor** | Choose what Meera and Arjun do in every shot: stand, walk, sit on a plastic chair, talk, listen, nod, sip chai, wave, look around, shrug, or invite the other to sit. See the [contact sheet](docs/samples/actions-contact-sheet.pdf). |
@@ -100,6 +103,18 @@ Dawn, noon and dusk join the other lighting looks.
 | Dawn | Noon | Dusk |
 |:-:|:-:|:-:|
 | <img src="docs/images/look-dawn.jpg" alt="Dawn look" width="100%"> | <img src="docs/images/look-noon.jpg" alt="Noon look" width="100%"> | <img src="docs/images/look-dusk.jpg" alt="Dusk look" width="100%"> |
+
+### Sets, costumes and walk paths
+
+Pick a set from the menu in the top bar, dress each actor in the cast dialog, and draw a walk path with the Walk path buttons in the inspector.
+
+<p align="center">
+  <img src="docs/images/costume-set.jpg" alt="Village street set with Meera in a marigold garland and Arjun in a topi and glasses" width="90%">
+</p>
+
+| Village street | Terrace |
+|:-:|:-:|
+| <img src="docs/images/set-street.jpg" alt="Village street set" width="100%"> | <img src="docs/images/set-terrace.jpg" alt="Terrace set" width="100%"> |
 
 ### Choose your actors
 
@@ -168,7 +183,8 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | v0.5.2 | Action lane: timed action changes inside a shot, with blending |
 | v0.5.3 | Reference video analysis with suggestions and simulation; Pan direction fix |
 | v0.5.4 | Actor picker with seven avatars |
-| **v0.6.0** | **Latest.** Tamil and Hindi interface, Tamil/Hindi text in PDFs, dawn / noon / dusk looks |
+| v0.6.0 | Tamil and Hindi interface, Tamil/Hindi text in PDFs, dawn / noon / dusk looks |
+| **v0.6.1** | **Latest.** Village street and terrace sets, costumes, multi-point walk paths |
 
 Every build is kept in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 

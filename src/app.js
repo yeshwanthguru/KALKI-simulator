@@ -342,6 +342,56 @@ function makeGlass() {
   const tea = new T.Mesh(new T.CylinderGeometry(.031, .026, .06, 16), new T.MeshStandardMaterial({ color: 0xb8742e, roughness: .4 })); tea.position.y = -.01;
   g.add(body, tea); g.visible = false; return g;
 }
+/* ---------- costumes: accessories attached to the avatar's bones (head, neck and spine have x up and y forward) ---------- */
+const OUTFITS = {
+  plain: { label: 'Plain clothes', parts: [] },
+  topi: { label: 'Topi and glasses', parts: ['topi', 'glasses'] },
+  turban: { label: 'Turban', parts: ['turban'] },
+  student: { label: 'Student with bag', parts: ['bag', 'glasses'] },
+  garland: { label: 'Marigold garland', parts: ['garland'] },
+  dupatta: { label: 'Dupatta', parts: ['dupatta'] },
+  umbrella: { label: 'Umbrella', parts: ['umbrella'] }
+};
+const normOutfit = o => ({ A: o && OUTFITS[o.A] ? o.A : 'plain', B: o && OUTFITS[o.B] ? o.B : 'plain' });
+const outfitOf = () => normOutfit(typeof P !== 'undefined' && P && P.outfit);
+function makeParts(name) {
+  const m = (c, o = {}) => new T.MeshStandardMaterial(Object.assign({ color: c, roughness: .8 }, o)), at = (mesh, x, y, z) => { mesh.position.set(x, y, z); mesh.castShadow = true; return mesh; };
+  const cylX = (r1, r2, h, mm) => new T.Mesh(new T.CylinderGeometry(r1, r2, h, 16).rotateZ(-Math.PI / 2), mm);
+  const g = new T.Group(); let bone = 'Bip01_Head';
+  if (name === 'topi') { const cap = new T.Mesh(new T.SphereGeometry(.105, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2).rotateZ(-Math.PI / 2), m(0xf4f1ea, { roughness: .95, side: T.DoubleSide })); cap.scale.set(.85, 1, 1); g.add(at(cap, .16, .0, 0)); }
+  else if (name === 'turban') {
+    const c = [0xe07a1f, 0xf2a33c, 0xe07a1f]; c.forEach((col, i) => { const t = new T.Mesh(new T.TorusGeometry(.098 - i * .006, .028, 8, 22).rotateY(Math.PI / 2), m(col, { roughness: .9 })); g.add(at(t, .16 + i * .035, .0, 0)); });
+    const top = new T.Mesh(new T.SphereGeometry(.082, 16, 10), m(0xe07a1f, { roughness: .9 })); top.scale.set(.6, 1, 1); g.add(at(top, .24, 0, 0));
+  } else if (name === 'glasses') {
+    const fm = m(0x15110f, { roughness: .4 });
+    for (const s of [-1, 1]) { g.add(at(new T.Mesh(new T.TorusGeometry(.023, .0035, 6, 18).rotateX(Math.PI / 2), fm), .125, .1, .036 * s)); g.add(at(new T.Mesh(new T.BoxGeometry(.003, .09, .003), fm), .125, .05, .08 * s)); }
+    g.add(at(new T.Mesh(new T.BoxGeometry(.003, .003, .026), fm), .13, .1, 0));
+  } else if (name === 'bag') {
+    bone = 'Bip01_Pelvis';
+    g.add(at(new T.Mesh(new T.BoxGeometry(.28, .3, .1), m(0x8a3d2a, { roughness: 1 })), -.03, -.02, .27)); // up, fore-aft, lateral
+    const st = new T.Mesh(new T.BoxGeometry(.58, .012, .035), m(0x3a2a20, { roughness: 1 })); st.position.set(.3, .125, .07); st.rotation.y = .8; st.castShadow = true; g.add(st);
+  } else if (name === 'garland') {
+    bone = 'Bip01_Spine2';
+    for (const [r, c, dx] of [[.17, 0xff8a00, .17], [.15, 0xd6336c, .12]]) { const t = new T.Mesh(new T.TorusGeometry(r, .036, 8, 24).rotateY(Math.PI / 2), m(c, { roughness: .95 })); t.scale.set(1, 1.25, 1); t.rotation.z = .3; g.add(at(t, dx, .05, 0)); }
+  } else if (name === 'dupatta') {
+    bone = 'Bip01_Spine2'; const mm = m(0xd9708a, { roughness: .95, side: T.DoubleSide });
+    const loop = new T.Mesh(new T.TorusGeometry(.17, .03, 8, 24).rotateY(Math.PI / 2), mm); loop.scale.set(1, 1.2, 1); g.add(at(loop, .17, .02, 0));
+    g.add(at(new T.Mesh(new T.BoxGeometry(.6, .012, .12), mm), -.02, .14, .06)); g.add(at(new T.Mesh(new T.BoxGeometry(.45, .012, .12), mm), .02, -.13, -.04));
+  } else if (name === 'umbrella') {
+    bone = 'Bip01_R_Hand';
+    g.add(at(cylX(.012, .012, .95, m(0x222222, { metalness: .6, roughness: .4 })), .38, .03, 0)); g.add(at(cylX(.034, .02, .5, m(0x1c2a4a, { roughness: .9 })), .55, .03, 0));
+    g.add(at(cylX(.022, .022, .22, m(0x5a3d28)), -.1, .03, 0));
+  }
+  g.traverse(o => { if (o.isMesh) o.receiveShadow = true; });
+  return { bone, obj: g };
+}
+/* puts the chosen costume on actor k (removes the previous one) */
+function applyOutfit(k) {
+  const R = REAL[k]; if (!R) return; const id = outfitOf()[k]; if (R.outfit === id) return;
+  for (const a of R.acc || []) a.removeFromParent();
+  R.acc = []; R.outfit = id;
+  for (const p of OUTFITS[id].parts) { const { bone, obj } = makeParts(p), b = R.root.getObjectByName(bone); if (b) { b.add(obj); R.acc.push(obj); } }
+}
 /* ---------- cast: which avatar plays actor A and actor B ---------- */
 const normCast = o => ({ A: AV[o && o.A] ? o.A : DEFAULT_CAST.A, B: AV[o && o.B] ? o.B : DEFAULT_CAST.B });
 const bufOf = s => { const b = atob(s), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u.buffer; };
@@ -366,11 +416,11 @@ async function installActor(k, id) {
   const chair = makeChair(); g.add(chair);
   const glass = makeGlass(), hand = m.getObjectByName('Bip01_R_Hand'); if (hand) { glass.position.set(.09, .02, .03); hand.add(glass); } else g.add(glass);
   REAL[k] = { mx, ia, wa, act, chair, glass, sc, bx: [bx.min.toArray().map(v => +v.toFixed(2)), bx.max.toArray().map(v => +v.toFixed(2))], root: w, avatar: id, iD: ic.animations[0].duration, wD: wc.animations[0].duration };
-  installing[k] = null; pathKey = '';
+  installing[k] = null; pathKey = ''; applyOutfit(k);
 }
 /* makes the scene's actors match P.actors (called after every change of the project) */
 function syncCast() {
-  const c = castOf();
+  const c = castOf(); for (const k of ['A', 'B']) applyOutfit(k);
   for (const k of ['A', 'B']) if (AVC.f && c[k] && (REAL[k] ? REAL[k].avatar : null) !== c[k] && installing[k] !== c[k]) installActor(k, c[k]).then(() => { if (REAL[k] && REAL[k].avatar !== castOf()[k]) syncCast(); else refreshNames(); });
 }
 function loadReal() {
@@ -814,13 +864,13 @@ $('#modeSeg').onclick = e => { const b = e.target.closest('button'); if (b) setM
 
 /* code mode */
 const ta = $('#ta');
-function loadCode() { ta.value = JSON.stringify({ schemaVersion: SCHEMA, title: P.title, aspect: P.aspect, look: P.look, set: P.set, sensor: P.sensor, actors: castOf(), shots: P.shots }, null, 2); $('#cerr').textContent = ''; }
+function loadCode() { ta.value = JSON.stringify({ schemaVersion: SCHEMA, title: P.title, aspect: P.aspect, look: P.look, set: P.set, sensor: P.sensor, actors: castOf(), outfit: outfitOf(), shots: P.shots }, null, 2); $('#cerr').textContent = ''; }
 function applyCode() {
   let o; try { o = JSON.parse(ta.value); } catch (e) { $('#cerr').textContent = '✕ ' + e.message; return; }
   if (!o || !Array.isArray(o.shots)) { $('#cerr').textContent = '✕ The scene needs a "shots" list.'; return; }
   const errs = []; const shots = o.shots.slice(0, 60).map((s, i) => normShot(s || {}, errs, i));
   if ((+o.schemaVersion || 1) < 6) shots.forEach(s => { if (s.move === 'pan') s.dir = -s.dir; }); // before v0.6 a pan with direction Right actually panned left; flipping keeps old scenes playing the same
-  commit(); P = { schemaVersion: SCHEMA, actors: normCast(o.actors), look: LOOKS[o.look] ? o.look : 'golden', set: SETS[o.set] ? o.set : 'stall', sensor: SENSORS[o.sensor] ? o.sensor : DEFAULT_SENSOR, title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
+  commit(); P = { schemaVersion: SCHEMA, actors: normCast(o.actors), outfit: normOutfit(o.outfit), look: LOOKS[o.look] ? o.look : 'golden', set: SETS[o.set] ? o.set : 'stall', sensor: SENSORS[o.sensor] ? o.sensor : DEFAULT_SENSOR, title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
   if (o.sensor !== undefined && !SENSORS[o.sensor]) errs.push('sensor must be ' + Object.keys(SENSORS).join('/'));
   if (+o.schemaVersion > SCHEMA) errs.push(`made with a newer Kalki (schema ${o.schemaVersion}); some settings were ignored`);
   sel = clamp(sel, 0, shots.length - 1); time = 0; refreshAll(false);
@@ -859,7 +909,7 @@ function download(blob, name) {
 function menu(id, fn) { const m = $(id); m.querySelector('.btn').onclick = e => { e.stopPropagation(); $$('.menu').forEach(x => x !== m && x.classList.remove('open')); m.classList.toggle('open'); }; m.querySelector('.dd').onclick = e => { const b = e.target.closest('button'); if (b) { m.classList.remove('open'); fn(b.dataset.a); } }; }
 document.addEventListener('click', () => $$('.menu').forEach(x => x.classList.remove('open')));
 menu('#mFile', a => {
-  if (a === 'new') { commit(); P = { schemaVersion: SCHEMA, actors: castOf(), title: 'Untitled scene', aspect: P.aspect, look: P.look, set: P.set, sensor: P.sensor || DEFAULT_SENSOR, shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
+  if (a === 'new') { commit(); P = { schemaVersion: SCHEMA, actors: castOf(), title: 'Untitled scene', aspect: P.aspect, look: P.look, set: P.set, outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
   if (a === 'open') $('#fileIn').click();
   if (a === 'save') { download(new Blob([JSON.stringify(P, null, 2)], { type: 'application/json' }), fname('.kalki.json')); toast('Project saved'); }
 });
@@ -1042,7 +1092,7 @@ function applySuggestions(list) {
 }
 function simulateRef() {
   commit();
-  P = { schemaVersion: SCHEMA, actors: castOf(), title: ('Reference: ' + ref.name).slice(0, 60), aspect: P.aspect, look: P.look, set: P.set, sensor: P.sensor || DEFAULT_SENSOR, shots: toShots(ref.clip, 'Ref').map(o => newShot(o)) };
+  P = { schemaVersion: SCHEMA, actors: castOf(), title: ('Reference: ' + ref.name).slice(0, 60), aspect: P.aspect, look: P.look, set: P.set, outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, shots: toShots(ref.clip, 'Ref').map(o => newShot(o)) };
   sel = 0; time = 0; demo = false; refreshAll(); setPlay(true);
 }
 function refCsv() {
@@ -1068,10 +1118,13 @@ $('#rfRes').addEventListener('click', e => {
 const refreshNames = () => { if (typeof buildInsp === 'function') { buildInsp(); buildTL(); } };
 function renderCast() {
   const c = castOf(), th = KA0.thumbs || {};
-  $('#castBody').innerHTML = ['A', 'B'].map(k => `<div class="cast-col"><h3>Actor ${k} <small>${esc(ACTOR_NAME[k])}</small></h3><div class="cast-grid">${Object.entries(AV).map(([id, a]) => `<button class="cast-card${c[k] === id ? ' on' : ''}" data-cast="${k}:${id}" title="${esc(a.first)}: ${a.g === 'f' ? 'female' : 'male'} ${esc(a.label)}">${th[id] ? `<img alt="" src="${th[id]}">` : ''}<b>${esc(a.first)}</b><small>${a.g === 'f' ? 'Female' : 'Male'} ${esc(a.label.replace(/^(Fe)?[Mm]ale /, ''))}</small></button>`).join('')}</div></div>`).join('');
+  $('#castBody').innerHTML = ['A', 'B'].map(k => `<div class="cast-col"><h3>Actor ${k} <small>${esc(ACTOR_NAME[k])}</small></h3><div class="cast-grid">${Object.entries(AV).map(([id, a]) => `<button class="cast-card${c[k] === id ? ' on' : ''}" data-cast="${k}:${id}" title="${esc(a.first)}: ${a.g === 'f' ? 'female' : 'male'} ${esc(a.label)}">${th[id] ? `<img alt="" src="${th[id]}">` : ''}<b>${esc(a.first)}</b><small>${a.g === 'f' ? 'Female' : 'Male'} ${esc(a.label.replace(/^(Fe)?[Mm]ale /, ''))}</small></button>`).join('')}</div><label class="cast-out">Costume <select class="sel" data-out="${k}">${Object.entries(OUTFITS).map(([o, v]) => `<option value="${o}"${outfitOf()[k] === o ? ' selected' : ''}>${v.label}</option>`).join('')}</select></label></div>`).join('');
 }
 $('#bCast').onclick = () => { renderCast(); $('#mCast').classList.add('on'); };
 $('#castClose').onclick = () => $('#mCast').classList.remove('on');
+$('#castBody').addEventListener('change', e => {
+  const sl = e.target.closest('select[data-out]'); if (!sl) return; commit(); P.outfit = { ...outfitOf(), [sl.dataset.out]: sl.value }; applyOutfit(sl.dataset.out); toast('Costume: ' + OUTFITS[sl.value].label);
+});
 $('#castBody').addEventListener('click', e => {
   const b = e.target.closest('button[data-cast]'); if (!b) return; const [k, id] = b.dataset.cast.split(':');
   if (castOf()[k] === id) return;
@@ -1143,10 +1196,10 @@ $('#obNext').onclick = () => { $('#obStep1').style.display = 'none'; $('#obStep2
 $$('.mode').forEach(b => b.onclick = () => endIntro(b.dataset.m));
 $('#obSkip').onclick = () => endIntro('nocode');
 
-function refreshAll(code = true) { P.actors = normCast(P.actors); syncCast(); P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); P.set = SETS[P.set] ? P.set : 'stall'; $('#set').value = P.set; applySet(P.set); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
+function refreshAll(code = true) { P.actors = normCast(P.actors); P.outfit = normOutfit(P.outfit); syncCast(); P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); P.set = SETS[P.set] ? P.set : 'stall'; $('#set').value = P.set; applySet(P.set); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
 new ResizeObserver(layout).observe($('#view'));
 buildLib(); refreshAll();
-if (location.hash === '#selftest' || location.hash === '#e2e') { if (location.hash === '#selftest') runSelfTest(); window.__kalki = { analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
+if (location.hash === '#selftest' || location.hash === '#e2e') { if (location.hash === '#selftest') runSelfTest(); window.__kalki = { real: REAL, T, analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
 if (store.get('kalki.onboarded')) { demo = false; $('#ob').style.display = 'none'; setPlay(true); }
 
 /* ---------- self test: open the page with #selftest, results go to the title and #selftestOut (used by tests/smoke.mjs) ---------- */
@@ -1202,6 +1255,7 @@ async function runSelfTest() {
   t('the set is saved in the project and survives a round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, set: 'terrace', shots: [{}] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value); applyCode(); return o.set === 'terrace' && P.set === 'terrace' && $('#set').value === 'terrace' && SETG.terrace.visible; });
   t('every set has its own floor and dressing and the stall keeps its lights', () => ['stall', 'street', 'terrace'].every(k => SETG[k].children.length > 8) && BULBS.length >= 5);
   t('duplicating a shot does not share its walk route', () => { $('#ta').value = JSON.stringify({ shots: [{ actionA: 'walk', routeA: [{ x: 1, z: 1 }] }] }); applyCode(); sel = 0; $('#bDup').click(); P.shots[0].routeA.push({ x: 2, z: 2 }); return P.shots.length === 2 && P.shots[1].routeA.length === 1; });
+  t('costumes: unknown ids fall back to plain clothes and the choice survives a round trip', () => { const n = normOutfit({ A: 'turban', B: 'nope' }); if (n.A !== 'turban' || n.B !== 'plain' || normOutfit(null).A !== 'plain') return false; $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, outfit: { A: 'garland', B: 'umbrella' }, shots: [{}] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value); return o.outfit.A === 'garland' && o.outfit.B === 'umbrella' && P.outfit.B === 'umbrella'; });
   t('placement survives a project round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ placeA: { x: 1.5, z: 2 }, faceA: 40 }] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value).shots[0]; return o.placeA.x === 1.5 && o.placeA.z === 2 && o.faceA === 40 && o.placeB === null; });
   t('blocking diagram builds for a scene', () => { $('#ta').value = JSON.stringify({ shots: [{ move: 'orbit', actionA: 'walk', placeB: { x: 2, z: 1 } }, { move: 'push_in' }] }); applyCode(); const b = buildBlockingPdf(blockingDoc()); return b.length > 1000 && String.fromCharCode(b[0], b[1], b[2], b[3]) === '%PDF'; });
   t('cues are validated, sorted and limited', () => { const s = normShot({ duration: 6, actionA: 'sit', cuesA: [{ t: 4, a: 'sip' }, { t: 2.3, a: 'talk' }, { t: 2.4, a: 'nod' }, { t: 0, a: 'wave' }, { t: 9, a: 'wave' }, { t: 3, a: 'walk' }, { t: 3, a: 'dance' }, 'x'] }); return s.cuesA.length === 2 && s.cuesA[0].t === 2.5 && s.cuesA[0].a === 'talk' && s.cuesA[1].t === 4 && s.cuesB.length === 0; });
@@ -1273,6 +1327,8 @@ async function runSelfTest() {
     });
   }
   await installActor('A', 'f11'); await installActor('B', 'm17');
+  t('every costume builds its parts and attaches them to real bones', () => { for (const id of Object.keys(OUTFITS)) for (const p of OUTFITS[id].parts) { const { bone, obj } = makeParts(p); let meshes = 0; obj.traverse(o => { if (o.isMesh) meshes++; }); if (!meshes || !REAL.A.root.getObjectByName(bone)) return false; } return true; });
+  t('putting on and taking off a costume changes the actor', () => { P.outfit = { A: 'student', B: 'plain' }; applyOutfit('A'); const on = REAL.A.acc.length === 2 && REAL.A.root.getObjectByName('Bip01_Pelvis').children.includes(REAL.A.acc[0]); P.outfit = { A: 'plain', B: 'plain' }; applyOutfit('A'); return on && REAL.A.acc.length === 0 && !REAL.A.root.getObjectByName('Bip01_Pelvis').children.some(c => c.type === 'Group' && c.children.some(m => m.material && m.material.color && m.material.color.getHex() === 0x8a3d2a)); });
   const texts = () => { const out = []; const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); while (w.nextNode()) { const n = w.currentNode; if (/[A-Za-z]{2}/.test(n.nodeValue) || n.__en) out.push((n.__en !== undefined ? n.__en : n.nodeValue).trim()); } return out.sort().join('|'); };
   t('switching language translates the page and switching back restores it exactly', () => {
     const before = texts(); setLang('ta'); const ta = $('#bUndo').title, tamilText = /[\u0B80-\u0BFF]/.test(ta) && /[\u0B80-\u0BFF]/.test($('#mFile .btn').textContent);

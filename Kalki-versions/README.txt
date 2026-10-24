@@ -1,4 +1,4 @@
-KALKI · கல்கி — Camera Studio (v0.6.0)
+KALKI · கல்கி — Camera Studio (v0.6.1)
 See your shot before you shoot it.
 
 HOW TO START
@@ -13,6 +13,7 @@ WHAT YOU CAN DO
   - Cinematic looks: Golden hour, Teal & orange, Night, Noir, Neutral
   - Real lens behaviour: aperture (f/1.4–f/11) controls background blur
   - Give each actor an action per shot: stand, walk, sit, talk, listen, nod, sip chai, wave, look around, shrug, invite to sit
+  - Two new sets (village street, terrace), costumes (topi, turban, garland, dupatta, umbrella, school bag, glasses) and multi-point walk paths
   - Use the interface in English, Tamil (தமிழ்) or Hindi (हिन्दी); titles and notes in any script appear correctly in the PDFs
   - Dawn, noon and dusk lighting looks join golden hour, night and the rest
   - Choose who plays each role from seven avatars (the people button): all actions, placement and camera work apply to every avatar
