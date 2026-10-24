@@ -219,7 +219,7 @@ export function buildStoryboardPdf(doc) {
 /* ---------- blocking diagram (top-down) ---------- */
 /* doc: { title, meta, footer, aspect, floor: {x0, x1, z0, z1}, wallZ,
           shots: [{ n, name, move, lens, sizeCode, duration, actions: [textA, textB],
-                    actors: [{ k: 'A'|'B', x0, z0, x1, z1, face0, face1, walk }],
+                    actors: [{ k: 'A'|'B', x0, z0, x1, z1, face0, face1, walk, route?: [[x, z]...] }],
                     cam: { pts: [[x, z]...], tgx0, tgz0, tgx1, tgz1, hfov0, hfov1 } }] }
    World x runs left to right, world z runs towards the audience (drawn downwards). */
 export function buildBlockingPdf(doc) {
@@ -229,7 +229,7 @@ export function buildBlockingPdf(doc) {
      (at least 10 m wide); the rest of the floor and long camera paths are clipped at the cell edge */
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
   const grow = (x, z) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); };
-  for (const s of doc.shots) { grow(s.cam.pts[0][0], s.cam.pts[0][1]); s.actors.forEach(a => { grow(a.x0, a.z0); grow(a.x1, a.z1); }); }
+  for (const s of doc.shots) { grow(s.cam.pts[0][0], s.cam.pts[0][1]); s.actors.forEach(a => { grow(a.x0, a.z0); grow(a.x1, a.z1); (a.route || []).forEach(q => grow(q[0], q[1])); }); }
   x0 -= 1.4; x1 += 1.4; z0 -= 1.4; z1 += 1.4;
   const minW = 10, minH = minW * MAPH / cw;
   if (x1 - x0 < minW) { const m = (x0 + x1) / 2; x0 = m - minW / 2; x1 = m + minW / 2; }
@@ -274,7 +274,8 @@ export function buildBlockingPdf(doc) {
         const col = COLOR[a.k], r = .32 * sc;
         if (a.walk) {
           pdf.circle(X(a.x0), Y(a.z0), r, { stroke: col, lw: 1, dash: [2, 2] });
-          pdf.line(X(a.x0), Y(a.z0), X(a.x1), Y(a.z1), { color: col, lw: 1.2, dash: [4, 3] });
+          if (a.route) for (let i = 1; i < a.route.length; i++) pdf.line(X(a.route[i - 1][0]), Y(a.route[i - 1][1]), X(a.route[i][0]), Y(a.route[i][1]), { color: col, lw: 1.2, dash: [4, 3] });
+          else pdf.line(X(a.x0), Y(a.z0), X(a.x1), Y(a.z1), { color: col, lw: 1.2, dash: [4, 3] });
         }
         const ex = a.walk ? a.x1 : a.x0, ez = a.walk ? a.z1 : a.z0, f = a.walk ? a.face1 : a.face0;
         pdf.circle(X(ex), Y(ez), r, { fill: col, stroke: [255, 255, 255], lw: .8 });

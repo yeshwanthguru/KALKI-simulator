@@ -236,5 +236,13 @@
 "Right · up · forward",
 "Left · down · back",
 "Use it once per film. It loses power when repeated.",
-"Scene code"
+"Scene code",
+"Walk path Meera",
+"Walk path Arjun",
+"Clear paths",
+"Remove both walk paths",
+"Click points on the set view; the actor walks through them",
+"Walk paths cleared",
+"A walk path can have up to 6 points",
+"Click the set view to add walk points for Meera"
 ]

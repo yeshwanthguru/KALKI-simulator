@@ -92,6 +92,7 @@ function normShot(o, errs, i) {
     s['cues' + k] = c.map(x => ({ t: +(Math.round(clamp(+(x && x.t) || 0, 0, s.duration) * 2) / 2).toFixed(1), a: x && ACTION_LABEL[x.a === 'idle' ? 'stand' : x.a] && x.a !== 'walk' ? (x.a === 'idle' ? 'stand' : x.a) : null }))
       .filter(x => x.a && x.t > 0 && x.t < s.duration && !seen.has(x.t) && seen.add(x.t)).sort((p, q) => p.t - q.t).slice(0, 7);
   }
+  for (const k of ['A', 'B']) s['route' + k] = Array.isArray(o['route' + k]) ? o['route' + k].map(pl).filter(Boolean).slice(0, 6) : [];
   s.placeA = pl(o.placeA); s.placeB = pl(o.placeB); s.faceA = fc(o.faceA); s.faceB = fc(o.faceB);
   s.notes = String(o.notes || '').replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
   return s;
@@ -323,13 +324,27 @@ for (const o of [proxy, helper, path]) o.traverse(c => c.layers.set(1));
 
 /* ---------- pose solver ---------- */
 const V = (x, y, z) => new T.Vector3(x, y, z);
+/* position and heading at fraction t along start -> waypoints, at a steady pace */
+function walkRoute(p0, rt, t) {
+  const pts = [[p0.x, p0.z], ...rt.map(q => [q.x, q.z])], len = [0];
+  for (let i = 1; i < pts.length; i++) len.push(len[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const L = len[len.length - 1], d = clamp(t, 0, 1) * L; let i = 1; while (i < pts.length - 1 && len[i] < d) i++;
+  const a = pts[i - 1], b = pts[i], sl = len[i] - len[i - 1], u = sl > 1e-6 ? clamp((d - len[i - 1]) / sl, 0, 1) : 1;
+  const h = sl > 1e-6 ? Math.atan2(b[0] - a[0], b[1] - a[1]) : 0;
+  return { x: lerp(a[0], b[0], u), z: lerp(a[1], b[1], u), h };
+}
 function subjPos(sh, t) {
   const k = sh.subject === 'both' ? null : sh.subject;
   const walkers = ['A', 'B'].filter(a => sh['action' + a] === 'walk' || (MV[sh.move].walk && a === (k || 'A')));
   const pos = {}; for (const a of ['A', 'B']) pos[a] = sh['place' + a] ? V(sh['place' + a].x, 0, sh['place' + a].z) : HOME[a].clone();
-  for (const w of walkers) { pos[w].x += lerp(-2.2, 2.2, t) * sh.dir; if (!sh['place' + w]) pos[w].z += 1.1; }
+  const head = {};
+  for (const w of walkers) {
+    const rt = sh['route' + w] || [];
+    if (rt.length) { const r = walkRoute(pos[w], rt, t); pos[w].set(r.x, 0, r.z); head[w] = r.h; continue; }
+    pos[w].x += lerp(-2.2, 2.2, t) * sh.dir; if (!sh['place' + w]) pos[w].z += 1.1;
+  }
   const target = k ? pos[k] : pos.A.clone().add(pos.B).multiplyScalar(.5);
-  return { target: target.clone(), pos, walkers };
+  return { target: target.clone(), pos, walkers, head };
 }
 function solve(sh, t, sec) {
   const mv = MV[sh.move] || MV.static, te = mv.raw ? t : EF[sh.easing](t);
@@ -404,6 +419,20 @@ function setSegAction(sh, k, i, v) { if (i === 0) { sh['action' + k] = v; if (v 
   });
 }
 
+/* walk routes drawn on the floor of the set view */
+const routeLine = {}; for (const k of ['A', 'B']) { routeLine[k] = new T.Line(new T.BufferGeometry(), new T.LineBasicMaterial({ color: k === 'A' ? 0xff6b4a : 0x4aa8ff })); routeLine[k].layers.set(1); scene.add(routeLine[k]); }
+let routeKey = '';
+const walksIn = (sh, k) => sh['action' + k] === 'walk' || (MV[sh.move].walk && k === (sh.subject === 'B' ? 'B' : 'A'));
+function drawRoutes(sh) {
+  const key = sh ? ['A', 'B'].map(k => walksIn(sh, k) ? JSON.stringify([sh['place' + k], sh['route' + k]]) : '').join('|') : '';
+  if (key === routeKey) return; routeKey = key;
+  for (const k of ['A', 'B']) {
+    const rt = sh && walksIn(sh, k) && sh['route' + k].length ? sh['route' + k] : null;
+    routeLine[k].visible = !!rt; if (!rt) continue;
+    const st = subjPos(sh, 0).pos[k], pts = [V(st.x, .04, st.z), ...rt.map(q => V(q.x, .04, q.z))];
+    routeLine[k].geometry.dispose(); routeLine[k].geometry = new T.BufferGeometry().setFromPoints(pts);
+  }
+}
 /* facing in radians: explicit angle, else towards the other actor when either is placed, else the default stance */
 function faceRad(sh, k, pos) {
   const v = sh && sh['face' + k]; if (v !== null && v !== undefined) return v * D2R;
@@ -412,11 +441,12 @@ function faceRad(sh, k, pos) {
 }
 const defFace = (sh, k) => sh[k] ?? Math.round(faceRad(sh, k.slice(-1), subjPos(sh, 0).pos) / D2R);
 function poseActors(sh, t, sec, clock) {
-  const sp = sh ? subjPos(sh, t) : { pos: { A: HOME.A, B: HOME.B }, walkers: [] };
+  const sp = sh ? subjPos(sh, t) : { pos: { A: HOME.A, B: HOME.B }, walkers: [], head: {} };
+  drawRoutes(sh);
   for (const k of ['A', 'B']) {
     const g = AC[k], u = g.userData, w = sp.walkers.includes(k), an = w ? 'walk' : (sh && sh['action' + k]) || 'stand';
     g.position.copy(sp.pos[k]);
-    g.rotation.y = w ? (sh.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : faceRad(sh, k, sp.pos);
+    g.rotation.y = w ? (sp.head[k] !== undefined ? sp.head[k] : sh.dir > 0 ? Math.PI / 2 : -Math.PI / 2) : faceRad(sh, k, sp.pos);
     const ph = w ? sec * 7.5 : 0, br = Math.sin(clock * 1.6 + (k === 'A' ? 0 : 2)) * .012;
     u.legs[0].rotation.x = Math.sin(ph) * .55; u.legs[1].rotation.x = -Math.sin(ph) * .55;
     u.arms[0].rotation.x = -Math.sin(ph) * .45; u.arms[1].rotation.x = Math.sin(ph) * .45;
@@ -577,7 +607,7 @@ function buildInsp() {
     return `<div class="f"><label>${label}<em data-o="${k}">${c ? fmt(+v) : v}</em></label><input type="range" data-k="${k}" min="${a}" max="${b}" step="${c}" value="${v}"></div>`;
   };
   const F = Object.fromEntries(FIELDS.map(x => [x[0], f(x)]));
-  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.actionA + F.actionB + laneHTML(sh) + `<div class="f"><label>Placement<em>click the set view</em></label><div class="pl"><button data-pl="A" class="${placing === 'A' ? 'on' : ''}">Place ${ACTOR_NAME.A}</button><button data-pl="B" class="${placing === 'B' ? 'on' : ''}">Place ${ACTOR_NAME.B}</button><button data-pl="R">Reset</button></div></div>` + F.faceA + F.faceB + F.notes +
+  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.actionA + F.actionB + laneHTML(sh) + `<div class="f"><label>Placement<em>click the set view</em></label><div class="pl"><button data-pl="A" class="${placing === 'A' ? 'on' : ''}">Place ${ACTOR_NAME.A}</button><button data-pl="B" class="${placing === 'B' ? 'on' : ''}">Place ${ACTOR_NAME.B}</button><button data-pl="R">Reset</button></div><div class="pl" style="margin-top:6px"><button data-pl="rA" class="${placing === 'rA' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.A}</button><button data-pl="rB" class="${placing === 'rB' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.B}</button><button data-pl="RC" title="Remove both walk paths">Clear paths</button></div></div>` + F.faceA + F.faceB + F.notes +
     `<div class="learn" style="--c:${catColor(mv.cat)}"><h4>Why “${mv.name}”</h4><p>${mv.why}</p><p><i>Try:</i> ${mv.tip}</p><p><i>${sh.lens} mm on ${sensorOf().label}${crop() > 1.01 ? ' (≈' + eqMm(sh.lens) + ' mm full-frame equivalent)' : ''}:</i> ${lensNote(sh.lens)}</p><p><i>f/${sh.fstop}:</i> ${sh.fstop <= 2 ? 'Shallow focus melts the background and isolates the subject: the classic cinematic look.' : sh.fstop >= 8 ? 'Deep focus keeps everything sharp, so the audience can explore the whole frame.' : 'Moderate depth: subject sharp, background softly separated.'}</p></div>`;
 }
 /* click-to-place: click or drag on the set view to put an actor on the floor of the current shot */
@@ -585,17 +615,23 @@ let placing = null;
 const rayPlane = new T.Plane(new T.Vector3(0, 1, 0), 0), rayCaster = new T.Raycaster();
 function setPlacing(k) {
   placing = k; $('#inset').classList.toggle('placing', !!k);
-  $('#inset span').textContent = k ? `CLICK TO PLACE ${ACTOR_NAME[k].toUpperCase()}  ·  ESC TO FINISH` : 'SET VIEW';
+  $('#inset span').textContent = k ? (k[0] === 'r' ? `CLICK TO ADD A WALK POINT FOR ${ACTOR_NAME[k[1]].toUpperCase()}  ·  ESC TO FINISH` : `CLICK TO PLACE ${ACTOR_NAME[k].toUpperCase()}  ·  ESC TO FINISH`) : 'SET VIEW';
   if (k && !showSet) $('#bSet').click();
-  buildInsp(); if (k) toast(`Click or drag on the set view to place ${ACTOR_NAME[k]}`);
+  buildInsp(); if (k) toast(k[0] === 'r' ? `Click the set view to add walk points for ${ACTOR_NAME[k[1]]}` : `Click or drag on the set view to place ${ACTOR_NAME[k]}`);
 }
 function placeAt(e, first) {
   const sh = P.shots[sel]; if (!placing || !sh) return;
   const r = $('#inset').getBoundingClientRect(), hit = new T.Vector3();
   rayCaster.setFromCamera(new T.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), setCam);
   if (!rayCaster.ray.intersectPlane(rayPlane, hit)) return;
+  const p = normShot({ placeA: { x: hit.x, z: hit.z } }).placeA;
+  if (placing[0] === 'r') {
+    if (!first) return; const k = placing[1]; commit();
+    if (sh['action' + k] !== 'walk') { sh['action' + k] = 'walk'; sh['cues' + k] = []; }
+    if (sh['route' + k].length < 6) sh['route' + k].push(p); else toast('A walk path can have up to 6 points'); pathKey = ''; buildTL(); return;
+  }
   if (first) commit();
-  const p = normShot({ placeA: { x: hit.x, z: hit.z } }).placeA; sh['place' + placing] = p; pathKey = '';
+  sh['place' + placing] = p; pathKey = '';
   if (!playing) time = clamp(time, starts()[sel], starts()[sel] + sh.duration - .001);
 }
 { let down = false; const ins = $('#inset');
@@ -604,7 +640,8 @@ function placeAt(e, first) {
   ins.addEventListener('pointerup', () => { if (down) { down = false; buildInsp(); } }); }
 $('#insp').addEventListener('click', e => {
   const b = e.target.closest('button[data-pl]'); if (!b) return; const sh = P.shots[sel]; if (!sh) return;
-  if (b.dataset.pl === 'R') { commit(); sh.placeA = sh.placeB = sh.faceA = sh.faceB = null; pathKey = ''; setPlacing(null); toast('Actors back to their default positions'); return; }
+  if (b.dataset.pl === 'R') { commit(); sh.placeA = sh.placeB = sh.faceA = sh.faceB = null; sh.routeA = []; sh.routeB = []; pathKey = ''; setPlacing(null); toast('Actors back to their default positions'); return; }
+  if (b.dataset.pl === 'RC') { commit(); sh.routeA = []; sh.routeB = []; pathKey = ''; setPlacing(null); toast('Walk paths cleared'); return; }
   setPlacing(placing === b.dataset.pl ? null : b.dataset.pl);
 });
 let editing = false;
@@ -796,7 +833,7 @@ function blockingDoc() {
     const a = solve(s, 0, 0), b = solve(s, 1, s.duration), pts = []; for (let k = 0; k <= 30; k++) { const p = solve(s, k / 30, k / 30 * s.duration).pos; pts.push([+p.x.toFixed(2), +p.z.toFixed(2)]); }
     const p0 = subjPos(s, 0), p1 = subjPos(s, 1);
     return { n: i + 1, name: s.name, move: MV[s.move].name, lens: s.lens, sizeCode: s.size, duration: s.duration, actions: [describeActions(s, 'A'), describeActions(s, 'B')],
-      actors: ['A', 'B'].map(k => ({ k, x0: p0.pos[k].x, z0: p0.pos[k].z, x1: p1.pos[k].x, z1: p1.pos[k].z, face0: faceRad(s, k, p0.pos), face1: faceRad(s, k, p1.pos), walk: p0.walkers.includes(k) })),
+      actors: ['A', 'B'].map(k => ({ k, x0: p0.pos[k].x, z0: p0.pos[k].z, x1: p1.pos[k].x, z1: p1.pos[k].z, face0: faceRad(s, k, p0.pos), face1: faceRad(s, k, p1.pos), walk: p0.walkers.includes(k), route: p0.walkers.includes(k) && s['route' + k].length ? [[p0.pos[k].x, p0.pos[k].z], ...s['route' + k].map(q => [q.x, q.z])] : null })),
       cam: { pts, tgx0: a.tg.x, tgz0: a.tg.z, tgx1: b.tg.x, tgz1: b.tg.z, hfov0: hf(a.fov), hfov1: hf(b.fov) } };
   });
   return { raster: rasterText, title: P.title, meta: [`${P.shots.length} shots`, `Runtime ${tcf(total())}`, `${sensorOf().label} sensor`, new Date().toLocaleDateString('en-IN')], floor: { x0: -8, x1: 8, z0: -6, z1: 6 }, wallZ: -4.3, shots,
@@ -1079,6 +1116,10 @@ async function runSelfTest() {
   t('placed actors move the camera target', () => { const a = subjPos(newShot({ subject: 'A' }), 0).target, b = subjPos(newShot({ subject: 'A', placeA: { x: 3, z: 1 } }), 0).target; return near(b.x, 3) && near(b.z, 1) && !near(a.x, 3); });
   t('placed actors face each other by default', () => { const sh = newShot({ placeA: { x: -2, z: 0 }, placeB: { x: 2, z: 0 } }), p = subjPos(sh, 0).pos; return faceRad(sh, 'A', p) > 1.5 && faceRad(sh, 'B', p) < -1.5 && near(faceRad({ ...sh, faceA: 90 }, 'A', p), Math.PI / 2); });
   t('unplaced shots keep the default stance', () => { const sh = newShot({}), p = subjPos(sh, 0).pos; return near(faceRad(sh, 'A', p), FACE.A) && near(p.A.x, HOME.A.x); });
+  t('walk routes are clamped, limited to 6 points and survive a round trip', () => { const a = normShot({ actionA: 'walk', routeA: [{ x: 1, z: 1 }, { x: 99, z: 0 }, { x: 'q' }, { x: 0, z: 0 }, { x: 1, z: 2 }, { x: 2, z: 2 }, { x: 3, z: 2 }, { x: 4, z: 2 }] }); if (a.routeA.length !== 6 || a.routeA[1].x !== 7 || a.routeB.length !== 0) return false; $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ actionB: 'walk', routeB: [{ x: -1, z: 2 }, { x: 2, z: 2 }] }] }); applyCode(); loadCode(); return JSON.parse($('#ta').value).shots[0].routeB.length === 2; });
+  t('a walker follows the route at a steady pace and faces the way they move', () => { const sh = newShot({ actionA: 'walk', placeA: { x: 0, z: 0 }, routeA: [{ x: 2, z: 0 }, { x: 2, z: 2 }] }); const p0 = subjPos(sh, 0), p1 = subjPos(sh, 1), pm = subjPos(sh, .25), pn = subjPos(sh, .75); return near(p0.pos.A.x, 0) && near(p1.pos.A.x, 2) && near(p1.pos.A.z, 2) && near(pm.pos.A.x, 1) && near(pm.pos.A.z, 0) && near(pm.head.A, Math.PI / 2) && near(pn.pos.A.z, 1) && near(pn.head.A, 0); });
+  t('a route is ignored when the actor is not walking', () => { const sh = newShot({ actionA: 'sit', routeA: [{ x: 3, z: 3 }] }); return near(subjPos(sh, 1).pos.A.x, HOME.A.x) && subjPos(sh, 1).walkers.length === 0; });
+  t('the blocking diagram carries walk routes', () => { $('#ta').value = JSON.stringify({ shots: [{ actionA: 'walk', placeA: { x: -2, z: 0 }, routeA: [{ x: 0, z: 2 }, { x: 3, z: 2 }] }] }); applyCode(); const a = blockingDoc().shots[0].actors[0]; return a.route && a.route.length === 3 && near(a.route[2][0], 3); });
   t('placement survives a project round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ placeA: { x: 1.5, z: 2 }, faceA: 40 }] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value).shots[0]; return o.placeA.x === 1.5 && o.placeA.z === 2 && o.faceA === 40 && o.placeB === null; });
   t('blocking diagram builds for a scene', () => { $('#ta').value = JSON.stringify({ shots: [{ move: 'orbit', actionA: 'walk', placeB: { x: 2, z: 1 } }, { move: 'push_in' }] }); applyCode(); const b = buildBlockingPdf(blockingDoc()); return b.length > 1000 && String.fromCharCode(b[0], b[1], b[2], b[3]) === '%PDF'; });
   t('cues are validated, sorted and limited', () => { const s = normShot({ duration: 6, actionA: 'sit', cuesA: [{ t: 4, a: 'sip' }, { t: 2.3, a: 'talk' }, { t: 2.4, a: 'nod' }, { t: 0, a: 'wave' }, { t: 9, a: 'wave' }, { t: 3, a: 'walk' }, { t: 3, a: 'dance' }, 'x'] }); return s.cuesA.length === 2 && s.cuesA[0].t === 2.5 && s.cuesA[0].a === 'talk' && s.cuesA[1].t === 4 && s.cuesB.length === 0; });
