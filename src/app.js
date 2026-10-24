@@ -97,7 +97,7 @@ function normShot(o, errs, i) {
   s.notes = String(o.notes || '').replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
   return s;
 }
-const DEMO = () => ({ schemaVersion: SCHEMA, actors: { ...DEFAULT_CAST }, sensor: DEFAULT_SENSOR, title: 'Chai stall – first meeting', aspect: '2.39', look: 'golden', shots: [
+const DEMO = () => ({ schemaVersion: SCHEMA, actors: { ...DEFAULT_CAST }, sensor: DEFAULT_SENSOR, title: 'Chai stall – first meeting', aspect: '2.39', look: 'golden', set: 'stall', shots: [
   newShot({ fstop: 5.6, name: 'Establish the stall', move: 'reveal', duration: 5, lens: 24, size: 'WS', subject: 'both', height: 'eye', angle: 15, amount: .7 }),
   newShot({ fstop: 1.8, name: 'Meera notices', move: 'push_in', duration: 4.5, lens: 50, size: 'MS', subject: 'A', angle: 25, amount: .7 }),
   newShot({ fstop: 2.8, name: 'Arjun walks in', move: 'follow', duration: 5, lens: 35, size: 'FS', subject: 'B', angle: 25, actionB: 'walk' }),
@@ -149,16 +149,18 @@ const LOOKS = {
 };
 
 const mat = (c, o = {}) => new T.MeshStandardMaterial(Object.assign({ color: c, roughness: .8, flatShading: false }, o));
-function add(geo, m, x, y, z, sh = true) { const o = new T.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = sh; o.receiveShadow = true; scene.add(o); return o; }
+function add(geo, m, x, y, z, sh = true) { const o = new T.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = sh; o.receiveShadow = true; (CUR || scene).add(o); return o; }
 function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; return t; }
 
 // lights
 const FX = [], BULBS = [], GLASS = [], SHAFTS = [];
+const SETG = {}; let CUR = null; for (const k of ['stall', 'street', 'terrace']) { SETG[k] = new T.Group(); scene.add(SETG[k]); }
 const hemi = new T.HemisphereLight(0xffd9b0, 0x1a1210, .42); scene.add(hemi);
 const sun = new T.DirectionalLight(0xffb066, 4.2); sun.position.set(-7, 4.5, -12); sun.target.position.set(0, .8, 1); scene.add(sun.target); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -11, right: 11, top: 9, bottom: -9, near: 1, far: 40 }); sun.shadow.bias = -.0004; sun.shadow.normalBias = .02; scene.add(sun);
 const fill = new T.DirectionalLight(0xffd2a8, .35); fill.position.set(3, 3, 9); scene.add(fill);
 { const pm = new T.PMREMGenerator(R); scene.environment = pm.fromScene(new T.RoomEnvironment(), .04).texture; scene.environmentIntensity = .22; }
+CUR = SETG.stall;
 // floor
 const floorTex = canvasTex(1024, 1024, (g, w, h) => { g.fillStyle = '#5b3d2a'; g.fillRect(0, 0, w, h); for (let i = 0; i < 24; i++) { const y = i * w / 24; g.fillStyle = `hsl(${20 + (i * 7) % 10},${36 + (i * 13) % 14}%,${20 + (i * 5) % 9}%)`; g.fillRect(0, y, w, w / 24 - 2); for (let k = 0; k < 40; k++) { g.fillStyle = `rgba(${k % 2 ? 0 : 255},${k % 2 ? 0 : 220},${k % 2 ? 0 : 180},.035)`; g.fillRect((k * 131 + i * 57) % w, y + (k * 7) % 30, 60 + (k * 13) % 120, 1.5); } g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect((i * 197) % w, y, 3, w / 24); } });
 floorTex.wrapS = floorTex.wrapT = T.RepeatWrapping; floorTex.repeat.set(3, 3);
@@ -178,7 +180,7 @@ for (const x of [-3.2, 3.2]) {
   for (const [k, op] of [[1, .11], [1.18, .07]]) {
     const geo = new T.CylinderGeometry(Math.SQRT1_2, Math.SQRT1_2, 11, 4, 1, true); geo.rotateY(Math.PI / 4); geo.scale(2.4 * k, 1, 1.6 * k); geo.translate(0, -5.5, 0);
     const m = new T.MeshBasicMaterial({ map: shaftTex, color: 0xffb066, transparent: true, opacity: op, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, fog: false });
-    const sh = new T.Mesh(geo, m); sh.position.set(x, 2.6, -4.2); sh.quaternion.setFromUnitVectors(new T.Vector3(0, -1, 0), SUN_DIR); m.userData.base = op; scene.add(sh); SHAFTS.push(sh); FX.push(sh);
+    const sh = new T.Mesh(geo, m); sh.position.set(x, 2.6, -4.2); sh.quaternion.setFromUnitVectors(new T.Vector3(0, -1, 0), SUN_DIR); m.userData.base = op; CUR.add(sh); SHAFTS.push(sh); FX.push(sh);
   }
 }
 // chai counter + sign
@@ -189,7 +191,7 @@ add(new T.PlaneGeometry(3, .75), new T.MeshBasicMaterial({ map: signTex, color: 
 for (let i = 0; i < 5; i++) { add(new T.CylinderGeometry(.09, .07, .18, 10), mat(0xf3ead8), -1.4 + i * .7, 1.21, -3.2); }
 add(new T.CylinderGeometry(.28, .3, .5, 12), mat(0x9aa3ad, { metalness: .7, roughness: .35 }), 1.5, 1.37, -3.4);
 // bulbs
-for (const [x, z] of [[-2.5, -1.5], [0, -2], [2.5, -1.5]]) { add(new T.CylinderGeometry(.006, .006, 1.4), mat(0x111111), x, 3.5, z, false); const b = add(new T.SphereGeometry(.11, 12, 8), new T.MeshBasicMaterial({ color: new T.Color(0xffd28a).multiplyScalar(5) }), x, 2.75, z, false); const l = new T.PointLight(0xffb25e, 3.5, 7, 1.6); l.position.copy(b.position); scene.add(l); BULBS.push(l); }
+for (const [x, z] of [[-2.5, -1.5], [0, -2], [2.5, -1.5]]) { add(new T.CylinderGeometry(.006, .006, 1.4), mat(0x111111), x, 3.5, z, false); const b = add(new T.SphereGeometry(.11, 12, 8), new T.MeshBasicMaterial({ color: new T.Color(0xffd28a).multiplyScalar(5) }), x, 2.75, z, false); const l = new T.PointLight(0xffb25e, 3.5, 7, 1.6); l.position.copy(b.position); CUR.add(l); BULBS.push(l); }
 // floating dust + chai steam
 const dotTex = canvasTex(64, 64, (g, w) => { const gr = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, w); });
 const DN = 650, dPos = new Float32Array(DN * 3), dSeed = new Float32Array(DN);
@@ -201,7 +203,7 @@ function animFX(dt, t) {
   const a = dGeo.attributes.position.array;
   for (let i = 0; i < DN; i++) { const s = dSeed[i]; a[i * 3] += Math.sin(t * .3 + s) * .0009; a[i * 3 + 1] += (Math.sin(t * .2 + s * 2) * .0006 - .00015); a[i * 3 + 2] += Math.cos(t * .25 + s) * .0008; if (a[i * 3 + 1] < .1) a[i * 3 + 1] = 3.8; }
   dGeo.attributes.position.needsUpdate = true;
-  for (const sp of STEAM) { const k = (t * .25 + sp.userData.o) % 1; sp.position.set(1.5 + Math.sin(k * 6 + sp.userData.o * 9) * .08 * k, 1.66 + k * 1.1, -3.4 + Math.cos(k * 5) * .05); sp.scale.setScalar(.12 + k * .45); sp.material.opacity = Math.sin(k * Math.PI) * .16; }
+  for (const sp of STEAM) { sp.visible = curSet === 'stall'; const k = (t * .25 + sp.userData.o) % 1; sp.position.set(1.5 + Math.sin(k * 6 + sp.userData.o * 9) * .08 * k, 1.66 + k * 1.1, -3.4 + Math.cos(k * 5) * .05); sp.scale.setScalar(.12 + k * .45); sp.material.opacity = Math.sin(k * Math.PI) * .16; }
 }
 // table + stools
 add(new T.CylinderGeometry(.55, .55, .06, 18), mat(0x8a5a3c), -.2, .78, -1.6); add(new T.CylinderGeometry(.06, .1, .78, 8), mat(0x3a2a20), -.2, .39, -1.6);
@@ -210,6 +212,80 @@ for (const x of [-1, .6]) add(new T.CylinderGeometry(.22, .2, .48, 10), mat(0xd6
 add(new T.BoxGeometry(.5, 5.5, .5), mat(0xb08460), 4.8, 2.75, -1.4);
 for (const [x, z] of [[-6.8, -3.4], [6.6, -3.3], [-3.4, 2.6]]) { add(new T.CylinderGeometry(.32, .24, .55, 10), mat(0xa4532f), x, .28, z); add(new T.ConeGeometry(.55, 1.4, 7), mat(0x3d7a44), x, 1.25, z); add(new T.ConeGeometry(.42, 1, 7), mat(0x4c9152), x, 1.85, z); }
 for (const [x, z, r] of [[5.6, -2.4, .3], [6.1, -1.7, -.2], [5.8, -2.1, .1]]) { const c = add(new T.BoxGeometry(.6, .45, .6), mat(0x9c6b3f), x, .23 + (x === 5.8 ? .45 : 0), z); c.rotation.y = r; }
+
+CUR = null;
+
+/* ---------- more sets: each lives in its own group and one is shown at a time ---------- */
+const SETS = { stall: { label: 'Chai stall' }, street: { label: 'Village street' }, terrace: { label: 'Terrace' } };
+let curSet = 'stall';
+const gmesh = (par, geo, m, x, y, z) => { const o = new T.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; par.add(o); return o; };
+function lampAt(x, z, h) {
+  add(new T.CylinderGeometry(.05, .07, h, 8), mat(0x24201c), x, h / 2, z);
+  add(new T.BoxGeometry(.5, .05, .05), mat(0x24201c), x - .22, h, z);
+  const b = add(new T.SphereGeometry(.1, 12, 8), new T.MeshBasicMaterial({ color: new T.Color(0xffd28a).multiplyScalar(5) }), x - .44, h - .08, z, false);
+  const l = new T.PointLight(0xffb25e, 3.5, 8, 1.6); l.position.copy(b.position); CUR.add(l); BULBS.push(l);
+}
+function treeAt(x, z, s) {
+  add(new T.CylinderGeometry(.17 * s, .25 * s, 2.6 * s, 9), mat(0x5a3d28), x, 1.3 * s, z);
+  for (const [dx, dy, dz, r, c] of [[0, 3.1, 0, 1.15, 0x3f7d3f], [.7, 2.7, .2, .8, 0x4c9152], [-.65, 2.8, -.25, .85, 0x3a7240], [.1, 3.8, .1, .7, 0x56a05a]]) add(new T.SphereGeometry(r * s, 9, 7), mat(c, { roughness: 1 }), x + dx * s, dy * s, z + dz * s);
+}
+function house(x, w, h, color, z) {
+  add(new T.BoxGeometry(w, h, .4), mat(color, { roughness: .95 }), x, h / 2, z);
+  add(new T.BoxGeometry(w + .2, .09, .75), mat(0x6b4a38), x, h + .04, z + .1);
+  add(new T.BoxGeometry(w, .22, .46), mat(0xe9dcc4), x, .11, z);
+  const dw = Math.min(1, w / 3); add(new T.BoxGeometry(dw, 1.65, .06), mat(0x2a1c14), x - w * .18, .98, z + .22);
+  for (const s of [-1, 1]) { add(new T.BoxGeometry(.5, .7, .05), mat(0x315f70), x + w * .26 + s * .3, 1.35, z + .22); add(new T.BoxGeometry(.04, .76, .08), mat(0x1c1612), x + w * .26 + s * .56, 1.35, z + .22); }
+}
+function buildStreet() {
+  CUR = SETG.street;
+  const road = canvasTex(1024, 1024, (g, w, h) => { g.fillStyle = '#7d6a54'; g.fillRect(0, 0, w, h); for (let i = 0; i < 1800; i++) { const v = 90 + (i * 53) % 70; g.fillStyle = `rgba(${v},${v - 14},${v - 34},.5)`; g.fillRect((i * 331) % w, (i * 197) % h, 2 + i % 5, 2 + i % 3); } g.fillStyle = 'rgba(40,30,22,.22)'; g.fillRect(w * .22, 0, w * .08, h); g.fillRect(w * .62, 0, w * .08, h); });
+  road.wrapS = road.wrapT = T.RepeatWrapping; road.repeat.set(2, 2);
+  add(new T.PlaneGeometry(16, 12), mat(0xffffff, { map: road, roughness: 1 }), 0, 0, 0, false).rotation.x = -Math.PI / 2;
+  let x = -7.4; const cols = [0x2f8f9d, 0xe0a24a, 0xd9708a, 0x8bbf6a, 0xc9a27a];
+  for (let i = 0; x < 7.4; i++) { const w = 2.6 + (i * 7 % 3) * .5; house(x + w / 2, w, 2.05 + (i % 2) * .08, cols[i % cols.length], -4.4); x += w; }
+  add(new T.BoxGeometry(.3, 2.1, 9), mat(0xc9a27a, { roughness: .95 }), -8, 1.05, .3);
+  add(new T.BoxGeometry(16, 3.1, .5), mat(0xb88a6a, { roughness: 1 }), 0, 1.55, -8.2);
+  lampAt(3.5, -1.6, 3.4); treeAt(-5.8, -2.4, 1); treeAt(6.8, 1.8, .8);
+  /* auto-rickshaw */
+  const au = new T.Group(); au.position.set(5, 0, -2.2); au.rotation.y = -.55; CUR.add(au);
+  const yel = mat(0xf2b705, { roughness: .5 }), blk = mat(0x1b1b1b, { roughness: .7 });
+  gmesh(au, new T.BoxGeometry(1.2, .5, 1.9), blk, 0, .62, -.15); gmesh(au, new T.BoxGeometry(1.2, .45, 1.2), yel, 0, 1.05, -.45);
+  gmesh(au, new T.BoxGeometry(1.3, .07, 1.7), yel, 0, 1.78, -.2);
+  for (const [px, pz] of [[-.55, .55], [.55, .55], [-.55, -.95], [.55, -.95]]) gmesh(au, new T.CylinderGeometry(.03, .03, .8, 6), blk, px, 1.4, pz);
+  gmesh(au, new T.BoxGeometry(1.1, .5, .04), new T.MeshStandardMaterial({ color: 0xbfe3ee, transparent: true, opacity: .4, roughness: .1 }), 0, 1.5, .6);
+  gmesh(au, new T.BoxGeometry(.4, .3, .5), yel, 0, .95, 1.0);
+  for (const [px, pz, r] of [[-.62, -.7, .28], [.62, -.7, .28], [0, 1.1, .26]]) { const w = gmesh(au, new T.CylinderGeometry(r, r, .13, 14), blk, px, r, pz); w.rotation.z = Math.PI / 2; }
+  /* matka stand and a cot at the side of the lane */
+  for (const px of [-6.4, -5.9]) gmesh(SETG.street, new T.SphereGeometry(.22, 10, 8), mat(0xa4532f), px, .24, -3.6);
+  CUR = null;
+}
+function buildTerrace() {
+  CUR = SETG.terrace;
+  const slab = canvasTex(1024, 1024, (g, w, h) => { g.fillStyle = '#8d8a84'; g.fillRect(0, 0, w, h); for (let i = 0; i < 1400; i++) { const v = 110 + (i * 37) % 60; g.fillStyle = `rgba(${v},${v},${v - 4},.35)`; g.fillRect((i * 313) % w, (i * 211) % h, 2 + i % 6, 2 + i % 4); } g.strokeStyle = 'rgba(30,28,26,.35)'; g.lineWidth = 3; for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(0, i * h / 4); g.lineTo(w, i * h / 4); g.moveTo(i * w / 4, 0); g.lineTo(i * w / 4, h); g.stroke(); } g.fillStyle = 'rgba(60,70,50,.18)'; g.beginPath(); g.ellipse(w * .7, h * .3, 120, 70, .4, 0, 7); g.fill(); });
+  slab.wrapS = slab.wrapT = T.RepeatWrapping; slab.repeat.set(2, 2);
+  add(new T.PlaneGeometry(16, 12), mat(0xffffff, { map: slab, roughness: .9 }), 0, 0, 0, false).rotation.x = -Math.PI / 2;
+  const par = mat(0xd9c9a8, { roughness: .95 });
+  add(new T.BoxGeometry(16, 1, .3), par, 0, .5, -4.2); add(new T.BoxGeometry(.3, 1, 9), par, -8, .5, .3); add(new T.BoxGeometry(16.3, .08, .46), mat(0xb8a584), 0, 1.04, -4.2);
+  /* neighbouring buildings behind the parapet */
+  [[-6.5, 3.4, 2.6, 0xc07a5a], [-2.6, 4.2, 3.2, 0x7aa0b0], [1.8, 5, 2.4, 0xd9b36a], [6.2, 3.8, 3.1, 0xa8788a]].forEach(([bx, bw, bh, c], i) => { add(new T.BoxGeometry(bw, bh, 2.4), mat(c, { roughness: 1 }), bx, bh / 2, -9.4 - (i % 2) * 1.2); for (let k = 0; k < 3; k++) add(new T.BoxGeometry(.5, .55, .05), mat(0x2a2623), bx - bw / 3 + k * bw / 3, bh * .55, -8.17 - (i % 2) * 1.2); });
+  /* water tank on a stand */
+  const tk = new T.Group(); tk.position.set(5.6, 0, -2.9); CUR.add(tk);
+  for (const [px, pz] of [[-.4, -.4], [.4, -.4], [-.4, .4], [.4, .4]]) gmesh(tk, new T.BoxGeometry(.08, .9, .08), mat(0x44413c), px, .45, pz);
+  gmesh(tk, new T.CylinderGeometry(.62, .62, .95, 16), mat(0x1c1f22, { roughness: .6 }), 0, 1.4, 0); gmesh(tk, new T.CylinderGeometry(.5, .62, .14, 16), mat(0x1c1f22), 0, 1.95, 0);
+  /* clothesline with saris and shirts */
+  for (const px of [-5.6, -1.6]) add(new T.CylinderGeometry(.04, .04, 2.3, 6), mat(0x6a5a4a), px, 1.15, -2.9);
+  add(new T.CylinderGeometry(.008, .008, 4, 4), mat(0x222222), -3.6, 2.2, -2.9, false).rotation.z = Math.PI / 2;
+  [[-5.1, .55, 1.3, 0xd8453a], [-4.4, .4, 1, 0xf2c14e], [-3.8, .7, 1.5, 0x2f8f9d], [-3.0, .45, .9, 0xffffff], [-2.3, .6, 1.4, 0xd9708a]].forEach(([cx, cw, ch, c]) => { const o = add(new T.BoxGeometry(cw, ch, .02), mat(c, { roughness: 1, side: T.DoubleSide }), cx, 2.2 - ch / 2, -2.9); o.rotation.z = Math.sin(cx) * .05; });
+  /* rope cot, plants, a stool */
+  gmesh(SETG.terrace, new T.BoxGeometry(1.9, .08, .9), mat(0x6a4a30), -5.2, .42, 2.2);
+  for (const [px, pz] of [[-1.1, -.35], [1.1, -.35], [-1.1, .35], [1.1, .35]]) gmesh(SETG.terrace, new T.BoxGeometry(.08, .42, .08), mat(0x6a4a30), -5.2 + px * .9, .21, 2.2 + pz);
+  gmesh(SETG.terrace, new T.BoxGeometry(1.7, .03, .75), mat(0xc9b48a, { roughness: 1 }), -5.2, .47, 2.2);
+  for (const [px, pz] of [[2.4, -3.5], [3.2, -3.6], [-7.2, -3.4]]) { gmesh(SETG.terrace, new T.CylinderGeometry(.28, .2, .42, 10), mat(0xa4532f), px, .21, pz); gmesh(SETG.terrace, new T.SphereGeometry(.34, 9, 7), mat(0x3d7a44, { roughness: 1 }), px, .66, pz); }
+  lampAt(-2.5, -3.6, 2.6);
+  CUR = null;
+}
+buildStreet(); buildTerrace();
+function applySet(name) { curSet = SETS[name] ? name : 'stall'; for (const k in SETG) SETG[k].visible = k === curSet; }
 
 // actors
 function actor(col, skin, hair, fem, acc) {
@@ -717,9 +793,11 @@ $('#bPerf').onclick = () => { setLight(!light); toast(light ? 'Light mode: faste
 $('#bUndo').onclick = () => { if (undo.length) { redo.push(JSON.stringify(P)); restore(undo.pop()); toast('Undone'); } };
 $('#bRedo').onclick = () => { if (redo.length) { undo.push(JSON.stringify(P)); restore(redo.pop()); toast('Redone'); } };
 $('#bDel').onclick = () => { if (!P.shots.length) return; commit(); P.shots.splice(sel, 1); sel = clamp(sel, 0, P.shots.length - 1); time = P.shots.length ? starts()[sel] : 0; refreshAll(); toast('Shot deleted · Ctrl+Z to undo'); };
-$('#bDup').onclick = () => { if (!P.shots.length) return; commit(); P.shots.splice(sel + 1, 0, Object.assign({}, P.shots[sel], { name: P.shots[sel].name + ' copy' })); sel++; refreshAll(); };
+$('#bDup').onclick = () => { if (!P.shots.length) return; commit(); P.shots.splice(sel + 1, 0, Object.assign(JSON.parse(JSON.stringify(P.shots[sel])), { name: P.shots[sel].name + ' copy' })); sel++; refreshAll(); };
 $('#title').oninput = e => { P.title = e.target.value; };
 $('#look').innerHTML = Object.entries(LOOKS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+$('#set').innerHTML = Object.entries(SETS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+$('#set').onchange = e => { commit(); P.set = e.target.value; applySet(P.set); toast(SETS[P.set].label + ' set'); };
 $('#look').onchange = e => { commit(); P.look = e.target.value; applyLook(P.look); toast(LOOKS[P.look].label + ' look'); };
 $('#sensor').innerHTML = Object.entries(SENSORS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
 $('#sensor').onchange = e => { commit(); P.sensor = e.target.value; buildInsp(); pathKey = ''; toast(`${sensorOf().label} sensor · 35 mm equivalent ×${crop().toFixed(2)}`); };
@@ -736,13 +814,13 @@ $('#modeSeg').onclick = e => { const b = e.target.closest('button'); if (b) setM
 
 /* code mode */
 const ta = $('#ta');
-function loadCode() { ta.value = JSON.stringify({ schemaVersion: SCHEMA, title: P.title, aspect: P.aspect, look: P.look, sensor: P.sensor, actors: castOf(), shots: P.shots }, null, 2); $('#cerr').textContent = ''; }
+function loadCode() { ta.value = JSON.stringify({ schemaVersion: SCHEMA, title: P.title, aspect: P.aspect, look: P.look, set: P.set, sensor: P.sensor, actors: castOf(), shots: P.shots }, null, 2); $('#cerr').textContent = ''; }
 function applyCode() {
   let o; try { o = JSON.parse(ta.value); } catch (e) { $('#cerr').textContent = '✕ ' + e.message; return; }
   if (!o || !Array.isArray(o.shots)) { $('#cerr').textContent = '✕ The scene needs a "shots" list.'; return; }
   const errs = []; const shots = o.shots.slice(0, 60).map((s, i) => normShot(s || {}, errs, i));
   if ((+o.schemaVersion || 1) < 6) shots.forEach(s => { if (s.move === 'pan') s.dir = -s.dir; }); // before v0.6 a pan with direction Right actually panned left; flipping keeps old scenes playing the same
-  commit(); P = { schemaVersion: SCHEMA, actors: normCast(o.actors), look: LOOKS[o.look] ? o.look : 'golden', sensor: SENSORS[o.sensor] ? o.sensor : DEFAULT_SENSOR, title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
+  commit(); P = { schemaVersion: SCHEMA, actors: normCast(o.actors), look: LOOKS[o.look] ? o.look : 'golden', set: SETS[o.set] ? o.set : 'stall', sensor: SENSORS[o.sensor] ? o.sensor : DEFAULT_SENSOR, title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
   if (o.sensor !== undefined && !SENSORS[o.sensor]) errs.push('sensor must be ' + Object.keys(SENSORS).join('/'));
   if (+o.schemaVersion > SCHEMA) errs.push(`made with a newer Kalki (schema ${o.schemaVersion}); some settings were ignored`);
   sel = clamp(sel, 0, shots.length - 1); time = 0; refreshAll(false);
@@ -781,7 +859,7 @@ function download(blob, name) {
 function menu(id, fn) { const m = $(id); m.querySelector('.btn').onclick = e => { e.stopPropagation(); $$('.menu').forEach(x => x !== m && x.classList.remove('open')); m.classList.toggle('open'); }; m.querySelector('.dd').onclick = e => { const b = e.target.closest('button'); if (b) { m.classList.remove('open'); fn(b.dataset.a); } }; }
 document.addEventListener('click', () => $$('.menu').forEach(x => x.classList.remove('open')));
 menu('#mFile', a => {
-  if (a === 'new') { commit(); P = { schemaVersion: SCHEMA, actors: castOf(), title: 'Untitled scene', aspect: P.aspect, look: P.look, sensor: P.sensor || DEFAULT_SENSOR, shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
+  if (a === 'new') { commit(); P = { schemaVersion: SCHEMA, actors: castOf(), title: 'Untitled scene', aspect: P.aspect, look: P.look, set: P.set, sensor: P.sensor || DEFAULT_SENSOR, shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
   if (a === 'open') $('#fileIn').click();
   if (a === 'save') { download(new Blob([JSON.stringify(P, null, 2)], { type: 'application/json' }), fname('.kalki.json')); toast('Project saved'); }
 });
@@ -964,7 +1042,7 @@ function applySuggestions(list) {
 }
 function simulateRef() {
   commit();
-  P = { schemaVersion: SCHEMA, actors: castOf(), title: ('Reference: ' + ref.name).slice(0, 60), aspect: P.aspect, look: P.look, sensor: P.sensor || DEFAULT_SENSOR, shots: toShots(ref.clip, 'Ref').map(o => newShot(o)) };
+  P = { schemaVersion: SCHEMA, actors: castOf(), title: ('Reference: ' + ref.name).slice(0, 60), aspect: P.aspect, look: P.look, set: P.set, sensor: P.sensor || DEFAULT_SENSOR, shots: toShots(ref.clip, 'Ref').map(o => newShot(o)) };
   sel = 0; time = 0; demo = false; refreshAll(); setPlay(true);
 }
 function refCsv() {
@@ -1065,7 +1143,7 @@ $('#obNext').onclick = () => { $('#obStep1').style.display = 'none'; $('#obStep2
 $$('.mode').forEach(b => b.onclick = () => endIntro(b.dataset.m));
 $('#obSkip').onclick = () => endIntro('nocode');
 
-function refreshAll(code = true) { P.actors = normCast(P.actors); syncCast(); P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
+function refreshAll(code = true) { P.actors = normCast(P.actors); syncCast(); P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); P.set = SETS[P.set] ? P.set : 'stall'; $('#set').value = P.set; applySet(P.set); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
 new ResizeObserver(layout).observe($('#view'));
 buildLib(); refreshAll();
 if (location.hash === '#selftest' || location.hash === '#e2e') { if (location.hash === '#selftest') runSelfTest(); window.__kalki = { analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
@@ -1120,6 +1198,10 @@ async function runSelfTest() {
   t('a walker follows the route at a steady pace and faces the way they move', () => { const sh = newShot({ actionA: 'walk', placeA: { x: 0, z: 0 }, routeA: [{ x: 2, z: 0 }, { x: 2, z: 2 }] }); const p0 = subjPos(sh, 0), p1 = subjPos(sh, 1), pm = subjPos(sh, .25), pn = subjPos(sh, .75); return near(p0.pos.A.x, 0) && near(p1.pos.A.x, 2) && near(p1.pos.A.z, 2) && near(pm.pos.A.x, 1) && near(pm.pos.A.z, 0) && near(pm.head.A, Math.PI / 2) && near(pn.pos.A.z, 1) && near(pn.head.A, 0); });
   t('a route is ignored when the actor is not walking', () => { const sh = newShot({ actionA: 'sit', routeA: [{ x: 3, z: 3 }] }); return near(subjPos(sh, 1).pos.A.x, HOME.A.x) && subjPos(sh, 1).walkers.length === 0; });
   t('the blocking diagram carries walk routes', () => { $('#ta').value = JSON.stringify({ shots: [{ actionA: 'walk', placeA: { x: -2, z: 0 }, routeA: [{ x: 0, z: 2 }, { x: 3, z: 2 }] }] }); applyCode(); const a = blockingDoc().shots[0].actors[0]; return a.route && a.route.length === 3 && near(a.route[2][0], 3); });
+  t('sets: three exist, only the chosen one is shown, unknown falls back to the chai stall', () => { const names = Object.keys(SETS); if (names.join() !== 'stall,street,terrace') return false; for (const k of names) { applySet(k); if (!Object.keys(SETG).every(g => SETG[g].visible === (g === k))) return false; } applySet('nope'); const ok = SETG.stall.visible && !SETG.street.visible; $('#ta').value = JSON.stringify({ set: 'street', shots: [{}] }); applyCode(); const a = P.set; $('#ta').value = JSON.stringify({ set: 'moon', shots: [{}] }); applyCode(); return ok && a === 'street' && P.set === 'stall'; });
+  t('the set is saved in the project and survives a round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, set: 'terrace', shots: [{}] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value); applyCode(); return o.set === 'terrace' && P.set === 'terrace' && $('#set').value === 'terrace' && SETG.terrace.visible; });
+  t('every set has its own floor and dressing and the stall keeps its lights', () => ['stall', 'street', 'terrace'].every(k => SETG[k].children.length > 8) && BULBS.length >= 5);
+  t('duplicating a shot does not share its walk route', () => { $('#ta').value = JSON.stringify({ shots: [{ actionA: 'walk', routeA: [{ x: 1, z: 1 }] }] }); applyCode(); sel = 0; $('#bDup').click(); P.shots[0].routeA.push({ x: 2, z: 2 }); return P.shots.length === 2 && P.shots[1].routeA.length === 1; });
   t('placement survives a project round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ placeA: { x: 1.5, z: 2 }, faceA: 40 }] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value).shots[0]; return o.placeA.x === 1.5 && o.placeA.z === 2 && o.faceA === 40 && o.placeB === null; });
   t('blocking diagram builds for a scene', () => { $('#ta').value = JSON.stringify({ shots: [{ move: 'orbit', actionA: 'walk', placeB: { x: 2, z: 1 } }, { move: 'push_in' }] }); applyCode(); const b = buildBlockingPdf(blockingDoc()); return b.length > 1000 && String.fromCharCode(b[0], b[1], b[2], b[3]) === '%PDF'; });
   t('cues are validated, sorted and limited', () => { const s = normShot({ duration: 6, actionA: 'sit', cuesA: [{ t: 4, a: 'sip' }, { t: 2.3, a: 'talk' }, { t: 2.4, a: 'nod' }, { t: 0, a: 'wave' }, { t: 9, a: 'wave' }, { t: 3, a: 'walk' }, { t: 3, a: 'dance' }, 'x'] }); return s.cuesA.length === 2 && s.cuesA[0].t === 2.5 && s.cuesA[0].a === 'talk' && s.cuesA[1].t === 4 && s.cuesB.length === 0; });
