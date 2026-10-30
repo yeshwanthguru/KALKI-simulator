@@ -688,6 +688,10 @@ function buildLib() {
 }
 $('#chips').onclick = e => { const c = e.target.closest('.chip'); if (c) { filt = c.dataset.c; buildLib(); } };
 $('#search').oninput = buildLib;
+/* phone layout: one panel at a time under the view */
+const setTab = t => { document.body.dataset.tab = t; $$('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t)); };
+$('#tabs').onclick = e => { const b = e.target.closest('button'); if (b) setTab(b.dataset.tab); };
+setTab('moves');
 $('#moves').onclick = e => {
   const b = e.target.closest('.mv'); if (!b) return;
   const m = MV[b.dataset.id], base = P.shots[sel] || {};
@@ -807,7 +811,7 @@ function updTime() {
 }
 let drag = false;
 const seek = e => { const r = $('#track').getBoundingClientRect(); time = clamp((e.clientX - r.left) / r.width, 0, 1) * total(); const a = at(time); if (a && a.i !== sel) { sel = a.i; markSel(); } };
-$('#track').addEventListener('pointerdown', e => { if (!P.shots.length) return; drag = true; $('#track').setPointerCapture(e.pointerId); const c = e.target.closest('.clip'); if (c && e.target.closest('#clips') && !playing) { sel = +c.dataset.i; markSel(); } seek(e); });
+$('#track').addEventListener('pointerdown', e => { if (!P.shots.length) return; drag = true; $('#track').setPointerCapture(e.pointerId); const c = e.target.closest('.clip'); if (c && e.target.closest('#clips') && !playing) { sel = +c.dataset.i; markSel(); setTab('shot'); } seek(e); });
 $('#track').addEventListener('pointermove', e => { if (drag) seek(e); });
 $('#track').addEventListener('pointerup', () => { drag = false; });
 
