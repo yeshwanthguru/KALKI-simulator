@@ -9,6 +9,12 @@ const shot = n => ({ n, name: 'Shot ' + n + ' (café) — “quotes”', move: '
 const bin = buildShotListPdf({ title: 'Test (scene)', meta: ['2.39:1', 'Golden hour'], aspect: 2.39, footer: 'Made with Kalki Simulator', shots: Array.from({ length: 12 }, (_, i) => shot(i + 1)) });
 const s = Buffer.from(bin).toString('latin1');
 
+/* the rig name is printed next to the move, and a very long one is cut with an ellipsis instead of overflowing */
+{
+  const withRig = Buffer.from(buildShotListPdf({ title: 'Rig', meta: ['x'], aspect: 2.39, footer: 'f', shots: [{ ...shot(1), rig: 'Dolly + track' }, { ...shot(2), rig: 'A very long rig name that cannot possibly fit in the move column of the sheet' }] })).toString('latin1');
+  assert.ok(withRig.includes('Dolly'), 'rig name is in the PDF');
+  assert.ok(withRig.includes('...'), 'a long rig name is shortened');
+}
 assert.ok(s.startsWith('%PDF-1.4'));
 assert.ok(s.trimEnd().endsWith('%%EOF'));
 const pages = (s.match(/\/Type \/Page /g) || []).length;

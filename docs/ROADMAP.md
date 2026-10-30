@@ -73,7 +73,7 @@
 
 | # | Feature | Effort | Priority | Rationale |
 |---|---|---|---|---|
-| 4.1 | **Touch/phone layout** (responsive panels, gesture orbit/pinch, larger controls) | L | P0 | Android ~92% of Indian mobile ([StatCounter](https://gs.statcounter.com/os-market-share/mobile-/india)); Apple-only incumbent Previs Pro |
+| 4.1 | ◐ **Touch/phone layout** (done in v0.7.0: tabs, scrolling toolbar, touch-sized controls below 820 px; tested only in a headless browser, not on a real phone; the main view has no gestures because the camera is simulated) (responsive panels, gesture orbit/pinch, larger controls) | L | P0 | Android ~92% of Indian mobile ([StatCounter](https://gs.statcounter.com/os-market-share/mobile-/india)); Apple-only incumbent Previs Pro |
 | 4.2 | **PWA install (offline cache)** | S-M | P1 | Android installation without an app store; check CSP/offline constraints |
 | 4.3 | ✅ **Windows installer via Tauri 2** (first version done in v0.4.1: NSIS, per-user, native Save as; offline WebView2 bundling and signing still open) (WebView2; choose bootstrapper vs offline installer for no-network labs) | M | P0 | Windows ~78% of desktop ([StatCounter](https://gs.statcounter.com/os-market-share/desktop-operating-systems/india)); typical Tauri installers are far smaller than Electron (e.g. ~12 MB vs ~201 MB in one comparison, [HackerNoon](https://hackernoon.com/six-months-with-tauri-the-benefits-and-the-bill)); offline lab deployment possible per [Tauri docs](https://v2.tauri.app/distribute/windows-installer/) |
 | 4.4 | ◐ **Native file save/open (save done) and folder asset packs in the exe** | M | P1 | Smoother than browser downloads; enables optional large packs |
@@ -85,12 +85,12 @@
 
 | # | Feature | Effort | Priority | Rationale |
 |---|---|---|---|---|
-| 5.1 | **Lesson scenes/templates** ("Learn 18 moves", "Shot sizes", "180° rule", "Lens comparison") | M | P0 | Film-school niche; low production cost; strong marketing |
+| 5.1 | ✅ **Lesson scenes/templates** (done in v0.7.0: tour of all 18 moves, shot sizes, lenses, depth of field, push vs zoom, dialogue coverage, camera rigs; 180° rule is covered inside dialogue coverage; Tamil/Hindi titles only, bodies English) ("Learn 18 moves", "Shot sizes", "180° rule", "Lens comparison") | M | P0 | Film-school niche; low production cost; strong marketing |
 | 5.2 | **Instructor kit**: assignment file + checklist, side-by-side before/after compare | M | P1 | Institution licence story |
-| 5.3 | **Shot templates and presets library** (dialogue OTS, walk-and-talk, reveal) | M | P1 | Speeds creators; shows grammar |
+| 5.3 | ✅ **Shot templates and presets library** (done in v0.7.0: dialogue pair, walk and talk, tension build, scene opener, Reels hook) (dialogue OTS, walk-and-talk, reveal) | M | P1 | Speeds creators; shows grammar |
 | 5.4 | **Storyboard sheet and PDF theming** (logo, scene/shoot-day metadata, language) | S | P2 | Professional polish |
-| 5.5 | **Camera-rig props** (dolly track, jib, gimbal, handheld shake profiles) with visible rig | M | P1 | Realism vs FrameForge/Cine Designer; teaches how to achieve a move cheaply |
-| 5.6 | **Budget-friendly alternatives hints** ("how to get this move with a phone and a bucket") | S | P2 | India fit, content marketing |
+| 5.5 | ✅ **Camera-rig props** (done in v0.7.0: eight rigs drawn in the set view with a per-shot picker; handheld intensity uses the existing intensity slider, no separate shake profiles; rig not yet in the shot-list PDF) (dolly track, jib, gimbal, handheld shake profiles) with visible rig | M | P1 | Realism vs FrameForge/Cine Designer; teaches how to achieve a move cheaply |
+| 5.6 | ✅ **Budget-friendly alternatives hints** (done in v0.7.0 as the "On a budget" tip for each rig; tips are English only) ("how to get this move with a phone and a bucket") | S | P2 | India fit, content marketing |
 
 ## Phase 5b — Reference video analysis ("Analyse my video") (v0.8.x–v0.9)
 

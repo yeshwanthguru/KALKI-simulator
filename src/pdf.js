@@ -127,7 +127,7 @@ export class Pdf {
 /* ---------- shot-list layout ---------- */
 const INK = [24, 24, 30], MUTED = [110, 112, 125], RULE = [210, 212, 220], ACCENT = [232, 108, 52], HEAD = [244, 245, 248];
 
-/* doc: { title, meta: [string], shots: [{ n, name, move, why, start, duration, lens, eq, fstop, size, height, angle, subject, action, amount, easing,
+/* doc: { title, meta: [string], shots: [{ n, name, move, rig, why, start, duration, lens, eq, fstop, size, height, angle, subject, action, amount, easing,
           jpeg?: Uint8Array, jw?, jh? }], aspect, footer } */
 export function buildShotListPdf(doc) {
   const pdf = new Pdf(842, 595); pdf.raster = doc.raster; const M = 36, ROW = 82, TOP = 112, BOTTOM = 595 - 44;
@@ -153,7 +153,7 @@ export function buildShotListPdf(doc) {
       cx += cols[0].w;
       /* shot */
       pdf.text(cx + 6, y + 14, `${s.n}. ${s.name}`, { size: 10.5, bold: true, color: INK });
-      pdf.text(cx + 6, y + 27, s.move, { size: 9, bold: true, color: ACCENT });
+      pdf.text(cx + 6, y + 27, wrapMax(s.rig ? `${s.move}  ·  ${s.rig}` : s.move, cols[1].w - 12, 9, 1)[0] || s.move, { size: 9, bold: true, color: ACCENT });
       wrapMax(s.why, cols[1].w - 12, 7.5, 2).forEach((ln, i) => pdf.text(cx + 6, y + 39 + i * 9, ln, { size: 7.5, color: MUTED }));
       if (s.notes) wrapMax('Note: ' + s.notes, cols[1].w - 12, 7.5, 2).forEach((ln, i) => pdf.text(cx + 6, y + 61 + i * (needsRaster(s.notes) ? 10.5 : 9), ln, { size: 7.5, color: INK }));
       cx += cols[1].w;

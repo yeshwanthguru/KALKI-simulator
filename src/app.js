@@ -986,7 +986,7 @@ function exportPdf(kind) {
     c.getContext('2d').drawImage(cv, film.x * r, film.y * r, film.w * r, film.h * r, 0, 0, tw, th);
     const bin = atob(c.toDataURL('image/jpeg', .85).split(',')[1]), jpeg = new Uint8Array(bin.length);
     for (let k = 0; k < bin.length; k++) jpeg[k] = bin.charCodeAt(k);
-    shots.push({ n: i + 1, name: s.name, move: MV[s.move].name, why: MV[s.move].why, notes: s.notes, start: tcf(st[i]), duration: s.duration, lens: s.lens, eq: crop() > 1.01 ? eqMm(s.lens) : 0, fstop: s.fstop,
+    shots.push({ n: i + 1, name: s.name, move: MV[s.move].name, rig: RIGS[rigFor(s)].name, why: MV[s.move].why, notes: s.notes, start: tcf(st[i]), duration: s.duration, lens: s.lens, eq: crop() > 1.01 ? eqMm(s.lens) : 0, fstop: s.fstop,
       size: SIZES[s.size].label, sizeCode: s.size, height: HEIGHTS[s.height], angle: s.angle, subject: SUBJ[s.subject], actions: [describeActions(s, 'A'), describeActions(s, 'B')], amount: Math.round(s.amount * 100),
       easing: s.easing[0].toUpperCase() + s.easing.slice(1), jpeg, jw: tw, jh: th });
   }
