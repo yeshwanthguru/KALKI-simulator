@@ -612,7 +612,7 @@ function applyLook(name) {
 /* ---------- render ---------- */
 let fpsAcc = 0, fpsN = 0, light = false;
 function setLight(v) { light = v; R.setPixelRatio(v ? 1 : Math.min(devicePixelRatio, 1.5)); bokeh.enabled = bloom.enabled = !v; R.shadowMap.enabled = !v; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); layout(); $('#bPerf').style.color = v ? 'var(--ac)' : ''; }
-function perf(dt) { if (light || demo || location.hash === '#hq') return; fpsAcc += dt; fpsN++; if (fpsAcc > 3) { if (fpsN / fpsAcc < 22) { setLight(true); toast('Switched to Light mode for smoother playback on this computer'); } fpsAcc = 0; fpsN = 0; } }
+function perf(dt) { if (light || demo || window.__kalki || location.hash === '#hq') return; fpsAcc += dt; fpsN++; if (fpsAcc > 3) { if (fpsN / fpsAcc < 22) { setLight(true); toast('Switched to Light mode for smoother playback on this computer'); } fpsAcc = 0; fpsN = 0; } }
 let film = { x: 0, y: 0, w: 1, h: 1 }, ins = null;
 function layout() {
   const v = $('#view'), cw = v.clientWidth, ch = v.clientHeight;
