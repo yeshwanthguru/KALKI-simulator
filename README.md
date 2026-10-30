@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.6.1-ff6b4a?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.7.0-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
   <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
@@ -31,12 +31,12 @@
 
 **In the browser** (nothing to install)
 
-1. Download [`Kalki-versions/Kalki-v0.6.1.html`](Kalki-versions/Kalki-v0.6.1.html), or the zipped package [`Kalki-v0.6.1.zip`](Kalki-versions/Kalki-v0.6.1.zip) with notices.
+1. Download [`Kalki-versions/Kalki-v0.7.0.html`](Kalki-versions/Kalki-v0.7.0.html), or the zipped package [`Kalki-v0.7.0.zip`](Kalki-versions/Kalki-v0.7.0.zip) with notices.
 2. Double-click it. It opens in Chrome or Edge and runs fully offline.
 
 **On Windows** (native app, about 3 MB)
 
-1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.6.1_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.6.1_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
+1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.7.0_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.7.0_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
 2. The installer is **not code-signed yet**, so Windows SmartScreen may warn on first run: choose **More info, Run anyway**.
 3. Exports open a native **Save as** dialog. It uses the WebView2 runtime that ships with Windows 11 (Windows 10 may prompt to install it).
 
@@ -124,6 +124,10 @@ Press the people button to open the cast dialog and pick who plays each role. Ev
   <img src="docs/images/cast-picker.jpg" alt="The cast dialog: seven avatars to choose from for each of the two roles" width="85%">
 </p>
 
+### Lessons, templates and camera rigs
+
+The graduation-cap button opens ready-made lesson scenes (a tour of all 18 moves, shot sizes, lenses, depth of field, push in vs zoom, dialogue coverage and camera rigs) and shot templates (dialogue pair, walk and talk, tension build, scene opener, Reels hook) that are added to the end of your scene. Each shot can also show the camera rig that would make the move in real life: tripod, dolly and track, slider, circular track, jib, gimbal or handheld, drawn in the set view with a low-budget tip. On a phone-sized screen the view sits on top, with tabs for the moves and the shot settings.
+
 ### Learn from a reference video
 
 Press the film-strip button, choose a clip, and Kalki reports how its camera work is built. It finds each shot, names the move, shows how long each lasts and how confident it is, explains the technique, and compares the clip with your scene. Each suggestion names its rule and its reason, and you can apply one or all, then play the result. Ctrl+Z restores your scene.
@@ -184,7 +188,8 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | v0.5.3 | Reference video analysis with suggestions and simulation; Pan direction fix |
 | v0.5.4 | Actor picker with seven avatars |
 | v0.6.0 | Tamil and Hindi interface, Tamil/Hindi text in PDFs, dawn / noon / dusk looks |
-| **v0.6.1** | **Latest.** Village street and terrace sets, costumes, multi-point walk paths |
+| v0.6.1 | Village street and terrace sets, costumes, multi-point walk paths |
+| **v0.7.0** | **Latest.** Lesson scenes and shot templates, camera rigs in the set view, phone layout |
 
 Every build is kept in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 
