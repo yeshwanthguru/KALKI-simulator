@@ -88,6 +88,9 @@ button{cursor:pointer;border:0;background:none}
 html[lang=ta] body,html[lang=hi] body,html[lang=ta] .sel,html[lang=hi] .sel,html[lang=ta] .btn,html[lang=hi] .btn{font-family:"Nirmala UI","Noto Sans Tamil","Noto Sans Devanagari","Latha","Mangal","Segoe UI",system-ui,sans-serif}
 #lang{max-width:104px}
 #top{gap:6px 10px}#top .sel{flex:0 0 auto;max-width:200px;text-overflow:ellipsis}#top .seg{flex:none}#top .sp{flex:1 1 0;min-width:0}
+#learnBody h3{margin:10px 0 6px;font-size:13px}.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.lc{display:flex;flex-direction:column;gap:3px;text-align:left;background:var(--p2);border:1px solid var(--ln);border-radius:10px;padding:10px;color:inherit;font:inherit;cursor:pointer}
+.lc:hover{border-color:var(--ac,#e8b04b)}.lc span{font-size:12px;color:var(--mu);line-height:1.45}.lc small{font-size:11px;color:var(--mu);opacity:.8}
 .rf-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 .rf-note{font-size:12px;color:var(--mu);line-height:1.5}.rf-note.err{color:#ff8a7a}
 .rf-prog{height:8px;border-radius:5px;background:var(--p2);overflow:hidden;margin:6px 0}.rf-prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff6b4a,#ffb547);transition:width .15s}
@@ -192,6 +195,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
     <button class="btn ic" id="bGuide" title="Frame guides (G): thirds, safe areas, Reels interface zones">⊞</button>
     <button class="btn ic" id="bSet" title="Show set view">◩</button>
     <button class="btn ic" id="bCast" title="Choose the actors: pick an avatar for each of the two roles">👥</button>
+    <button class="btn ic" id="bLearn" title="Lessons and shot templates: learn the camera moves or add ready-made shots">🎓</button>
     <button class="btn ic" id="bRef" title="Analyse a reference video: camera moves, pacing and suggestions">🎞</button>
     <button class="btn ic" id="bPerf" title="Light mode for CPU-only laptops">⚡</button>
     <button class="btn ic" id="bUndo" title="Undo (Ctrl+Z)">↶</button>
@@ -267,6 +271,13 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
   <p class="rf-note" style="margin:0 0 10px">Pick who plays each role. All avatars use the same actions, placement and camera work; the scene keeps your choice when you save it.</p>
   <div id="castBody" style="overflow:auto"></div>
   <button class="btn pri" style="margin-top:12px;align-self:flex-start" id="castClose">Done</button>
+</div></div>
+
+<div class="modal" id="mLearn"><div class="card" style="width:min(900px,96vw);max-height:90vh;display:flex;flex-direction:column">
+  <h2>Lessons and templates</h2>
+  <p class="rf-note" style="margin:0 0 10px">Lesson scenes teach one idea each and replace the current scene (Ctrl+Z brings it back). Templates add a ready-made run of shots to the end of your scene. Your actors and costumes are kept.</p>
+  <div id="learnBody" style="overflow:auto"></div>
+  <button class="btn pri" style="margin-top:12px;align-self:flex-start" id="learnClose">Done</button>
 </div></div>
 
 <div class="modal" id="mRef"><div class="card" style="width:min(940px,96vw);max-height:92vh;display:flex;flex-direction:column">

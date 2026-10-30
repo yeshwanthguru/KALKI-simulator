@@ -1,5 +1,6 @@
 import { buildShotListPdf, buildStoryboardPdf, buildBlockingPdf } from './pdf.js';
 import { LANGS, makeTranslator } from './i18n.js';
+import { LESSONS, TEMPLATES } from './lessons.js';
 import { analyzeClip, toShots, suggest, toGray, AW, AH, fmtTime } from './analyze.js';
 (function () {
 'use strict';
@@ -1120,6 +1121,31 @@ function renderCast() {
   const c = castOf(), th = KA0.thumbs || {};
   $('#castBody').innerHTML = ['A', 'B'].map(k => `<div class="cast-col"><h3>Actor ${k} <small>${esc(ACTOR_NAME[k])}</small></h3><div class="cast-grid">${Object.entries(AV).map(([id, a]) => `<button class="cast-card${c[k] === id ? ' on' : ''}" data-cast="${k}:${id}" title="${esc(a.first)}: ${a.g === 'f' ? 'female' : 'male'} ${esc(a.label)}">${th[id] ? `<img alt="" src="${th[id]}">` : ''}<b>${esc(a.first)}</b><small>${a.g === 'f' ? 'Female' : 'Male'} ${esc(a.label.replace(/^(Fe)?[Mm]ale /, ''))}</small></button>`).join('')}</div><label class="cast-out">Costume <select class="sel" data-out="${k}">${Object.entries(OUTFITS).map(([o, v]) => `<option value="${o}"${outfitOf()[k] === o ? ' selected' : ''}>${v.label}</option>`).join('')}</select></label></div>`).join('');
 }
+/* ---------- lessons and shot templates ---------- */
+const tourLesson = () => ({
+  id: 'moves', title: 'Tour of all camera moves', blurb: 'Every move in the library, one shot each on the same two actors, with what it does and when to use it.',
+  scene: { title: 'Lesson: All camera moves', aspect: '1.778', look: 'neutral', set: 'stall', shots: MOVES.map(m => ({ name: m.name, move: m.id, duration: 4, lens: 35, size: m.walk ? 'FS' : 'MS', subject: m.walk ? 'B' : 'A', angle: m.walk ? 90 : 25, actionB: m.walk ? 'walk' : 'stand', actionA: m.walk ? 'stand' : 'talk', notes: m.s + '. ' + m.tip })) }
+});
+const allLessons = () => [tourLesson(), ...LESSONS];
+function renderLearn() {
+  const card = (kind, x, extra) => `<button class="lc" data-${kind}="${x.id}"><b>${esc(x.title)}</b><span>${esc(x.blurb)}</span><small>${extra}</small></button>`;
+  $('#learnBody').innerHTML = `<h3>Lesson scenes</h3><div class="lgrid">${allLessons().map(x => card('lesson', x, x.scene.shots.length + ' shots · replaces the scene')).join('')}</div>`
+    + `<h3>Shot templates</h3><div class="lgrid">${TEMPLATES.map(x => card('tpl', x, x.shots.length + ' shots · added to the end')).join('')}</div>`;
+}
+function openLesson(id) {
+  const l = allLessons().find(x => x.id === id); if (!l) return;
+  ta.value = JSON.stringify({ ...l.scene, schemaVersion: SCHEMA, actors: castOf(), outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR });
+  applyCode(); $('#mLearn').classList.remove('on'); toast(`${l.title} · Ctrl+Z to undo`);
+}
+function addTemplate(id) {
+  const tp = TEMPLATES.find(x => x.id === id); if (!tp) return;
+  if (P.shots.length + tp.shots.length > 60) { toast('A scene can hold 60 shots'); return; }
+  commit(); const first = P.shots.length; P.shots.push(...tp.shots.map(o => newShot(o)));
+  sel = first; time = 0; refreshAll(); setPlay(true); $('#mLearn').classList.remove('on'); toast(`${tp.title} added · Ctrl+Z to undo`);
+}
+$('#bLearn').onclick = () => { renderLearn(); $('#mLearn').classList.add('on'); };
+$('#learnClose').onclick = () => $('#mLearn').classList.remove('on');
+$('#learnBody').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.lesson) openLesson(b.dataset.lesson); else if (b.dataset.tpl) addTemplate(b.dataset.tpl); });
 $('#bCast').onclick = () => { renderCast(); $('#mCast').classList.add('on'); };
 $('#castClose').onclick = () => $('#mCast').classList.remove('on');
 $('#castBody').addEventListener('change', e => {
@@ -1222,6 +1248,14 @@ async function runSelfTest() {
   t('every sensor has a sane crop factor', () => Object.keys(SENSORS).every(k => { P.sensor = k; return crop() >= 1 && eqMm(50) >= 50; }));
   t('bigger sensor widens the field of view', () => { const sh = newShot({ move: 'static', lens: 50 }); P.sensor = 'S35'; const a = solve(sh, 0, 0).fov; P.sensor = 'FF'; const b = solve(sh, 0, 0).fov; P.sensor = DEFAULT_SENSOR; return b > a; });
   t('full frame has crop 1', () => { P.sensor = 'FF'; const c = crop(); P.sensor = DEFAULT_SENSOR; return near(c, 1); });
+  t('every lesson and template loads with no corrections', () => {
+    const errs = []; for (const l of [tourLesson(), ...LESSONS]) { if (!l.scene.shots.length || l.scene.shots.length > 60) return false; l.scene.shots.forEach((o, i) => { const n = normShot(o, errs, i); if (n.move !== o.move || n.lens !== (o.lens || 35) || n.size !== o.size) errs.push(l.id + ' ' + i); }); }
+    for (const x of TEMPLATES) x.shots.forEach((o, i) => { const n = normShot(o, errs, i); if (n.move !== o.move || n.size !== o.size || n.lens !== o.lens) errs.push(x.id + ' ' + i); });
+    return errs.length === 0;
+  });
+  t('the tour covers every camera move once', () => { const ids = tourLesson().scene.shots.map(o => o.move); return ids.length === MOVES.length && new Set(ids).size === MOVES.length; });
+  t('a lesson replaces the scene but keeps the cast, and undo restores it', () => { const before = JSON.stringify(P); const cast = { ...castOf() }; openLesson('sizes'); const ok = P.shots.length === 7 && P.title === 'Lesson: Shot sizes' && P.actors.A === cast.A && P.actors.B === cast.B; $('#bUndo').click(); return ok && JSON.stringify(P) === before; });
+  t('a template is added to the end and can be undone', () => { const n = P.shots.length; addTemplate('dialogue'); const ok = P.shots.length === n + 3 && sel === n; $('#bUndo').click(); return ok && P.shots.length === n; });
   t('legacy project (no schemaVersion) opens', () => { $('#ta').value = JSON.stringify({ kalai: '0.1', title: 'Old', shots: [{ move: 'orbit', lens: 35 }] }); applyCode(); return P.schemaVersion === SCHEMA && P.sensor === DEFAULT_SENSOR && P.shots.length === 1 && P.title === 'Old'; });
   t('project round trip keeps notes, sensor, look', () => {
     $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, title: 'RT', look: 'noir', aspect: '0.5625', sensor: 'M43', shots: [{ move: 'push_in', notes: 'hold the sip' }] }); applyCode();
