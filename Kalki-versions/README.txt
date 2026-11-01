@@ -1,4 +1,4 @@
-KALKI · கல்கி — Camera Studio (v0.7.0)
+KALKI · கல்கி — Camera Studio (v0.7.1)
 See your shot before you shoot it.
 
 HOW TO START
@@ -16,6 +16,7 @@ WHAT YOU CAN DO
   - Lessons and templates (the graduation-cap button): a tour of all 18 moves, shot sizes, lenses, depth of field, dialogue coverage and camera rigs, plus ready-made shot templates
   - Camera rigs (tripod, dolly track, slider, circular track, jib, gimbal, handheld) drawn in the set view, with a low-budget tip for each
   - Phone layout: on narrow screens the view sits on top with tabs for moves and shot settings
+  - Download the reference-video analysis as a PDF report (shots, techniques, suggestions); the shot-list PDF now shows the camera rig
   - Two new sets (village street, terrace), costumes (topi, turban, garland, dupatta, umbrella, school bag, glasses) and multi-point walk paths
   - Use the interface in English, Tamil (தமிழ்) or Hindi (हिन्दी); titles and notes in any script appear correctly in the PDFs
   - Dawn, noon and dusk lighting looks join golden hour, night and the rest
