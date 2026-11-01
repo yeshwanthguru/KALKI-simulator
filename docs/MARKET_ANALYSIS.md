@@ -74,12 +74,12 @@ Suggested model **[Est.; validate before committing]**:
 
 | Tier | Price point (INR) | What | Rationale |
 |---|---|---|---|
-| Free (core) | ₹0 | Single-file HTML, all current features | Distribution, trust, school adoption; MIT licence already in repo |
+| Free (core) | ₹0 | Single-file HTML, all current features | Distribution, trust, school adoption (the repository licence is now proprietary, so "free" is a pricing choice, not an open-source commitment) |
 | Supporter / Pro pack | one-time ₹499-1,499 | Windows exe, extra actors/sets/costume packs, PDF/storyboard export, Indic UI packs? | Priced near impulse range for working freelancers; far below US$379+ |
 | Institution licence | ₹10,000-50,000 per year per lab/department | Lab installer, lesson packs, assignment export, support | Schools buy per department, not per head |
 | Alternatives | Donations / sponsorships / grants | | Low effort; consider film-body or cinematographer-community sponsors |
 
-Open licensing issue: the core is MIT, so paid add-ons must be asset packs/services/convenience, not closed-source core features, unless the licence strategy changes. Third-party assets (Rocketbox, MIT) are permissive; any bought/generated costume or set assets need their own licence check.
+Licensing note (updated November 2026): the repository was changed from MIT to a proprietary, all-rights-reserved licence. Paid add-ons and institution terms can therefore include core features, but the early "free and open-source" positioning no longer applies, and any community route (translations, assets) needs an explicit contribution policy. Third-party assets (Rocketbox, three.js, both MIT) remain permissive; any bought or generated costume or set assets need their own licence check.
 
 ## 6. Positioning
 
@@ -89,7 +89,7 @@ Differentiators to lead with (all verified against README/BENCHMARK):
 1. Opens by double-click, works offline, no account, no network access (strict CSP).
 2. Indian context: chai-stall set, Tamil name (கல்கி), Reels/Shorts framing, planned Indic UI.
 3. Camera grammar first: 18 named moves, lens/aperture/DOF, looks, timeline.
-4. Free and open-source (MIT).
+4. Free to use with no watermark or account (proprietary licence; not open source).
 
 Avoid positioning against: full 3D previs suites (FrameForge, Unreal) on realism, or generative AI video on photorealism. Position as the *fast planning* layer that outputs a shot list and storyboard you can hand to a crew, and as a *teaching tool*.
 
@@ -105,7 +105,7 @@ Naming note: the product is now named Kalki Simulator (short: Kalki; Tamil க�
 | **Asset licensing / content risk** (costumes, sets, real brands, actors' likeness) | Medium / Medium | Only use CC0/MIT or self-made assets; keep a licence register; no brand logos |
 | **Browser limitations** (WebGL variance, memory, WebM encoding differences, file size growth with bundled assets) | Medium / Medium | Size budget per release; test Chrome/Edge/Firefox; Light mode; consider Tauri exe |
 | **Single-file size growth** from actors/sets/textures | High / Medium | Compression (Draco/meshopt/KTX2), optional asset packs loaded from local files, not bundled by default |
-| **Obfuscated build vs open-source claims** | Low-Medium / Reputational | Publish readable source (repo does); explain why the release is obfuscated or stop obfuscating |
+| **Proprietary licence vs community goodwill** | Low-Medium / Reputational | Do not claim "open source"; state clearly what users may do; publish a contribution policy if accepting translations |
 | **Local LLM feature** (heavy models, hardware, trust) | Medium / Medium | Keep optional and separate; ship only after core export features |
 | **Key-person / maintenance** | Medium / High | Small, well-scoped releases; documentation; contributors |
 | **Competitor response** (Previs Pro free tier already exists; could add Android/Indic) | Low-Medium / Medium | Compete on offline, free, India context, and teaching |
