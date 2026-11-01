@@ -1,0 +1,7 @@
+blazeface.json and blazeface.bin are a conversion (tools/convert-face-model.mjs) of the MediaPipe BlazeFace short-range face detector
+(blaze_face_short_range.tflite, 229,746 bytes, MD5 a3dd6ec31725290770b97cec0cbf94c9) downloaded from
+https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/latest/blaze_face_short_range.tflite
+
+Licence: Apache License 2.0 according to secondary sources. The official model card has NOT been checked yet.
+These files are for the spike only: they are not embedded in any release build. Before they are, confirm the licence, add the
+attribution to THIRD-PARTY-NOTICES.txt and keep this notice. See docs/FACE_SPIKE.md.
