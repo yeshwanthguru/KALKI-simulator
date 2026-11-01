@@ -22,7 +22,8 @@ v0.5.4  Actor picker, seven avatars (names follow your choice; the cast is saved
 v0.6.0  Tamil and Hindi interface, Tamil/Hindi text in PDFs, dawn / noon / dusk looks
 v0.6.1  Village street and terrace sets, costumes, multi-point walk paths
 v0.7.0  Lesson scenes and shot templates, camera rigs in the set view, phone layout
-v0.7.1  Latest: video-analysis report as PDF, camera rig in the shot-list PDF  << recommended
+v0.7.1  Video-analysis report as PDF, camera rig in the shot-list PDF
+v0.7.2  Latest: mark shot sizes in the video analysis (used by suggestions, simulation and reports)  << recommended
 
 ZIP PACKAGES (same versions, each with README + license notices)
-  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip, Kalki-v0.5.zip, Kalki-v0.5.1.zip, Kalki-v0.5.2.zip, Kalki-v0.5.3.zip, Kalki-v0.5.4.zip, Kalki-v0.6.0.zip, Kalki-v0.6.1.zip, Kalki-v0.7.0.zip, Kalki-v0.7.1.zip
+  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip, Kalki-v0.5.zip, Kalki-v0.5.1.zip, Kalki-v0.5.2.zip, Kalki-v0.5.3.zip, Kalki-v0.5.4.zip, Kalki-v0.6.0.zip, Kalki-v0.6.1.zip, Kalki-v0.7.0.zip, Kalki-v0.7.1.zip, Kalki-v0.7.2.zip

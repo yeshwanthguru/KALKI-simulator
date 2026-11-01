@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.7.1-ff6b4a?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.7.2-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
   <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
@@ -31,12 +31,12 @@
 
 **In the browser** (nothing to install)
 
-1. Download [`Kalki-versions/Kalki-v0.7.1.html`](Kalki-versions/Kalki-v0.7.1.html), or the zipped package [`Kalki-v0.7.1.zip`](Kalki-versions/Kalki-v0.7.1.zip) with notices.
+1. Download [`Kalki-versions/Kalki-v0.7.2.html`](Kalki-versions/Kalki-v0.7.2.html), or the zipped package [`Kalki-v0.7.2.zip`](Kalki-versions/Kalki-v0.7.2.zip) with notices.
 2. Double-click it. It opens in Chrome or Edge and runs fully offline.
 
 **On Windows** (native app, about 3 MB)
 
-1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.7.1_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.7.1_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
+1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.7.2_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.7.2_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
 2. The installer is **not code-signed yet**, so Windows SmartScreen may warn on first run: choose **More info, Run anyway**.
 3. Exports open a native **Save as** dialog. It uses the WebView2 runtime that ships with Windows 11 (Windows 10 may prompt to install it).
 
@@ -190,7 +190,8 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | v0.6.0 | Tamil and Hindi interface, Tamil/Hindi text in PDFs, dawn / noon / dusk looks |
 | v0.6.1 | Village street and terrace sets, costumes, multi-point walk paths |
 | v0.7.0 | Lesson scenes and shot templates, camera rigs in the set view, phone layout |
-| **v0.7.1** | **Latest.** Video-analysis report as PDF, camera rig in the shot-list PDF |
+| v0.7.1 | Video-analysis report as PDF, camera rig in the shot-list PDF |
+| **v0.7.2** | **Latest.** Mark shot sizes in the video analysis (used by suggestions, simulation and reports) |
 
 Every build is kept in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 
