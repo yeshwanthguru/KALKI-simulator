@@ -25,7 +25,8 @@ v0.7.0  Lesson scenes and shot templates, camera rigs in the set view, phone lay
 v0.7.1  Video-analysis report as PDF, camera rig in the shot-list PDF
 v0.7.2  Mark shot sizes in the video analysis (used by suggestions, simulation and reports)
 v0.7.3  Living room set and more props (scooter, bicycle, sofa, brass pots...)
-v0.7.4  Latest: classroom set, daylight through the windows of the indoor sets  << recommended
+v0.7.4  Classroom set, daylight through the windows of the indoor sets
+v0.7.5  Latest: indoor window daylight follows the look (dark at night)  << recommended
 
 ZIP PACKAGES (same versions, each with README + license notices)
-  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip, Kalki-v0.5.zip, Kalki-v0.5.1.zip, Kalki-v0.5.2.zip, Kalki-v0.5.3.zip, Kalki-v0.5.4.zip, Kalki-v0.6.0.zip, Kalki-v0.6.1.zip, Kalki-v0.7.0.zip, Kalki-v0.7.1.zip, Kalki-v0.7.2.zip, Kalki-v0.7.3.zip, Kalki-v0.7.4.zip
+  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip, Kalki-v0.5.zip, Kalki-v0.5.1.zip, Kalki-v0.5.2.zip, Kalki-v0.5.3.zip, Kalki-v0.5.4.zip, Kalki-v0.6.0.zip, Kalki-v0.6.1.zip, Kalki-v0.7.0.zip, Kalki-v0.7.1.zip, Kalki-v0.7.2.zip, Kalki-v0.7.3.zip, Kalki-v0.7.4.zip, Kalki-v0.7.5.zip
