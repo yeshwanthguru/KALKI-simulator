@@ -63,7 +63,7 @@ flowchart LR
 | **Real lens behaviour** | Focal length 14 to 135 mm, aperture f/1.4 to f/11 driving depth of field, plus bloom, motion blur and film grain. |
 | **Camera sensors** | Super 35, Full frame, APS-C, Micro Four Thirds, 1-inch. Lenses show their full-frame equivalent. |
 | **Cinematic looks** | Golden hour, Teal and orange, Night, Noir, Neutral, plus time-of-day looks (dawn, noon, dusk), with window light and sun shafts. |
-| **Three sets** | Chai stall, village street (houses, lamp post, auto-rickshaw) and a rooftop terrace (water tank, clothesline, rope cot). The set is saved in the project. |
+| **Four sets** | Chai stall, village street (houses, lamp post, auto-rickshaw, scooter, bicycle), a rooftop terrace (water tank, clothesline, rope cot, brass pots, bucket) and a tiled living room (barred window with curtains, sofa, TV, tea table with steel tumblers, wall clock, standing lamp). The set is saved in the project. |
 | **Costumes** | Dress each actor with a topi and glasses, turban, student bag, marigold garland, dupatta or umbrella. |
 | **Walk paths** | Click up to six points on the set view and the actor walks through them, facing the way they move. The route shows in the set view and the blocking diagram. |
 | **Tamil, Hindi and English** | Switch the whole interface between English, தமிழ் and हिन्दी with the language menu. Titles, shot names and notes in any script also come out correctly in the PDFs. |

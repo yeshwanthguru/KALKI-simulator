@@ -157,7 +157,7 @@ function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.w
 
 // lights
 const FX = [], BULBS = [], GLASS = [], SHAFTS = [];
-const SETG = {}; let CUR = null; for (const k of ['stall', 'street', 'terrace']) { SETG[k] = new T.Group(); scene.add(SETG[k]); }
+const SETG = {}; let CUR = null; for (const k of ['stall', 'street', 'terrace', 'living']) { SETG[k] = new T.Group(); scene.add(SETG[k]); }
 const hemi = new T.HemisphereLight(0xffd9b0, 0x1a1210, .42); scene.add(hemi);
 const sun = new T.DirectionalLight(0xffb066, 4.2); sun.position.set(-7, 4.5, -12); sun.target.position.set(0, .8, 1); scene.add(sun.target); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -11, right: 11, top: 9, bottom: -9, near: 1, far: 40 }); sun.shadow.bias = -.0004; sun.shadow.normalBias = .02; scene.add(sun);
@@ -219,7 +219,7 @@ for (const [x, z, r] of [[5.6, -2.4, .3], [6.1, -1.7, -.2], [5.8, -2.1, .1]]) { 
 CUR = null;
 
 /* ---------- more sets: each lives in its own group and one is shown at a time ---------- */
-const SETS = { stall: { label: 'Chai stall' }, street: { label: 'Village street' }, terrace: { label: 'Terrace' } };
+const SETS = { stall: { label: 'Chai stall' }, street: { label: 'Village street' }, terrace: { label: 'Terrace' }, living: { label: 'Living room' } };
 let curSet = 'stall';
 const gmesh = (par, geo, m, x, y, z) => { const o = new T.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; par.add(o); return o; };
 function lampAt(x, z, h) {
@@ -238,6 +238,52 @@ function house(x, w, h, color, z) {
   add(new T.BoxGeometry(w, .22, .46), mat(0xe9dcc4), x, .11, z);
   const dw = Math.min(1, w / 3); add(new T.BoxGeometry(dw, 1.65, .06), mat(0x2a1c14), x - w * .18, .98, z + .22);
   for (const s of [-1, 1]) { add(new T.BoxGeometry(.5, .7, .05), mat(0x315f70), x + w * .26 + s * .3, 1.35, z + .22); add(new T.BoxGeometry(.04, .76, .08), mat(0x1c1612), x + w * .26 + s * .56, 1.35, z + .22); }
+}
+
+/* ---------- props: small pieces of set dressing, built from plain shapes so they add almost nothing to the file size ---------- */
+function rod(par, a, b, r, m) {
+  const d = new T.Vector3().subVectors(b, a), o = new T.Mesh(new T.CylinderGeometry(r, r, d.length(), 6), m);
+  o.position.copy(a).addScaledVector(d, .5); o.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), d.normalize()); o.castShadow = true; par.add(o); return o;
+}
+function scooterAt(x, z, ry, color) {
+  const g = new T.Group(); g.position.set(x, 0, z); g.rotation.y = ry; CUR.add(g);
+  const body = mat(color, { roughness: .45 }), dark = mat(0x1a1a1c, { roughness: .8 }), chrome = mat(0xb9bcc2, { metalness: .8, roughness: .35 });
+  gmesh(g, new T.BoxGeometry(.5, .1, 1.0), body, 0, .3, .05); gmesh(g, new T.BoxGeometry(.46, .5, .6), body, 0, .58, -.55);
+  const sh = gmesh(g, new T.BoxGeometry(.46, .75, .07), body, 0, .66, .5); sh.rotation.x = -.18;
+  gmesh(g, new T.BoxGeometry(.38, .09, .62), dark, 0, .9, -.45);
+  rod(g, new T.Vector3(0, .35, .6), new T.Vector3(0, .85, .5), .025, chrome);
+  const hb = gmesh(g, new T.CylinderGeometry(.02, .02, .62, 6), chrome, 0, 1.0, .48); hb.rotation.z = Math.PI / 2;
+  gmesh(g, new T.SphereGeometry(.09, 10, 8), new T.MeshBasicMaterial({ color: 0xffe9b0 }), 0, .98, .6);
+  for (const pz of [.62, -.62]) { const w = gmesh(g, new T.CylinderGeometry(.2, .2, .1, 14), dark, 0, .2, pz); w.rotation.z = Math.PI / 2; }
+  return g;
+}
+function bicycleAt(x, z, ry, color) {
+  const g = new T.Group(); g.position.set(x, 0, z); g.rotation.y = ry; g.rotation.z = .1; CUR.add(g);
+  const fr = mat(color, { roughness: .5 }), dark = mat(0x161616, { roughness: .8 }), V = (a, b, c) => new T.Vector3(a, b, c);
+  for (const pz of [.55, -.55]) { const w = gmesh(g, new T.TorusGeometry(.33, .02, 6, 24), dark, 0, .35, pz); w.rotation.y = Math.PI / 2; }
+  rod(g, V(0, .35, -.55), V(0, .62, -.1), .018, fr); rod(g, V(0, .62, -.1), V(0, .66, .42), .018, fr); rod(g, V(0, .35, -.55), V(0, .66, .42), .014, fr);
+  rod(g, V(0, .35, .08), V(0, .62, -.1), .018, fr); rod(g, V(0, .35, .55), V(0, .72, .45), .018, fr);
+  gmesh(g, new T.BoxGeometry(.08, .04, .26), dark, 0, .74, -.14); const hb = gmesh(g, new T.CylinderGeometry(.015, .015, .5, 6), dark, 0, .76, .44); hb.rotation.z = Math.PI / 2;
+  return g;
+}
+function bucketAt(x, z, color) {
+  const g = new T.Group(); g.position.set(x, 0, z); CUR.add(g);
+  gmesh(g, new T.CylinderGeometry(.22, .17, .34, 14, 1, true), mat(color, { roughness: .5, side: T.DoubleSide }), 0, .17, 0); gmesh(g, new T.CylinderGeometry(.17, .17, .02, 14), mat(color, { roughness: .5 }), 0, .01, 0);
+  const h = gmesh(g, new T.TorusGeometry(.2, .01, 5, 14, Math.PI), mat(0x222222), 0, .34, 0); return g;
+}
+function potAt(x, z) {
+  const g = new T.Group(); g.position.set(x, 0, z); CUR.add(g); const brass = mat(0xc9962b, { metalness: .85, roughness: .35 });
+  gmesh(g, new T.SphereGeometry(.2, 14, 10), brass, 0, .22, 0); gmesh(g, new T.CylinderGeometry(.08, .12, .12, 12), brass, 0, .45, 0); gmesh(g, new T.CylinderGeometry(.13, .08, .05, 12), brass, 0, .53, 0);
+  return g;
+}
+function tumblerAt(par, x, y, z) { return gmesh(par, new T.CylinderGeometry(.036, .03, .09, 10), mat(0xcfd2d8, { metalness: 1, roughness: .25 }), x, y, z); }
+function sofaAt(x, z, color) {
+  const g = new T.Group(); g.position.set(x, 0, z); CUR.add(g); const m = mat(color, { roughness: .9 }), d = mat(0x2a1c14);
+  gmesh(g, new T.BoxGeometry(2.2, .36, .9), m, 0, .3, 0); gmesh(g, new T.BoxGeometry(2.2, .6, .2), m, 0, .76, -.36);
+  for (const s of [-1, 1]) gmesh(g, new T.BoxGeometry(.2, .52, .9), m, s * 1.1, .46, 0);
+  for (const s of [-.5, .5]) gmesh(g, new T.BoxGeometry(.9, .14, .65), mat(color, { roughness: 1 }), s, .55, .03);
+  for (const [px, pz] of [[-1, -.35], [1, -.35], [-1, .35], [1, .35]]) gmesh(g, new T.BoxGeometry(.07, .12, .07), d, px, .06, pz);
+  return g;
 }
 function buildStreet() {
   CUR = SETG.street;
@@ -260,6 +306,7 @@ function buildStreet() {
   for (const [px, pz, r] of [[-.62, -.7, .28], [.62, -.7, .28], [0, 1.1, .26]]) { const w = gmesh(au, new T.CylinderGeometry(r, r, .13, 14), blk, px, r, pz); w.rotation.z = Math.PI / 2; }
   /* matka stand and a cot at the side of the lane */
   for (const px of [-6.4, -5.9]) gmesh(SETG.street, new T.SphereGeometry(.22, 10, 8), mat(0xa4532f), px, .24, -3.6);
+  scooterAt(-3.2, -3.0, .35, 0xc0392b); bicycleAt(1.9, -3.65, 1.55, 0x2f6f8f); bucketAt(-4.6, -3.7, 0x2f7fc1);
   CUR = null;
 }
 function buildTerrace() {
@@ -285,9 +332,39 @@ function buildTerrace() {
   gmesh(SETG.terrace, new T.BoxGeometry(1.7, .03, .75), mat(0xc9b48a, { roughness: 1 }), -5.2, .47, 2.2);
   for (const [px, pz] of [[2.4, -3.5], [3.2, -3.6], [-7.2, -3.4]]) { gmesh(SETG.terrace, new T.CylinderGeometry(.28, .2, .42, 10), mat(0xa4532f), px, .21, pz); gmesh(SETG.terrace, new T.SphereGeometry(.34, 9, 7), mat(0x3d7a44, { roughness: 1 }), px, .66, pz); }
   lampAt(-2.5, -3.6, 2.6);
+  bucketAt(.9, -3.5, 0xd9453a); potAt(1.6, -3.55); potAt(3.8, -3.3);
   CUR = null;
 }
-buildStreet(); buildTerrace();
+function buildLiving() {
+  CUR = SETG.living;
+  const tile = canvasTex(1024, 1024, (g, w, h) => { const n = 8, c = w / n; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { g.fillStyle = (i + j) % 2 ? '#cdb994' : '#a8704f'; g.fillRect(i * c, j * c, c, c); } g.strokeStyle = 'rgba(60,40,30,.5)'; g.lineWidth = 3; for (let i = 0; i <= n; i++) { g.beginPath(); g.moveTo(i * c, 0); g.lineTo(i * c, h); g.moveTo(0, i * c); g.lineTo(w, i * c); g.stroke(); } for (let i = 0; i < 900; i++) { g.fillStyle = `rgba(0,0,0,${.03 + (i % 5) * .01})`; g.fillRect((i * 337) % w, (i * 211) % h, 2 + i % 4, 2 + i % 3); } });
+  tile.wrapS = tile.wrapT = T.RepeatWrapping; tile.repeat.set(1.5, 1.2);
+  add(new T.PlaneGeometry(16, 12), mat(0xffffff, { map: tile, roughness: .35 }), 0, 0, 0, false).rotation.x = -Math.PI / 2;
+  const wall = mat(0xe6d3a8, { roughness: .95 }), trim = mat(0x6b4a38), dark = mat(0x1a1410);
+  /* back wall with a barred window on the left and a door on the right; sunlight comes through the window */
+  add(new T.BoxGeometry(16, 1, .3), wall, 0, .5, -4.2); add(new T.BoxGeometry(16, .8, .3), wall, 0, 2.8, -4.2);
+  add(new T.BoxGeometry(3.8, 1.4, .3), wall, -6.1, 1.7, -4.2); add(new T.BoxGeometry(2.4, 1.4, .3), wall, -.2, 1.7, -4.2); add(new T.BoxGeometry(5.9, 1.4, .3), wall, 5.05, 1.7, -4.2);
+  add(new T.BoxGeometry(.3, 3.2, 9), wall, -8, 1.6, .3); add(new T.BoxGeometry(16, .12, .34), trim, 0, .06, -4.2);
+  for (let i = 0; i < 8; i++) add(new T.BoxGeometry(.03, 1.4, .03), dark, -4.0 + i * .36, 1.7, -4.1, false);
+  for (const cx of [-4.35, -1.25]) add(new T.BoxGeometry(.5, 1.7, .04), mat(0xb5483c, { roughness: 1 }), cx, 1.75, -4.0);
+  add(new T.BoxGeometry(1.1, 2.1, .08), mat(0x7a4a2c), 4.6, 1.05, -4.0); add(new T.BoxGeometry(1.3, .1, .14), trim, 4.6, 2.15, -4.0);
+  /* furniture */
+  sofaAt(3.0, -3.3, 0x2f5d50);
+  add(new T.BoxGeometry(1.7, .55, .5), mat(0x5a3a26), -6.4, .28, -3.85); add(new T.BoxGeometry(1.15, .66, .07), mat(0x0d0d10, { roughness: .3 }), -6.4, 1.0, -3.85); add(new T.BoxGeometry(1.05, .56, .02), mat(0x15181d, { roughness: .1 }), -6.4, 1.0, -3.81, false);
+  const tp = new T.Group(); tp.position.set(0, 0, -1.3); CUR.add(tp);
+  gmesh(tp, new T.CylinderGeometry(.42, .42, .04, 20), mat(0x6b4a30), 0, .46, 0); for (const [px, pz] of [[-.25, -.25], [.25, -.25], [-.25, .25], [.25, .25]]) gmesh(tp, new T.CylinderGeometry(.025, .02, .44, 6), mat(0x4a321f), px, .22, pz);
+  gmesh(tp, new T.CylinderGeometry(.14, .14, .015, 14), mat(0xe9e6df, { roughness: .4 }), 0, .485, 0); tumblerAt(tp, -.1, .53, .05); tumblerAt(tp, .12, .53, -.06); tumblerAt(tp, .02, .53, .16);
+  /* wall clock and framed pictures */
+  const clock = gmesh(CUR, new T.CylinderGeometry(.24, .24, .05, 20), mat(0xf4f1e8, { roughness: .5 }), .4, 2.45, -4.0); clock.rotation.x = Math.PI / 2;
+  add(new T.BoxGeometry(.02, .15, .01), dark, .4, 2.5, -3.96, false); const hand = add(new T.BoxGeometry(.12, .02, .01), dark, .46, 2.45, -3.96, false);
+  [[1.9, 2.0, .6, .8, 0x7a9fb5], [2.7, 1.85, .45, .6, 0xc9985a], [3.5, 2.0, .6, .8, 0x8a6aa8]].forEach(([fx, fy, fw, fh, c]) => { add(new T.BoxGeometry(fw + .06, fh + .06, .04), trim, fx + 1.1, fy, -4.0); add(new T.BoxGeometry(fw, fh, .02), mat(c, { roughness: .8 }), fx + 1.1, fy, -3.97, false); });
+  /* standing lamp: the warm light of the room */
+  const lg = new T.Group(); lg.position.set(6.8, 0, -2.4); CUR.add(lg); gmesh(lg, new T.CylinderGeometry(.18, .2, .04, 12), dark, 0, .02, 0); gmesh(lg, new T.CylinderGeometry(.025, .025, 1.5, 6), dark, 0, .76, 0);
+  const shade = gmesh(lg, new T.CylinderGeometry(.2, .3, .3, 14, 1, true), mat(0xf2d9a4, { roughness: 1, side: T.DoubleSide, emissive: 0x6b4d1e }), 0, 1.65, 0);
+  const pl = new T.PointLight(0xffc27a, 4, 11, 1.5); pl.position.set(6.8, 1.65, -2.4); CUR.add(pl); BULBS.push(pl);
+  CUR = null;
+}
+buildStreet(); buildTerrace(); buildLiving();
 function applySet(name) { curSet = SETS[name] ? name : 'stall'; for (const k in SETG) SETG[k].visible = k === curSet; }
 
 // actors
@@ -1365,9 +1442,9 @@ async function runSelfTest() {
   t('a walker follows the route at a steady pace and faces the way they move', () => { const sh = newShot({ actionA: 'walk', placeA: { x: 0, z: 0 }, routeA: [{ x: 2, z: 0 }, { x: 2, z: 2 }] }); const p0 = subjPos(sh, 0), p1 = subjPos(sh, 1), pm = subjPos(sh, .25), pn = subjPos(sh, .75); return near(p0.pos.A.x, 0) && near(p1.pos.A.x, 2) && near(p1.pos.A.z, 2) && near(pm.pos.A.x, 1) && near(pm.pos.A.z, 0) && near(pm.head.A, Math.PI / 2) && near(pn.pos.A.z, 1) && near(pn.head.A, 0); });
   t('a route is ignored when the actor is not walking', () => { const sh = newShot({ actionA: 'sit', routeA: [{ x: 3, z: 3 }] }); return near(subjPos(sh, 1).pos.A.x, HOME.A.x) && subjPos(sh, 1).walkers.length === 0; });
   t('the blocking diagram carries walk routes', () => { $('#ta').value = JSON.stringify({ shots: [{ actionA: 'walk', placeA: { x: -2, z: 0 }, routeA: [{ x: 0, z: 2 }, { x: 3, z: 2 }] }] }); applyCode(); const a = blockingDoc().shots[0].actors[0]; return a.route && a.route.length === 3 && near(a.route[2][0], 3); });
-  t('sets: three exist, only the chosen one is shown, unknown falls back to the chai stall', () => { const names = Object.keys(SETS); if (names.join() !== 'stall,street,terrace') return false; for (const k of names) { applySet(k); if (!Object.keys(SETG).every(g => SETG[g].visible === (g === k))) return false; } applySet('nope'); const ok = SETG.stall.visible && !SETG.street.visible; $('#ta').value = JSON.stringify({ set: 'street', shots: [{}] }); applyCode(); const a = P.set; $('#ta').value = JSON.stringify({ set: 'moon', shots: [{}] }); applyCode(); return ok && a === 'street' && P.set === 'stall'; });
+  t('sets: four exist, only the chosen one is shown, unknown falls back to the chai stall', () => { const names = Object.keys(SETS); if (names.join() !== 'stall,street,terrace,living') return false; for (const k of names) { applySet(k); if (!Object.keys(SETG).every(g => SETG[g].visible === (g === k))) return false; } applySet('nope'); const ok = SETG.stall.visible && !SETG.street.visible; $('#ta').value = JSON.stringify({ set: 'street', shots: [{}] }); applyCode(); const a = P.set; $('#ta').value = JSON.stringify({ set: 'moon', shots: [{}] }); applyCode(); return ok && a === 'street' && P.set === 'stall'; });
   t('the set is saved in the project and survives a round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, set: 'terrace', shots: [{}] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value); applyCode(); return o.set === 'terrace' && P.set === 'terrace' && $('#set').value === 'terrace' && SETG.terrace.visible; });
-  t('every set has its own floor and dressing and the stall keeps its lights', () => ['stall', 'street', 'terrace'].every(k => SETG[k].children.length > 8) && BULBS.length >= 5);
+  t('every set has its own floor and dressing and the stall keeps its lights', () => ['stall', 'street', 'terrace', 'living'].every(k => SETG[k].children.length > 8) && BULBS.length >= 5);
   t('duplicating a shot does not share its walk route', () => { $('#ta').value = JSON.stringify({ shots: [{ actionA: 'walk', routeA: [{ x: 1, z: 1 }] }] }); applyCode(); sel = 0; $('#bDup').click(); P.shots[0].routeA.push({ x: 2, z: 2 }); return P.shots.length === 2 && P.shots[1].routeA.length === 1; });
   t('costumes: unknown ids fall back to plain clothes and the choice survives a round trip', () => { const n = normOutfit({ A: 'turban', B: 'nope' }); if (n.A !== 'turban' || n.B !== 'plain' || normOutfit(null).A !== 'plain') return false; $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, outfit: { A: 'garland', B: 'umbrella' }, shots: [{}] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value); return o.outfit.A === 'garland' && o.outfit.B === 'umbrella' && P.outfit.B === 'umbrella'; });
   t('placement survives a project round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ placeA: { x: 1.5, z: 2 }, faceA: 40 }] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value).shots[0]; return o.placeA.x === 1.5 && o.placeA.z === 2 && o.faceA === 40 && o.placeB === null; });
