@@ -157,7 +157,7 @@ function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.w
 
 // lights
 const FX = [], BULBS = [], GLASS = [], SHAFTS = [];
-const SETG = {}; let CUR = null; for (const k of ['stall', 'street', 'terrace', 'living']) { SETG[k] = new T.Group(); scene.add(SETG[k]); }
+const SETG = {}; let CUR = null; for (const k of ['stall', 'street', 'terrace', 'living', 'classroom']) { SETG[k] = new T.Group(); scene.add(SETG[k]); }
 const hemi = new T.HemisphereLight(0xffd9b0, 0x1a1210, .42); scene.add(hemi);
 const sun = new T.DirectionalLight(0xffb066, 4.2); sun.position.set(-7, 4.5, -12); sun.target.position.set(0, .8, 1); scene.add(sun.target); sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -11, right: 11, top: 9, bottom: -9, near: 1, far: 40 }); sun.shadow.bias = -.0004; sun.shadow.normalBias = .02; scene.add(sun);
@@ -219,7 +219,7 @@ for (const [x, z, r] of [[5.6, -2.4, .3], [6.1, -1.7, -.2], [5.8, -2.1, .1]]) { 
 CUR = null;
 
 /* ---------- more sets: each lives in its own group and one is shown at a time ---------- */
-const SETS = { stall: { label: 'Chai stall' }, street: { label: 'Village street' }, terrace: { label: 'Terrace' }, living: { label: 'Living room' } };
+const SETS = { stall: { label: 'Chai stall' }, street: { label: 'Village street' }, terrace: { label: 'Terrace' }, living: { label: 'Living room' }, classroom: { label: 'Classroom' } };
 let curSet = 'stall';
 const gmesh = (par, geo, m, x, y, z) => { const o = new T.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; par.add(o); return o; };
 function lampAt(x, z, h) {
@@ -346,6 +346,7 @@ function buildLiving() {
   add(new T.BoxGeometry(3.8, 1.4, .3), wall, -6.1, 1.7, -4.2); add(new T.BoxGeometry(3.4, 1.4, .3), wall, .3, 1.7, -4.2); add(new T.BoxGeometry(6, 1.4, .3), wall, 5, 1.7, -4.2);
   add(new T.BoxGeometry(.3, 3.2, 9), wall, -8, 1.6, .3); add(new T.BoxGeometry(16, .12, .34), trim, 0, .06, -4.2);
   add(new T.PlaneGeometry(16, 12), mat(0xefe6d2, { roughness: 1 }), 0, 3.2, 0, false).rotation.x = Math.PI / 2; // ceiling: one-sided, so it is invisible from above (crane and top-down shots)
+  { const sky = new T.MeshBasicMaterial({ color: 0xbfd8ff }); GLASS.push(sky); add(new T.PlaneGeometry(2.8, 1.4), sky, -2.8, 1.7, -4.5, false); }
   for (let i = 0; i < 8; i++) add(new T.BoxGeometry(.03, 1.4, .03), dark, -4.0 + i * .36, 1.7, -4.1, false);
   for (const cx of [-4.35, -1.25]) add(new T.BoxGeometry(.5, 1.7, .04), mat(0xb5483c, { roughness: 1 }), cx, 1.75, -4.0);
   add(new T.BoxGeometry(1.1, 2.1, .08), mat(0x7a4a2c), 4.6, 1.05, -4.0); add(new T.BoxGeometry(1.3, .1, .14), trim, 4.6, 2.15, -4.0);
@@ -365,7 +366,40 @@ function buildLiving() {
   const pl = new T.PointLight(0xffc27a, 4, 11, 1.5); pl.position.set(6.8, 1.65, -2.4); CUR.add(pl); BULBS.push(pl);
   CUR = null;
 }
-buildStreet(); buildTerrace(); buildLiving();
+function buildClassroom() {
+  CUR = SETG.classroom;
+  const floor = canvasTex(1024, 1024, (g, w, h) => { g.fillStyle = '#9a9488'; g.fillRect(0, 0, w, h); for (let i = 0; i < 1600; i++) { const v = 120 + (i * 41) % 70; g.fillStyle = `rgba(${v},${v - 6},${v - 14},.4)`; g.fillRect((i * 307) % w, (i * 193) % h, 2 + i % 6, 2 + i % 4); } g.strokeStyle = 'rgba(50,46,40,.35)'; g.lineWidth = 3; for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(i * w / 4, 0); g.lineTo(i * w / 4, h); g.moveTo(0, i * h / 4); g.lineTo(w, i * h / 4); g.stroke(); } });
+  floor.wrapS = floor.wrapT = T.RepeatWrapping; floor.repeat.set(2, 2);
+  add(new T.PlaneGeometry(16, 12), mat(0xffffff, { map: floor, roughness: .5 }), 0, 0, 0, false).rotation.x = -Math.PI / 2;
+  const wall = mat(0xe3dcc3, { roughness: .95 }), dado = mat(0x3f7f93, { roughness: .9 }), wood = mat(0x6b4a30), dark = mat(0x1a1410);
+  /* back wall: two barred windows, a blackboard between them and a teal dado along the bottom */
+  add(new T.BoxGeometry(16, .9, .3), dado, 0, .45, -4.2); add(new T.BoxGeometry(16, .9, .3), wall, 0, 2.95, -4.2);
+  for (const [cx, w] of [[-6.6, 2.8], [.05, 5.9], [6.65, 2.7]]) add(new T.BoxGeometry(w, 1.4, .3), wall, cx, 1.6, -4.2);
+  for (const cx of [-4.05, 4.15]) { const sky = new T.MeshBasicMaterial({ color: 0xbfd8ff }); GLASS.push(sky); add(new T.PlaneGeometry(2.3, 1.4), sky, cx, 1.6, -4.5, false); }
+  for (const cx of [-4.05, 4.15]) for (let i = 0; i < 7; i++) add(new T.BoxGeometry(.03, 1.4, .03), dark, cx - .9 + i * .3, 1.6, -4.1, false);
+  add(new T.BoxGeometry(.3, 3.2, 9), wall, -8, 1.6, .3); add(new T.BoxGeometry(.3, .9, 9), dado, -8, .45, .3);
+  add(new T.PlaneGeometry(16, 12), mat(0xefe9d8, { roughness: 1 }), 0, 3.4, 0, false).rotation.x = Math.PI / 2;
+  const board = canvasTex(1024, 320, (g, w, h) => { g.fillStyle = '#2f4a3e'; g.fillRect(0, 0, w, h); for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(255,255,255,${.015 + (i % 4) * .008})`; g.fillRect((i * 97) % w, (i * 53) % h, 60 + i % 90, 3); } g.fillStyle = 'rgba(240,240,230,.9)'; g.font = 'bold 54px sans-serif'; g.fillText('Camera moves', 60, 100); g.font = '40px sans-serif'; g.fillText('1. Push in   2. Pan   3. Tilt   4. Orbit', 60, 180); g.beginPath(); g.moveTo(60, 230); g.bezierCurveTo(300, 190, 600, 280, 900, 230); g.lineWidth = 6; g.strokeStyle = 'rgba(255,220,120,.85)'; g.stroke(); });
+  add(new T.BoxGeometry(3.7, 1.3, .06), wood, -.5, 1.75, -4.02); add(new T.PlaneGeometry(3.5, 1.1), new T.MeshStandardMaterial({ map: board, roughness: .9 }), -.5, 1.75, -3.98, false); add(new T.BoxGeometry(3.5, .06, .1), wood, -.5, 1.1, -3.95);
+  /* posters */
+  [[-6.6, 1.9, .8, 1.0, 0xd9a43a], [-5.6, 1.9, .7, .9, 0x6a9a5a], [5.9, 1.9, .9, 1.1, 0xb5483c]].forEach(([px, py, pw, ph, c]) => { add(new T.BoxGeometry(pw, ph, .02), mat(c, { roughness: .9 }), px, py, -4.03, false); });
+  /* teacher's table with a globe */
+  const tb = new T.Group(); tb.position.set(3.2, 0, -3.0); CUR.add(tb);
+  gmesh(tb, new T.BoxGeometry(1.3, .05, .6), wood, 0, .76, 0); for (const [px, pz] of [[-.58, -.25], [.58, -.25], [-.58, .25], [.58, .25]]) gmesh(tb, new T.BoxGeometry(.05, .74, .05), wood, px, .37, pz);
+  gmesh(tb, new T.SphereGeometry(.14, 14, 10), mat(0x3a78b5, { roughness: .6 }), .35, .96, 0); gmesh(tb, new T.CylinderGeometry(.03, .06, .06, 8), dark, .35, .81, 0); gmesh(tb, new T.BoxGeometry(.3, .03, .22), mat(0xf4f1e8), -.3, .8, .02);
+  /* student bench-desks in rows, kept clear of the centre where the actors stand */
+  const deskAt = (x, z, ry = 0) => { const d = new T.Group(); d.position.set(x, 0, z); d.rotation.y = ry; CUR.add(d); gmesh(d, new T.BoxGeometry(1.2, .05, .42), wood, 0, .72, 0); gmesh(d, new T.BoxGeometry(1.2, .04, .24), wood, 0, .44, .42);
+    for (const [px, pz] of [[-.55, -.15], [.55, -.15], [-.55, .15], [.55, .15]]) gmesh(d, new T.BoxGeometry(.04, .72, .04), dark, px, .36, pz); for (const px of [-.55, .55]) gmesh(d, new T.BoxGeometry(.04, .44, .04), dark, px, .22, .42); return d; };
+  for (const x of [-6, -4.4]) for (const z of [-2.8, -1.2]) deskAt(x, z);
+  for (const x of [4.4, 6]) for (const z of [-1.4, .2]) deskAt(x, z);
+  /* ceiling fan and tube lights */
+  const fan = new T.Group(); fan.position.set(0, 3.0, -.6); CUR.add(fan); gmesh(fan, new T.CylinderGeometry(.02, .02, .4, 6), dark, 0, .2, 0); gmesh(fan, new T.CylinderGeometry(.12, .12, .08, 12), dark, 0, 0, 0);
+  for (let i = 0; i < 3; i++) { const b = gmesh(fan, new T.BoxGeometry(.62, .015, .13), mat(0xd8d4c8), 0, -.02, 0); b.position.x = Math.cos(i * 2.094) * .38; b.position.z = Math.sin(i * 2.094) * .38; b.rotation.y = -i * 2.094; }
+  for (const x of [-4.5, 4.5]) add(new T.BoxGeometry(1.4, .04, .1), new T.MeshBasicMaterial({ color: new T.Color(0xf4f6ff).multiplyScalar(3) }), x, 3.36, -1.5, false);
+  const pl = new T.PointLight(0xfff2dc, 3.2, 13, 1.4); pl.position.set(0, 3.0, -1.2); CUR.add(pl); BULBS.push(pl);
+  CUR = null;
+}
+buildStreet(); buildTerrace(); buildLiving(); buildClassroom();
 function applySet(name) { curSet = SETS[name] ? name : 'stall'; for (const k in SETG) SETG[k].visible = k === curSet; }
 
 // actors
@@ -1443,9 +1477,9 @@ async function runSelfTest() {
   t('a walker follows the route at a steady pace and faces the way they move', () => { const sh = newShot({ actionA: 'walk', placeA: { x: 0, z: 0 }, routeA: [{ x: 2, z: 0 }, { x: 2, z: 2 }] }); const p0 = subjPos(sh, 0), p1 = subjPos(sh, 1), pm = subjPos(sh, .25), pn = subjPos(sh, .75); return near(p0.pos.A.x, 0) && near(p1.pos.A.x, 2) && near(p1.pos.A.z, 2) && near(pm.pos.A.x, 1) && near(pm.pos.A.z, 0) && near(pm.head.A, Math.PI / 2) && near(pn.pos.A.z, 1) && near(pn.head.A, 0); });
   t('a route is ignored when the actor is not walking', () => { const sh = newShot({ actionA: 'sit', routeA: [{ x: 3, z: 3 }] }); return near(subjPos(sh, 1).pos.A.x, HOME.A.x) && subjPos(sh, 1).walkers.length === 0; });
   t('the blocking diagram carries walk routes', () => { $('#ta').value = JSON.stringify({ shots: [{ actionA: 'walk', placeA: { x: -2, z: 0 }, routeA: [{ x: 0, z: 2 }, { x: 3, z: 2 }] }] }); applyCode(); const a = blockingDoc().shots[0].actors[0]; return a.route && a.route.length === 3 && near(a.route[2][0], 3); });
-  t('sets: four exist, only the chosen one is shown, unknown falls back to the chai stall', () => { const names = Object.keys(SETS); if (names.join() !== 'stall,street,terrace,living') return false; for (const k of names) { applySet(k); if (!Object.keys(SETG).every(g => SETG[g].visible === (g === k))) return false; } applySet('nope'); const ok = SETG.stall.visible && !SETG.street.visible; $('#ta').value = JSON.stringify({ set: 'street', shots: [{}] }); applyCode(); const a = P.set; $('#ta').value = JSON.stringify({ set: 'moon', shots: [{}] }); applyCode(); return ok && a === 'street' && P.set === 'stall'; });
+  t('sets: five exist, only the chosen one is shown, unknown falls back to the chai stall', () => { const names = Object.keys(SETS); if (names.join() !== 'stall,street,terrace,living,classroom') return false; for (const k of names) { applySet(k); if (!Object.keys(SETG).every(g => SETG[g].visible === (g === k))) return false; } applySet('nope'); const ok = SETG.stall.visible && !SETG.street.visible; $('#ta').value = JSON.stringify({ set: 'street', shots: [{}] }); applyCode(); const a = P.set; $('#ta').value = JSON.stringify({ set: 'moon', shots: [{}] }); applyCode(); return ok && a === 'street' && P.set === 'stall'; });
   t('the set is saved in the project and survives a round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, set: 'terrace', shots: [{}] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value); applyCode(); return o.set === 'terrace' && P.set === 'terrace' && $('#set').value === 'terrace' && SETG.terrace.visible; });
-  t('every set has its own floor and dressing and the stall keeps its lights', () => ['stall', 'street', 'terrace', 'living'].every(k => SETG[k].children.length > 8) && BULBS.length >= 5);
+  t('every set has its own floor and dressing and the stall keeps its lights', () => ['stall', 'street', 'terrace', 'living', 'classroom'].every(k => SETG[k].children.length > 8) && BULBS.length >= 5);
   t('duplicating a shot does not share its walk route', () => { $('#ta').value = JSON.stringify({ shots: [{ actionA: 'walk', routeA: [{ x: 1, z: 1 }] }] }); applyCode(); sel = 0; $('#bDup').click(); P.shots[0].routeA.push({ x: 2, z: 2 }); return P.shots.length === 2 && P.shots[1].routeA.length === 1; });
   t('costumes: unknown ids fall back to plain clothes and the choice survives a round trip', () => { const n = normOutfit({ A: 'turban', B: 'nope' }); if (n.A !== 'turban' || n.B !== 'plain' || normOutfit(null).A !== 'plain') return false; $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, outfit: { A: 'garland', B: 'umbrella' }, shots: [{}] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value); return o.outfit.A === 'garland' && o.outfit.B === 'umbrella' && P.outfit.B === 'umbrella'; });
   t('placement survives a project round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ placeA: { x: 1.5, z: 2 }, faceA: 40 }] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value).shots[0]; return o.placeA.x === 1.5 && o.placeA.z === 2 && o.faceA === 40 && o.placeB === null; });
