@@ -65,8 +65,8 @@ console.log('pdf ok:', bin.length, 'bytes,', pages, 'pages');
 
 /* reference-video analysis report: paginates a long shot table, keeps the structure valid and embeds each thumbnail once */
 {
-  const rows = Array.from({ length: 30 }, (_, i) => ({ n: i + 1, at: '0:' + String(i).padStart(2, '0'), len: '2.5 s', tech: 'Push in (forward) + handheld shake and a very long technique description that has to be cut', intensity: '60%', easing: 'smooth', conf: 80, jpeg, jw: 64, jh: 36 }));
-  const bin = buildAnalysisPdf({ title: 'Clip (test)', subtitle: '1280x720 | 0:30', cards: [['Shots', 30], ['Pace', 'fast']], shots: rows, techniques: [{ name: 'Push in', shots: 'shots 1, 2', why: 'Moving closer pulls the audience in. '.repeat(8) }], tips: [{ rule: 'Match the pace', text: 'Shorten shots. '.repeat(30) }], note: 'Estimates only.', footer: 'Made with Kalki Simulator' });
+  const rows = Array.from({ length: 30 }, (_, i) => ({ n: i + 1, at: '0:' + String(i).padStart(2, '0'), len: '2.5 s', tech: 'Push in (forward) + handheld shake and a very long technique description that has to be cut', intensity: '60%', easing: 'smooth', conf: 80, jpeg, jw: 64, jh: 36, secs: 1 + i % 5 }));
+  const bin = buildAnalysisPdf({ avg: 3, title: 'Clip (test)', subtitle: '1280x720 | 0:30', cards: [['Shots', 30], ['Pace', 'fast']], shots: rows, techniques: [{ name: 'Push in', shots: 'shots 1, 2', why: 'Moving closer pulls the audience in. '.repeat(8) }], tips: [{ rule: 'Match the pace', text: 'Shorten shots. '.repeat(30) }], note: 'Estimates only.', footer: 'Made with Kalki Simulator' });
   const t = Buffer.from(bin).toString('latin1');
   assert.ok(t.startsWith('%PDF-1.4') && t.trimEnd().endsWith('%%EOF'));
   const pages = (t.match(/\/Type \/Page /g) || []).length; assert.ok(pages >= 3, 'a 30-shot report needs several pages, got ' + pages);

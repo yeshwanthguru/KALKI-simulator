@@ -326,6 +326,13 @@ export function buildAnalysisPdf(doc) {
   const cards = doc.cards || [], cw = CW / Math.max(1, cards.length);
   cards.forEach(([k, v], i) => { const x = M + i * cw; pdf.rect(x, y, cw - 8, 40, { fill: HEAD, stroke: RULE }); pdf.text(x + 8, y + 14, String(k).toUpperCase(), { size: 6.5, bold: true, color: MUTED }); pdf.text(x + 8, y + 32, wrapMax(String(v), cw - 22, 12, 1, true)[0], { size: 12, bold: true, color: INK }); });
   y += 56;
+  const secs = (doc.shots || []).map(s => s.secs || 0);
+  if (secs.length && Math.max(...secs) > 0) {
+    section('PACING (SHOT LENGTH IN SECONDS)'); const mx = Math.max(...secs), bw = Math.min(40, (CW - 8) / secs.length), base = y + 46;
+    secs.forEach((v, i) => { const h = Math.max(3, v / mx * 40), x = M + i * (bw + 2); pdf.rect(x, base - h, bw, h, { fill: doc.avg && v < doc.avg ? [61, 160, 150] : ACCENT }); if (secs.length <= 24) pdf.text(x, base - h - 3, v.toFixed(1), { size: 6, color: MUTED }); });
+    if (doc.avg) { const ay = base - doc.avg / mx * 40; pdf.line(M, ay, M + Math.min(CW, secs.length * (bw + 2)), ay, { color: MUTED }); pdf.text(M + Math.min(CW, secs.length * (bw + 2)) + 6, ay + 2, `average ${doc.avg.toFixed(1)} s`, { size: 7, color: MUTED }); }
+    y = base + 16;
+  }
   section('SHOTS FOUND');
   const cols = [{ k: '#', w: 28 }, { k: 'Frame', w: 84 }, { k: 'At', w: 60 }, { k: 'Length', w: 60 }, { k: 'Camera technique', w: 200 }, { k: 'Shot size (set by you)', w: 90 }, { k: 'Intensity', w: 66 }, { k: 'Easing', w: 66 }, { k: 'Confidence', w: 116 }];
   const colHead = () => { let x = M; pdf.rect(M, y, CW, 16, { fill: HEAD }); for (const c of cols) { pdf.text(x + 6, y + 11, c.k.toUpperCase(), { size: 7, bold: true, color: MUTED }); x += c.w; } y += 18; };

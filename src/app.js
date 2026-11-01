@@ -1250,6 +1250,10 @@ async function analyseRef(file) {
 }
 function refSuggestions() { return ref && P.shots.length && !demo ? suggest(ref.clip, { shots: P.shots }, ref.sizes) : []; }
 const sizeSelect = (i, v) => `<select class="sel" data-rfsize="${i}" title="Kalki cannot see the shot size: mark it yourself"><option value="">Unknown</option>${Object.entries(SIZES).map(([k, z]) => `<option value="${k}"${k === v ? ' selected' : ''}>${k} · ${z.label}</option>`).join('')}</select>`;
+function paceChart(clip) {
+  const mx = Math.max(...clip.shots.map(s => s.dur), .1), av = clip.summary.avgShot;
+  return `<div class="rf-pace">${clip.shots.map(s => `<i class="${s.dur < av ? 'sh' : ''}" style="height:${Math.max(6, Math.round(s.dur / mx * 58))}px" title="Shot ${clip.shots.indexOf(s) + 1}: ${s.dur.toFixed(1)} s"><em>${s.dur.toFixed(1)}</em></i>`).join('')}<u style="bottom:${Math.round(av / mx * 58)}px"></u></div>`;
+}
 function renderRef() {
   const { clip } = ref, S = clip.summary, pct = v => Math.round(v * 100) + '%';
   const cards = [['Shots', S.shotCount], ['Average shot', S.avgShot.toFixed(1) + ' s'], ['Pace', S.pace], ['Camera moving', pct(S.movingShare)], ['Handheld', pct(S.handheldShare)], ['Most used', MV[S.dominant].name]];
@@ -1262,6 +1266,7 @@ function renderRef() {
     : sg.length ? sg.map((t, i) => `<div class="rf-tip"><div><b>${esc(t.rule)}</b><p>${esc(t.text)}</p><small>${esc(t.why)}</small></div>${t.patch.length ? `<button class="btn" data-rfapply="${i}">Apply</button>` : ''}</div>`).join('')
       : '<p class="rf-note">Your scene already follows the reference closely. Nothing to change.</p>';
   $('#rfRes').innerHTML = `<div class="rf-sum">${cards.map(([k, v]) => `<div><small>${k}</small><b>${esc(String(v))}</b></div>`).join('')}</div>
+    <h3>Pacing <small>shot lengths in seconds; the dashed line is the average of ${S.avgShot.toFixed(1)} s</small></h3>${paceChart(clip)}
     <h3>Shots found <small>${esc(ref.name)} · ${ref.size} · ${fmtTime(clip.duration)}</small></h3><div class="rf-strip">${strip}</div>
     <table class="rf-tab"><thead><tr><th>#</th><th>At</th><th>Length</th><th>Camera technique</th><th>Shot size (you set)</th><th>Intensity</th><th>Easing</th><th>Confidence</th></tr></thead><tbody>${rows}</tbody></table>
     <h3>How the camera is used</h3>${notes}
@@ -1291,7 +1296,7 @@ function refPdfDoc() {
   return {
     raster: rasterText, title: ref.name, subtitle: `${ref.size}  |  ${fmtTime(clip.duration)}  |  ${new Date().toLocaleDateString()}`,
     cards: [['Shots', S.shotCount], ['Average shot', S.avgShot.toFixed(1) + ' s'], ['Pace', S.pace], ['Camera moving', pct(S.movingShare)], ['Handheld', pct(S.handheldShare)], ['Most used', MV[S.dominant].name]],
-    shots: clip.shots.map((s, i) => ({ n: i + 1, at: fmtTime(s.start), len: s.dur.toFixed(1) + ' s', tech: refMoveText(s) + (s.handheld && s.move !== 'handheld' ? ' + handheld shake' : ''), size: ref.sizes[i] ? SIZES[ref.sizes[i]].label : '-', intensity: s.move === 'static' ? '-' : Math.round(s.amount * 100) + '%', easing: s.move === 'static' || s.move === 'handheld' ? '-' : s.easing, conf: Math.round(s.confidence * 100), jpeg: jpegOf(ref.thumbs[i]), jw: 192, jh: 108 })),
+    avg: S.avgShot, shots: clip.shots.map((s, i) => ({ n: i + 1, secs: s.dur, at: fmtTime(s.start), len: s.dur.toFixed(1) + ' s', tech: refMoveText(s) + (s.handheld && s.move !== 'handheld' ? ' + handheld shake' : ''), size: ref.sizes[i] ? SIZES[ref.sizes[i]].label : '-', intensity: s.move === 'static' ? '-' : Math.round(s.amount * 100) + '%', easing: s.move === 'static' || s.move === 'handheld' ? '-' : s.easing, conf: Math.round(s.confidence * 100), jpeg: jpegOf(ref.thumbs[i]), jw: 192, jh: 108 })),
     techniques: used.map(m => ({ name: MV[m].name, shots: 'shot' + (clip.shots.filter(s => s.move === m).length > 1 ? 's ' : ' ') + clip.shots.map((s, i) => s.move === m ? i + 1 : 0).filter(Boolean).join(', '), why: MV[m].why })),
     tips: sg.map(t => ({ rule: t.rule, text: t.text })), tipsNote: !P.shots.length || demo ? 'No scene was open, so there are no suggestions in this report.' : sg.length ? '' : 'Your scene already follows the reference closely. Nothing to change.',
     note: 'These are estimates from picture motion, not from knowing how the shot was made. A push-in and a zoom can look alike, and moving actors can confuse the result. Everything was computed on this computer; the video was not uploaded.',
