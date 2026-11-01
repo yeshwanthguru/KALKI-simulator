@@ -58,6 +58,11 @@ const only = (frames) => { const c = analyzeClip(frames, FPS); assert.equal(c.sh
   assert.ok(ids.includes('pace'), 'pace rule'); assert.ok(ids.includes('move0'), 'shot 1 should become a pan'); assert.ok(ids.includes('count'), 'one more shot');
   assert.ok(sg.every(x => x.rule && x.text && x.why && Array.isArray(x.patch)), 'every tip names its rule and reason');
   assert.equal(sg.find(x => x.id === 'move0').patch[0].set.move, 'pan');
+  /* shot sizes marked by the user */
+  assert.ok(!ids.some(i => i.startsWith('size')), 'no size rule until the user marks a size');
+  const sz = suggest(c, { shots: [{ ...project.shots[0], size: 'WS' }, { ...project.shots[1], size: 'MS' }] }, ['CU', 'MS', '']);
+  assert.ok(sz.some(x => x.id === 'size0' && x.patch[0].set.size === 'CU'), 'a different size becomes a suggestion'); assert.ok(!sz.some(x => x.id === 'size1'), 'an equal size is not suggested');
+  assert.equal(toShots(c, 'Ref', ['ECU', '', 'bogus'])[0].size, 'ECU'); assert.notEqual(toShots(c, 'Ref', ['ECU', '', 'bogus'])[2].size, 'bogus');
 }
 /* edge cases */
 assert.equal(analyzeClip([], FPS).shots.length, 0);

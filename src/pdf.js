@@ -327,7 +327,7 @@ export function buildAnalysisPdf(doc) {
   cards.forEach(([k, v], i) => { const x = M + i * cw; pdf.rect(x, y, cw - 8, 40, { fill: HEAD, stroke: RULE }); pdf.text(x + 8, y + 14, String(k).toUpperCase(), { size: 6.5, bold: true, color: MUTED }); pdf.text(x + 8, y + 32, wrapMax(String(v), cw - 22, 12, 1, true)[0], { size: 12, bold: true, color: INK }); });
   y += 56;
   section('SHOTS FOUND');
-  const cols = [{ k: '#', w: 28 }, { k: 'Frame', w: 84 }, { k: 'At', w: 60 }, { k: 'Length', w: 60 }, { k: 'Camera technique', w: 250 }, { k: 'Intensity', w: 70 }, { k: 'Easing', w: 70 }, { k: 'Confidence', w: 148 }];
+  const cols = [{ k: '#', w: 28 }, { k: 'Frame', w: 84 }, { k: 'At', w: 60 }, { k: 'Length', w: 60 }, { k: 'Camera technique', w: 200 }, { k: 'Shot size (set by you)', w: 90 }, { k: 'Intensity', w: 66 }, { k: 'Easing', w: 66 }, { k: 'Confidence', w: 116 }];
   const colHead = () => { let x = M; pdf.rect(M, y, CW, 16, { fill: HEAD }); for (const c of cols) { pdf.text(x + 6, y + 11, c.k.toUpperCase(), { size: 7, bold: true, color: MUTED }); x += c.w; } y += 18; };
   colHead();
   const ROW = 44;
@@ -341,10 +341,11 @@ export function buildAnalysisPdf(doc) {
     pdf.text(x + 6, y + 16, s.at, { size: 9, color: INK }); x += cols[2].w;
     pdf.text(x + 6, y + 16, s.len, { size: 9, color: INK }); x += cols[3].w;
     wrapMax(s.tech, cols[4].w - 12, 9, 2, true).forEach((ln, i) => pdf.text(x + 6, y + 16 + i * 11, ln, { size: 9, bold: true, color: ACCENT })); x += cols[4].w;
-    pdf.text(x + 6, y + 16, s.intensity, { size: 9, color: INK }); x += cols[5].w;
-    pdf.text(x + 6, y + 16, s.easing, { size: 9, color: INK }); x += cols[6].w;
-    pdf.rect(x + 6, y + 9, 80, 6, { fill: HEAD, stroke: RULE }); pdf.rect(x + 6, y + 9, 80 * Math.max(0, Math.min(100, s.conf)) / 100, 6, { fill: ACCENT });
-    pdf.text(x + 92, y + 16, `${s.conf}%`, { size: 8, color: MUTED });
+    pdf.text(x + 6, y + 16, wrapMax(s.size || '-', cols[5].w - 10, 8.5, 1)[0], { size: 8.5, color: INK }); x += cols[5].w;
+    pdf.text(x + 6, y + 16, s.intensity, { size: 9, color: INK }); x += cols[6].w;
+    pdf.text(x + 6, y + 16, s.easing, { size: 9, color: INK }); x += cols[7].w;
+    pdf.rect(x + 6, y + 9, 66, 6, { fill: HEAD, stroke: RULE }); pdf.rect(x + 6, y + 9, 66 * Math.max(0, Math.min(100, s.conf)) / 100, 6, { fill: ACCENT });
+    pdf.text(x + 78, y + 16, `${s.conf}%`, { size: 8, color: MUTED });
     y += ROW;
   }
   y += 8;

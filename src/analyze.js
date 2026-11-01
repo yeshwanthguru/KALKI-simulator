@@ -199,10 +199,12 @@ export function summarize(shots, duration) {
 
 /* ---------- reference -> Kalki shots ---------- */
 const SIZE_FOR = { static: 'MS', handheld: 'MS', pan: 'WS', truck: 'WS', tilt: 'FS', pedestal: 'FS', push_in: 'MS', zoom_in: 'MS', pull_out: 'MS' };
-export function toShots(clip, label = 'Reference') {
+/* shot sizes the user marked on the reference (the analyser itself does not detect them) */
+export const SIZE_NAME = { EWS: 'extreme wide shot', WS: 'wide shot', FS: 'full shot', MS: 'medium shot', MCU: 'medium close-up', CU: 'close-up', ECU: 'extreme close-up' };
+export function toShots(clip, label = 'Reference', sizes = []) {
   return clip.shots.slice(0, 60).map((s, i) => ({
     move: s.move, dir: s.dir, amount: +s.amount.toFixed(2), easing: s.easing, duration: Math.min(20, Math.max(1, Math.round(s.dur * 2) / 2)),
-    size: SIZE_FOR[s.move] || 'MS', subject: s.move === 'pan' || s.move === 'truck' ? 'both' : 'A', lens: 35, height: 'eye',
+    size: SIZE_NAME[sizes[i]] ? sizes[i] : SIZE_FOR[s.move] || 'MS', subject: s.move === 'pan' || s.move === 'truck' ? 'both' : 'A', lens: 35, height: 'eye',
     name: `${label} ${i + 1}`, notes: `Detected at ${fmtTime(s.start)}: ${s.move.replace('_', ' ')}, ${Math.round(s.confidence * 100)}% confidence.`
   }));
 }
@@ -211,7 +213,7 @@ export const fmtTime = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).
 /* ---------- suggestions: explainable rules comparing the reference with the current scene ---------- */
 /* project: { shots: [{ move, duration, amount, easing, dir }] }. Each suggestion: { id, rule, shot, text, why, patch } where patch is a list of
    { shot, set: {field: value} } edits, { addShots: [...] } or { scaleDurations: factor } that the app can apply and play. */
-export function suggest(clip, project) {
+export function suggest(clip, project, sizes = []) {
   const out = [], R = clip.summary, P = project.shots, name = m => m.replace('_', ' ');
   if (!clip.shots.length) return out;
   if (P.length) {
@@ -220,6 +222,7 @@ export function suggest(clip, project) {
     const m = Math.min(P.length, clip.shots.length);
     for (let i = 0; i < m; i++) {
       const r = clip.shots[i], p = P[i];
+      if (SIZE_NAME[sizes[i]] && SIZE_NAME[p.size] && sizes[i] !== p.size) out.push({ id: 'size' + i, rule: 'Shot size', shot: i, text: `Shot ${i + 1}: you marked the reference as a ${SIZE_NAME[sizes[i]]}; yours is a ${SIZE_NAME[p.size]}. Change the shot size to ${sizes[i]}.`, why: 'Shot size decides how close the audience feels. Matching the reference keeps the same emotional distance.', patch: [{ shot: i, set: { size: sizes[i] } }] });
       if (r.confidence < .45) continue;
       if (p.move !== r.move) out.push({ id: 'move' + i, rule: 'Camera move', shot: i, text: `Shot ${i + 1}: the reference uses ${name(r.move)} (${fmtTime(r.start)}, ${Math.round(r.confidence * 100)}% sure); you use ${name(p.move)}. Switch to ${name(r.move)}.`, why: r.move === 'static' ? 'The reference lets the frame hold still here.' : 'Matching the move reproduces the reference\'s energy at this beat.', patch: [{ shot: i, set: { move: r.move, dir: r.dir, amount: +r.amount.toFixed(2), easing: r.easing } }] });
       else if (r.move !== 'static' && Math.abs(r.amount - p.amount) > .3) out.push({ id: 'amount' + i, rule: 'Move intensity', shot: i, text: `Shot ${i + 1}: the reference's ${name(r.move)} is ${r.amount < p.amount ? 'gentler' : 'stronger'} than yours. Set intensity to about ${Math.round(r.amount * 100)}%.`, why: 'Intensity changes how noticeable the move is.', patch: [{ shot: i, set: { amount: +r.amount.toFixed(2) } }] });
