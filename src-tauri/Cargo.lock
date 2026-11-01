@@ -1638,7 +1638,7 @@ dependencies = [
 
 [[package]]
 name = "kalki-simulator"
-version = "0.7.2"
+version = "0.7.3"
 dependencies = [
  "tauri",
  "tauri-build",

@@ -343,8 +343,9 @@ function buildLiving() {
   const wall = mat(0xe6d3a8, { roughness: .95 }), trim = mat(0x6b4a38), dark = mat(0x1a1410);
   /* back wall with a barred window on the left and a door on the right; sunlight comes through the window */
   add(new T.BoxGeometry(16, 1, .3), wall, 0, .5, -4.2); add(new T.BoxGeometry(16, .8, .3), wall, 0, 2.8, -4.2);
-  add(new T.BoxGeometry(3.8, 1.4, .3), wall, -6.1, 1.7, -4.2); add(new T.BoxGeometry(2.4, 1.4, .3), wall, -.2, 1.7, -4.2); add(new T.BoxGeometry(5.9, 1.4, .3), wall, 5.05, 1.7, -4.2);
+  add(new T.BoxGeometry(3.8, 1.4, .3), wall, -6.1, 1.7, -4.2); add(new T.BoxGeometry(3.4, 1.4, .3), wall, .3, 1.7, -4.2); add(new T.BoxGeometry(6, 1.4, .3), wall, 5, 1.7, -4.2);
   add(new T.BoxGeometry(.3, 3.2, 9), wall, -8, 1.6, .3); add(new T.BoxGeometry(16, .12, .34), trim, 0, .06, -4.2);
+  add(new T.PlaneGeometry(16, 12), mat(0xefe6d2, { roughness: 1 }), 0, 3.2, 0, false).rotation.x = Math.PI / 2; // ceiling: one-sided, so it is invisible from above (crane and top-down shots)
   for (let i = 0; i < 8; i++) add(new T.BoxGeometry(.03, 1.4, .03), dark, -4.0 + i * .36, 1.7, -4.1, false);
   for (const cx of [-4.35, -1.25]) add(new T.BoxGeometry(.5, 1.7, .04), mat(0xb5483c, { roughness: 1 }), cx, 1.75, -4.0);
   add(new T.BoxGeometry(1.1, 2.1, .08), mat(0x7a4a2c), 4.6, 1.05, -4.0); add(new T.BoxGeometry(1.3, .1, .14), trim, 4.6, 2.15, -4.0);
