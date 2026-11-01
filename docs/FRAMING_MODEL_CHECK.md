@@ -45,3 +45,7 @@ Runtime options:
 - Is a roughly 0.5-1 MB size increase acceptable for this feature?
 - Which licence route in step 2 is preferred, and can the Apache-2.0 model card be confirmed?
 - Should the spike go ahead, or should the manual shot-size dropdown (step 4) come first?
+
+## Update, 2 November 2026
+
+The spike ran and the official model card was read: see [FACE_SPIKE.md](FACE_SPIKE.md). The licence for the model file is still not stated by Google's card or documentation, and the card says the model is meant for large, near, front-facing selfie-style faces.
