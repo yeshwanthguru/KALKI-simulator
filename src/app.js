@@ -156,7 +156,7 @@ function add(geo, m, x, y, z, sh = true) { const o = new T.Mesh(geo, m); o.posit
 function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace; t.anisotropy = 4; return t; }
 
 // lights
-const FX = [], BULBS = [], GLASS = [], SHAFTS = [];
+const FX = [], BULBS = [], GLASS = [], SHAFTS = [], SKY = []; // SKY: the daylight seen through the windows of the indoor sets
 const SETG = {}; let CUR = null; for (const k of ['stall', 'street', 'terrace', 'living', 'classroom']) { SETG[k] = new T.Group(); scene.add(SETG[k]); }
 const hemi = new T.HemisphereLight(0xffd9b0, 0x1a1210, .42); scene.add(hemi);
 const sun = new T.DirectionalLight(0xffb066, 4.2); sun.position.set(-7, 4.5, -12); sun.target.position.set(0, .8, 1); scene.add(sun.target); sun.castShadow = true;
@@ -346,7 +346,7 @@ function buildLiving() {
   add(new T.BoxGeometry(3.8, 1.4, .3), wall, -6.1, 1.7, -4.2); add(new T.BoxGeometry(3.4, 1.4, .3), wall, .3, 1.7, -4.2); add(new T.BoxGeometry(6, 1.4, .3), wall, 5, 1.7, -4.2);
   add(new T.BoxGeometry(.3, 3.2, 9), wall, -8, 1.6, .3); add(new T.BoxGeometry(16, .12, .34), trim, 0, .06, -4.2);
   add(new T.PlaneGeometry(16, 12), mat(0xefe6d2, { roughness: 1 }), 0, 3.2, 0, false).rotation.x = Math.PI / 2; // ceiling: one-sided, so it is invisible from above (crane and top-down shots)
-  { const sky = new T.MeshBasicMaterial({ color: 0xbfd8ff }); GLASS.push(sky); add(new T.PlaneGeometry(2.8, 1.4), sky, -2.8, 1.7, -4.5, false); }
+  { const sky = new T.MeshBasicMaterial({ color: 0xbfd8ff }); SKY.push(sky); add(new T.PlaneGeometry(2.8, 1.4), sky, -2.8, 1.7, -4.5, false); }
   for (let i = 0; i < 8; i++) add(new T.BoxGeometry(.03, 1.4, .03), dark, -4.0 + i * .36, 1.7, -4.1, false);
   for (const cx of [-4.35, -1.25]) add(new T.BoxGeometry(.5, 1.7, .04), mat(0xb5483c, { roughness: 1 }), cx, 1.75, -4.0);
   add(new T.BoxGeometry(1.1, 2.1, .08), mat(0x7a4a2c), 4.6, 1.05, -4.0); add(new T.BoxGeometry(1.3, .1, .14), trim, 4.6, 2.15, -4.0);
@@ -375,7 +375,7 @@ function buildClassroom() {
   /* back wall: two barred windows, a blackboard between them and a teal dado along the bottom */
   add(new T.BoxGeometry(16, .9, .3), dado, 0, .45, -4.2); add(new T.BoxGeometry(16, .9, .3), wall, 0, 2.95, -4.2);
   for (const [cx, w] of [[-6.6, 2.8], [.05, 5.9], [6.65, 2.7]]) add(new T.BoxGeometry(w, 1.4, .3), wall, cx, 1.6, -4.2);
-  for (const cx of [-4.05, 4.15]) { const sky = new T.MeshBasicMaterial({ color: 0xbfd8ff }); GLASS.push(sky); add(new T.PlaneGeometry(2.3, 1.4), sky, cx, 1.6, -4.5, false); }
+  for (const cx of [-4.05, 4.15]) { const sky = new T.MeshBasicMaterial({ color: 0xbfd8ff }); SKY.push(sky); add(new T.PlaneGeometry(2.3, 1.4), sky, cx, 1.6, -4.5, false); }
   for (const cx of [-4.05, 4.15]) for (let i = 0; i < 7; i++) add(new T.BoxGeometry(.03, 1.4, .03), dark, cx - .9 + i * .3, 1.6, -4.1, false);
   add(new T.BoxGeometry(.3, 3.2, 9), wall, -8, 1.6, .3); add(new T.BoxGeometry(.3, .9, 9), dado, -8, .45, .3);
   add(new T.PlaneGeometry(16, 12), mat(0xefe9d8, { roughness: 1 }), 0, 3.4, 0, false).rotation.x = Math.PI / 2;
@@ -754,6 +754,7 @@ function updatePath(i) {
 function applyLook(name) {
   const L = LOOKS[name] || LOOKS.golden, u = grade.uniforms;
   sun.color.set(L.sun[0]); sun.intensity = L.sun[1]; hemi.color.set(L.hemi[0]); hemi.groundColor.set(L.hemi[1]); hemi.intensity = L.hemi[2]; fill.intensity = L.fill;
+  SKY.forEach(m => m.color.set(L.glass).multiplyScalar(name === 'night' ? .22 : name === 'noir' ? 1 : 2.2));
   BULBS.forEach(b => b.intensity = L.bulb); GLASS.forEach(m => m.color.set(L.glass).multiplyScalar(name === 'night' ? .9 : 2.2));
   SHAFTS.forEach(s => { s.material.color.set(L.sun[0]); s.material.opacity = s.material.userData.base * L.shaft; s.visible = L.shaft > 0; });
   scene.background.set(L.fog); scene.fog.color.set(L.fog); dust.material.opacity = L.dust;
@@ -1479,6 +1480,7 @@ async function runSelfTest() {
   t('the blocking diagram carries walk routes', () => { $('#ta').value = JSON.stringify({ shots: [{ actionA: 'walk', placeA: { x: -2, z: 0 }, routeA: [{ x: 0, z: 2 }, { x: 3, z: 2 }] }] }); applyCode(); const a = blockingDoc().shots[0].actors[0]; return a.route && a.route.length === 3 && near(a.route[2][0], 3); });
   t('sets: five exist, only the chosen one is shown, unknown falls back to the chai stall', () => { const names = Object.keys(SETS); if (names.join() !== 'stall,street,terrace,living,classroom') return false; for (const k of names) { applySet(k); if (!Object.keys(SETG).every(g => SETG[g].visible === (g === k))) return false; } applySet('nope'); const ok = SETG.stall.visible && !SETG.street.visible; $('#ta').value = JSON.stringify({ set: 'street', shots: [{}] }); applyCode(); const a = P.set; $('#ta').value = JSON.stringify({ set: 'moon', shots: [{}] }); applyCode(); return ok && a === 'street' && P.set === 'stall'; });
   t('the set is saved in the project and survives a round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, set: 'terrace', shots: [{}] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value); applyCode(); return o.set === 'terrace' && P.set === 'terrace' && $('#set').value === 'terrace' && SETG.terrace.visible; });
+  t('indoor ceilings face down so they are invisible from above, and window daylight follows the look', () => { for (const k of ['living', 'classroom']) { const c = SETG[k].children.find(o => o.geometry && o.geometry.type === 'PlaneGeometry' && o.position.y > 3 && o.position.y < 3.5); if (!c || c.material.side !== T.FrontSide || new T.Vector3(0, 0, 1).applyQuaternion(c.quaternion).y > -.9) return false; } applyLook('night'); const n = SKY[0].color.r; applyLook('golden'); const g = SKY[0].color.r; return SKY.length === 3 && n < g; });
   t('every set has its own floor and dressing and the stall keeps its lights', () => ['stall', 'street', 'terrace', 'living', 'classroom'].every(k => SETG[k].children.length > 8) && BULBS.length >= 5);
   t('duplicating a shot does not share its walk route', () => { $('#ta').value = JSON.stringify({ shots: [{ actionA: 'walk', routeA: [{ x: 1, z: 1 }] }] }); applyCode(); sel = 0; $('#bDup').click(); P.shots[0].routeA.push({ x: 2, z: 2 }); return P.shots.length === 2 && P.shots[1].routeA.length === 1; });
   t('costumes: unknown ids fall back to plain clothes and the choice survives a round trip', () => { const n = normOutfit({ A: 'turban', B: 'nope' }); if (n.A !== 'turban' || n.B !== 'plain' || normOutfit(null).A !== 'plain') return false; $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, outfit: { A: 'garland', B: 'umbrella' }, shots: [{}] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value); return o.outfit.A === 'garland' && o.outfit.B === 'umbrella' && P.outfit.B === 'umbrella'; });
