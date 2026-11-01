@@ -1,4 +1,4 @@
-import { buildShotListPdf, buildStoryboardPdf, buildBlockingPdf } from './pdf.js';
+import { buildShotListPdf, buildStoryboardPdf, buildBlockingPdf, buildAnalysisPdf } from './pdf.js';
 import { LANGS, makeTranslator } from './i18n.js';
 import { LESSONS, TEMPLATES } from './lessons.js';
 import { RIGS, rigFor, rigIds, normRig } from './rigs.js';
@@ -1121,7 +1121,7 @@ function renderRef() {
     <table class="rf-tab"><thead><tr><th>#</th><th>At</th><th>Length</th><th>Camera technique</th><th>Intensity</th><th>Easing</th><th>Confidence</th></tr></thead><tbody>${rows}</tbody></table>
     <h3>How the camera is used</h3>${notes}
     <h3>Suggested changes to your scene</h3>${tips}
-    <div class="rf-act"><button class="btn pri" id="rfSim">Simulate the reference</button>${sg.some(t => t.patch.length) ? '<button class="btn pri" id="rfAll">Apply all suggestions and play</button>' : ''}<button class="btn" id="rfCsv">Download report (.csv)</button></div>
+    <div class="rf-act"><button class="btn pri" id="rfSim">Simulate the reference</button>${sg.some(t => t.patch.length) ? '<button class="btn pri" id="rfAll">Apply all suggestions and play</button>' : ''}<button class="btn" id="rfPdf">Download report (.pdf)</button><button class="btn" id="rfCsv">Download report (.csv)</button></div>
     <p class="rf-note">These are estimates from picture motion, not from knowing how the shot was made. A push-in and a zoom can look alike, and moving actors can confuse the result. Everything is computed on this computer.</p>`;
 }
 function applySuggestions(list) {
@@ -1139,6 +1139,21 @@ function simulateRef() {
   P = { schemaVersion: SCHEMA, actors: castOf(), title: ('Reference: ' + ref.name).slice(0, 60), aspect: P.aspect, look: P.look, set: P.set, outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, shots: toShots(ref.clip, 'Ref').map(o => newShot(o)) };
   sel = 0; time = 0; demo = false; refreshAll(); setPlay(true);
 }
+function refPdfDoc() {
+  const { clip } = ref, S = clip.summary, pct = v => Math.round(v * 100) + '%', sg = refSuggestions();
+  const jpegOf = u => { const b = atob(u.split(',')[1]), a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; };
+  const used = Object.keys(S.byMove).filter(m => m !== 'static').sort((a, b) => S.byMove[b] - S.byMove[a]);
+  return {
+    raster: rasterText, title: ref.name, subtitle: `${ref.size}  |  ${fmtTime(clip.duration)}  |  ${new Date().toLocaleDateString()}`,
+    cards: [['Shots', S.shotCount], ['Average shot', S.avgShot.toFixed(1) + ' s'], ['Pace', S.pace], ['Camera moving', pct(S.movingShare)], ['Handheld', pct(S.handheldShare)], ['Most used', MV[S.dominant].name]],
+    shots: clip.shots.map((s, i) => ({ n: i + 1, at: fmtTime(s.start), len: s.dur.toFixed(1) + ' s', tech: refMoveText(s) + (s.handheld && s.move !== 'handheld' ? ' + handheld shake' : ''), intensity: s.move === 'static' ? '-' : Math.round(s.amount * 100) + '%', easing: s.move === 'static' || s.move === 'handheld' ? '-' : s.easing, conf: Math.round(s.confidence * 100), jpeg: jpegOf(ref.thumbs[i]), jw: 192, jh: 108 })),
+    techniques: used.map(m => ({ name: MV[m].name, shots: 'shot' + (clip.shots.filter(s => s.move === m).length > 1 ? 's ' : ' ') + clip.shots.map((s, i) => s.move === m ? i + 1 : 0).filter(Boolean).join(', '), why: MV[m].why })),
+    tips: sg.map(t => ({ rule: t.rule, text: t.text })), tipsNote: !P.shots.length || demo ? 'No scene was open, so there are no suggestions in this report.' : sg.length ? '' : 'Your scene already follows the reference closely. Nothing to change.',
+    note: 'These are estimates from picture motion, not from knowing how the shot was made. A push-in and a zoom can look alike, and moving actors can confuse the result. Everything was computed on this computer; the video was not uploaded.',
+    footer: 'Made with Kalki Simulator  |  Offline camera-movement previsualisation'
+  };
+}
+function refPdf() { download(new Blob([buildAnalysisPdf(refPdfDoc())], { type: 'application/pdf' }), (ref.name || 'reference').replace(/[^\w\- ]+/g, '').replace(/\s+/g, '-').toLowerCase() + '-camera-analysis.pdf'); toast('Report saved'); }
 function refCsv() {
   const q = v => `"${String(v).replace(/"/g, '""')}"`;
   const rows = [['Shot', 'Start (s)', 'Length (s)', 'Technique', 'Intensity %', 'Easing', 'Confidence %', 'Handheld shake']].concat(ref.clip.shots.map((s, i) => [i + 1, s.start.toFixed(1), s.dur.toFixed(1), refMoveText(s), Math.round(s.amount * 100), s.easing, Math.round(s.confidence * 100), s.handheld ? 'yes' : 'no']));
@@ -1154,6 +1169,7 @@ $('#rfRes').addEventListener('click', e => {
   if (b.id === 'rfSim') { simulateRef(); renderRef(); $('#mRef').classList.remove('on'); toast('Playing the reference camera work. Ctrl+Z restores your scene'); }
   else if (b.id === 'rfAll') { applySuggestions(refSuggestions().filter(t => t.patch.length)); renderRef(); $('#mRef').classList.remove('on'); toast('Applied. Ctrl+Z restores your scene'); }
   else if (b.id === 'rfCsv') refCsv();
+  else if (b.id === 'rfPdf') refPdf();
   else if (b.dataset.rfapply !== undefined) { applySuggestions([refSuggestions()[+b.dataset.rfapply]]); renderRef(); $('#mRef').classList.remove('on'); toast('Suggestion applied and playing. Ctrl+Z undoes it'); }
 });
 
@@ -1273,7 +1289,7 @@ $('#obSkip').onclick = () => endIntro('nocode');
 function refreshAll(code = true) { P.actors = normCast(P.actors); P.outfit = normOutfit(P.outfit); syncCast(); P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); P.set = SETS[P.set] ? P.set : 'stall'; $('#set').value = P.set; applySet(P.set); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
 new ResizeObserver(layout).observe($('#view'));
 buildLib(); refreshAll();
-if (location.hash === '#selftest' || location.hash === '#e2e') { if (location.hash === '#selftest') runSelfTest(); window.__kalki = { real: REAL, T, analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
+if (location.hash === '#selftest' || location.hash === '#e2e') { if (location.hash === '#selftest') runSelfTest(); window.__kalki = { real: REAL, T, reportPdf: async f => { ref = await computeRef(f); const b = buildAnalysisPdf(refPdfDoc()), t = Array.from(b, c => String.fromCharCode(c)).join(''); return { bytes: b.length, head: t.slice(0, 8), pages: (t.match(/\/Type \/Page /g) || []).length, images: (t.match(/\/Subtype \/Image/g) || []).length }; }, analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
 if (store.get('kalki.onboarded')) { demo = false; $('#ob').style.display = 'none'; setPlay(true); }
 
 /* ---------- self test: open the page with #selftest, results go to the title and #selftestOut (used by tests/smoke.mjs) ---------- */

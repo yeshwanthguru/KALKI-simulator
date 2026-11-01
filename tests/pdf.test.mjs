@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import sharp from 'sharp';
-import { buildShotListPdf, buildStoryboardPdf, buildBlockingPdf, textWidth, wrap, wrapMax, latin, needsRaster } from '../src/pdf.js';
+import { buildAnalysisPdf, buildShotListPdf, buildStoryboardPdf, buildBlockingPdf, textWidth, wrap, wrapMax, latin, needsRaster } from '../src/pdf.js';
 
 const jpeg = new Uint8Array(await sharp({ create: { width: 64, height: 36, channels: 3, background: '#c85' } }).jpeg().toBuffer());
 const shot = n => ({ n, name: 'Shot ' + n + ' (café) — “quotes”', move: 'Push in', why: 'A slow push-in tightens attention on the performer and builds intensity.', start: '00:00:00', duration: 4, lens: 50, eq: 73, fstop: 2.8, size: 'Medium', height: 'Eye level', angle: 15, subject: 'Meera', actions: ['Meera: Sitting', 'Arjun: Sipping chai'], amount: 60, easing: 'smooth', jpeg, jw: 64, jh: 36 });
@@ -62,3 +62,18 @@ for (const [aspect, perPage] of [[2.39, 6], [1.778, 6], [1, 10], [0.5625, 6]]) {
 fs.mkdirSync('tests/out', { recursive: true });
 fs.writeFileSync('tests/out/sample-shotlist.pdf', bin);
 console.log('pdf ok:', bin.length, 'bytes,', pages, 'pages');
+
+/* reference-video analysis report: paginates a long shot table, keeps the structure valid and embeds each thumbnail once */
+{
+  const rows = Array.from({ length: 30 }, (_, i) => ({ n: i + 1, at: '0:' + String(i).padStart(2, '0'), len: '2.5 s', tech: 'Push in (forward) + handheld shake and a very long technique description that has to be cut', intensity: '60%', easing: 'smooth', conf: 80, jpeg, jw: 64, jh: 36 }));
+  const bin = buildAnalysisPdf({ title: 'Clip (test)', subtitle: '1280x720 | 0:30', cards: [['Shots', 30], ['Pace', 'fast']], shots: rows, techniques: [{ name: 'Push in', shots: 'shots 1, 2', why: 'Moving closer pulls the audience in. '.repeat(8) }], tips: [{ rule: 'Match the pace', text: 'Shorten shots. '.repeat(30) }], note: 'Estimates only.', footer: 'Made with Kalki Simulator' });
+  const t = Buffer.from(bin).toString('latin1');
+  assert.ok(t.startsWith('%PDF-1.4') && t.trimEnd().endsWith('%%EOF'));
+  const pages = (t.match(/\/Type \/Page /g) || []).length; assert.ok(pages >= 3, 'a 30-shot report needs several pages, got ' + pages);
+  assert.equal((t.match(/\/Subtype \/Image/g) || []).length, 1, 'identical thumbnails are embedded once');
+  const st = +/startxref\n(\d+)/.exec(t)[1], size = +/\/Size (\d+)/.exec(t)[1];
+  t.slice(st).split('\n').slice(3, 3 + size - 1).forEach((e, i) => assert.ok(t.slice(+e.slice(0, 10)).startsWith(`${i + 1} 0 obj`), 'analysis xref entry ' + (i + 1)));
+  assert.ok(t.includes('Page 1 / ' + pages), 'page numbers are added');
+  const empty = Buffer.from(buildAnalysisPdf({ title: 'Empty', shots: [] })).toString('latin1'); assert.ok(empty.startsWith('%PDF-1.4'));
+  console.log('analysis pdf ok: ' + pages + ' pages');
+}

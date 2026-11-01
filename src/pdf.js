@@ -306,3 +306,70 @@ export function buildBlockingPdf(doc) {
   }
   return pdf.build();
 }
+
+/* ---------- reference-video analysis report ---------- */
+/* doc: { title, subtitle, cards: [[label, value]], shots: [{ n, at, len, tech, intensity, easing, conf (0-100), jpeg?, jw?, jh? }],
+          techniques: [{ name, shots, why }], tips: [{ rule, text }], tipsNote, note, footer, raster } */
+export function buildAnalysisPdf(doc) {
+  const pdf = new Pdf(842, 595); pdf.raster = doc.raster; const M = 36, CW = 770, TOP = 108, BOTTOM = 595 - 44;
+  let y = TOP;
+  const head = () => {
+    pdf.addPage(); pdf.rect(0, 0, 842, 8, { fill: ACCENT });
+    pdf.text(M, 48, doc.title || 'Camera analysis', { size: 20, bold: true, color: INK });
+    pdf.text(M, 66, 'REFERENCE VIDEO ANALYSIS', { size: 8.5, bold: true, color: ACCENT });
+    if (doc.subtitle) pdf.text(M, 82, wrapMax(doc.subtitle, CW, 8.5, 1)[0], { size: 8.5, color: MUTED });
+    y = TOP;
+  };
+  const room = h => { if (y + h > BOTTOM) head(); };
+  const section = t => { room(40); pdf.text(M, y + 10, t, { size: 8.5, bold: true, color: ACCENT }); y += 20; };
+  head();
+  const cards = doc.cards || [], cw = CW / Math.max(1, cards.length);
+  cards.forEach(([k, v], i) => { const x = M + i * cw; pdf.rect(x, y, cw - 8, 40, { fill: HEAD, stroke: RULE }); pdf.text(x + 8, y + 14, String(k).toUpperCase(), { size: 6.5, bold: true, color: MUTED }); pdf.text(x + 8, y + 32, wrapMax(String(v), cw - 22, 12, 1, true)[0], { size: 12, bold: true, color: INK }); });
+  y += 56;
+  section('SHOTS FOUND');
+  const cols = [{ k: '#', w: 28 }, { k: 'Frame', w: 84 }, { k: 'At', w: 60 }, { k: 'Length', w: 60 }, { k: 'Camera technique', w: 250 }, { k: 'Intensity', w: 70 }, { k: 'Easing', w: 70 }, { k: 'Confidence', w: 148 }];
+  const colHead = () => { let x = M; pdf.rect(M, y, CW, 16, { fill: HEAD }); for (const c of cols) { pdf.text(x + 6, y + 11, c.k.toUpperCase(), { size: 7, bold: true, color: MUTED }); x += c.w; } y += 18; };
+  colHead();
+  const ROW = 44;
+  for (const s of doc.shots || []) {
+    if (y + ROW > BOTTOM) { head(); colHead(); }
+    let x = M; pdf.line(M, y + ROW - 2, M + CW, y + ROW - 2, { color: RULE });
+    pdf.text(x + 6, y + 16, String(s.n), { size: 10, bold: true, color: INK }); x += cols[0].w;
+    const fw = 72, fh = 40.5;
+    if (s.jpeg) pdf.image(s.jpeg, s.jw, s.jh, x + 6, y + 1, fw, fh); else pdf.rect(x + 6, y + 1, fw, fh, { fill: HEAD, stroke: RULE });
+    x += cols[1].w;
+    pdf.text(x + 6, y + 16, s.at, { size: 9, color: INK }); x += cols[2].w;
+    pdf.text(x + 6, y + 16, s.len, { size: 9, color: INK }); x += cols[3].w;
+    wrapMax(s.tech, cols[4].w - 12, 9, 2, true).forEach((ln, i) => pdf.text(x + 6, y + 16 + i * 11, ln, { size: 9, bold: true, color: ACCENT })); x += cols[4].w;
+    pdf.text(x + 6, y + 16, s.intensity, { size: 9, color: INK }); x += cols[5].w;
+    pdf.text(x + 6, y + 16, s.easing, { size: 9, color: INK }); x += cols[6].w;
+    pdf.rect(x + 6, y + 9, 80, 6, { fill: HEAD, stroke: RULE }); pdf.rect(x + 6, y + 9, 80 * Math.max(0, Math.min(100, s.conf)) / 100, 6, { fill: ACCENT });
+    pdf.text(x + 92, y + 16, `${s.conf}%`, { size: 8, color: MUTED });
+    y += ROW;
+  }
+  y += 8;
+  if ((doc.techniques || []).length) {
+    section('HOW THE CAMERA IS USED');
+    for (const t of doc.techniques) {
+      const lines = wrapMax(t.why, CW, 8, 3); room(18 + lines.length * 10);
+      pdf.text(M, y + 10, t.name, { size: 10, bold: true, color: INK }); pdf.text(M + textWidth(t.name, 10, true) + 8, y + 10, t.shots, { size: 8, color: MUTED });
+      lines.forEach((ln, i) => pdf.text(M, y + 22 + i * 10, ln, { size: 8, color: INK })); y += 26 + lines.length * 10;
+    }
+  }
+  if ((doc.tips || []).length || doc.tipsNote) {
+    y += 4; section('SUGGESTED CHANGES TO YOUR SCENE');
+    if (doc.tipsNote) { room(14); pdf.text(M, y + 8, doc.tipsNote, { size: 8, color: MUTED }); y += 16; }
+    (doc.tips || []).forEach((t, i) => {
+      const lines = wrapMax(t.text, CW - 14, 8, 3); room(16 + lines.length * 10);
+      pdf.text(M, y + 10, `${i + 1}. ${t.rule}`, { size: 9.5, bold: true, color: INK });
+      lines.forEach((ln, k) => pdf.text(M + 14, y + 22 + k * 10, ln, { size: 8, color: INK })); y += 26 + lines.length * 10;
+    });
+  }
+  if (doc.note) { y += 6; const lines = wrapMax(doc.note, CW, 7.5, 3); room(lines.length * 9 + 6); lines.forEach((ln, i) => pdf.text(M, y + 8 + i * 9, ln, { size: 7.5, color: MUTED })); }
+  pdf.pages.forEach((pg, i) => {
+    pdf.cur = pg; pdf.line(M, 595 - 34, M + CW, 595 - 34, { color: RULE });
+    pdf.text(M, 595 - 20, doc.footer || '', { size: 7.5, color: MUTED });
+    const label = `Page ${i + 1} / ${pdf.pages.length}`; pdf.text(M + CW - textWidth(label, 7.5), 595 - 20, label, { size: 7.5, color: MUTED });
+  });
+  return pdf.build();
+}
