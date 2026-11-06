@@ -1,4 +1,4 @@
-KALKI · கல்கி — Camera Studio (v0.7.7)
+KALKI · கல்கி — Camera Studio (v0.7.8)
 See your shot before you shoot it.
 
 HOW TO START
@@ -22,6 +22,7 @@ WHAT YOU CAN DO
   - A fifth set, a school classroom (blackboard, bench-desks, teacher's table, ceiling fan), and daylight behind the windows of the indoor sets (dark at night)
   - A fourth set, a tiled living room, and new props (scooter, bicycle, bucket, brass pots, sofa, TV, tea table with steel tumblers, wall clock, standing lamp)
   - Two new sets (village street, terrace), costumes (topi, turban, garland, dupatta, umbrella, school bag, glasses) and multi-point walk paths
+  - Lesson and template descriptions and the camera rig explanations are also available in Tamil and Hindi
   - Use the interface in English, Tamil (தமிழ்) or Hindi (हिन्दी); titles and notes in any script appear correctly in the PDFs
   - Dawn, noon and dusk lighting looks join golden hour, night and the rest
   - Choose who plays each role from seven avatars (the people button): all actions, placement and camera work apply to every avatar

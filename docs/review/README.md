@@ -18,7 +18,7 @@ Regenerate the file after interface changes with `node tools/export-translations
 
 ## 2. Phone test (Android)
 
-Open `Kalki-versions/Kalki-v0.7.2.html` in Chrome on an Android phone (send the file by cable, cloud storage or chat). Try each step and note what fails:
+Open the newest `Kalki-v*.html` in `Kalki-versions/` in Chrome on an Android phone (send the file by cable, cloud storage or chat). Try each step and note what fails:
 
 1. The intro closes and the home screen shows the video preview above the tabs.
 2. Tap "Camera moves", add a move; tap "Shot settings", change lens, size and duration. Do the sliders drag smoothly with a finger?
