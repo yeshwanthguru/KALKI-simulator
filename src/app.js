@@ -2,6 +2,8 @@ import { buildShotListPdf, buildStoryboardPdf, buildBlockingPdf, buildAnalysisPd
 import { LANGS, makeTranslator } from './i18n.js';
 import { LESSONS, TEMPLATES } from './lessons.js';
 import { RIGS, rigFor, rigIds, normRig } from './rigs.js';
+import { buildPrompts } from './prompts.js';
+import { ACCENTS, PDF_LANGS, LOGO_MAX, normInfo, infoLine } from './docinfo.js';
 import { analyzeClip, toShots, suggest, SIZE_NAME, toGray, AW, AH, fmtTime } from './analyze.js';
 (function () {
 'use strict';
@@ -13,11 +15,16 @@ const D2R = Math.PI / 180;
 /* sensor presets: h = sensor height used for the vertical field of view, w = width used for the full-frame equivalent */
 const SENSORS = {
   S35: { label: 'Super 35', w: 24.9, h: 14 }, FF: { label: 'Full frame', w: 36, h: 24 }, APSC: { label: 'APS-C', w: 23.6, h: 15.6 },
-  M43: { label: 'Micro Four Thirds', w: 17.3, h: 13 }, ONE: { label: '1-inch', w: 13.2, h: 8.8 }
+  M43: { label: 'Micro Four Thirds', w: 17.3, h: 13 }, ONE: { label: '1-inch', w: 13.2, h: 8.8 },
+  PHONE: { label: 'Phone main (1/1.3-inch)', w: 9.8, h: 7.4 }, PHONES: { label: 'Phone small (1/2.5-inch)', w: 5.8, h: 4.3 }
 };
-const DEFAULT_SENSOR = 'S35', SCHEMA = 8, NOTE_MAX = 240;
+/* anamorphic squeeze: the lens squeezes the picture sideways so the full sensor height is used. The vertical view is then that of the full 4:3 gate. */
+const SQUEEZES = [1, 1.33, 1.5, 2];
+const SQUEEZE_LABEL = { 1: 'Spherical lens', 1.33: '1.33x anamorphic', 1.5: '1.5x anamorphic', 2: '2x anamorphic' };
+const DEFAULT_SENSOR = 'S35', SCHEMA = 9, NOTE_MAX = 240;
 const sensorOf = () => SENSORS[P.sensor] || SENSORS[DEFAULT_SENSOR];
-const sensorH = () => sensorOf().h;
+const squeezeOf = () => (SQUEEZES.includes(+P.squeeze) ? +P.squeeze : 1);
+const sensorH = () => (squeezeOf() > 1 ? Math.max(sensorOf().h, sensorOf().w * .75) : sensorOf().h);
 const crop = () => 36 / sensorOf().w;
 const eqMm = l => Math.round(l * crop());
 
@@ -40,7 +47,8 @@ const DEFAULT_CAST = { A: 'f11', B: 'm17' };
 const castOf = () => (typeof P !== 'undefined' && P && P.actors) || DEFAULT_CAST;
 const ACTOR_NAME = { get A() { return AV[castOf().A].first; }, get B() { return AV[castOf().B].first; } };
 const HEIGHTS = { ground: 'Ground level', low: 'Low angle', eye: 'Eye level', high: 'High angle', top: "Bird's eye" };
-const LENSES = [14, 18, 24, 35, 50, 85, 135], FSTOPS = [1.4, 1.8, 2.8, 4, 5.6, 8, 11];
+const LENSES = [6, 8, 10, 14, 18, 24, 35, 50, 85, 135], SHOWN_LENSES = () => LENSES.filter(l => l >= 14 || crop() > 2), // 6-10 mm only make sense on the small phone and 1-inch sensors
+   FSTOPS = [1.4, 1.8, 2.8, 4, 5.6, 8, 11];
 const EASES = { smooth: 'Smooth (ease in-out)', linear: 'Linear (mechanical)', in: 'Ease in (accelerate)', out: 'Ease out (settle)' };
 const EF = { linear: t => t, smooth: t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2, in: t => t * t * t, out: t => 1 - Math.pow(1 - t, 3) };
 const SUBJ = { get A() { return `${ACTOR_NAME.A} (Actor A)`; }, get B() { return `${ACTOR_NAME.B} (Actor B)`; }, both: 'Both actors' };
@@ -100,7 +108,7 @@ function normShot(o, errs, i) {
   s.notes = String(o.notes || '').replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
   return s;
 }
-const DEMO = () => ({ schemaVersion: SCHEMA, actors: { ...DEFAULT_CAST }, sensor: DEFAULT_SENSOR, title: 'Chai stall – first meeting', aspect: '2.39', look: 'golden', set: 'stall', shots: [
+const DEMO = () => ({ schemaVersion: SCHEMA, actors: { ...DEFAULT_CAST }, sensor: DEFAULT_SENSOR, squeeze: 1, info: normInfo(), title: 'Chai stall – first meeting', aspect: '2.39', look: 'golden', set: 'stall', shots: [
   newShot({ fstop: 5.6, name: 'Establish the stall', move: 'reveal', duration: 5, lens: 24, size: 'WS', subject: 'both', height: 'eye', angle: 15, amount: .7 }),
   newShot({ fstop: 1.8, name: 'Meera notices', move: 'push_in', duration: 4.5, lens: 50, size: 'MS', subject: 'A', angle: 25, amount: .7 }),
   newShot({ fstop: 2.8, name: 'Arjun walks in', move: 'follow', duration: 5, lens: 35, size: 'FS', subject: 'B', angle: 25, actionB: 'walk' }),
@@ -431,6 +439,12 @@ function buildPlatform() {
   CUR = null;
 }
 buildStreet(); buildTerrace(); buildLiving(); buildClassroom(); buildPlatform();
+/* size of a set in triangles, meshes (about one draw call each), distinct textures and lights, for the performance budget */
+function setStats(k) {
+  let tris = 0, meshes = 0, lights = 0; const tex = new Set();
+  SETG[k].traverse(o => { if (o.isMesh) { meshes++; const g = o.geometry; tris += (g.index ? g.index.count : g.attributes.position.count) / 3; if (o.material && o.material.map) tex.add(o.material.map); } if (o.isLight) lights++; });
+  return { tris: Math.round(tris), meshes, textures: tex.size, lights };
+}
 function applySet(name) { curSet = SETS[name] ? name : 'stall'; for (const k in SETG) SETG[k].visible = k === curSet; }
 
 // actors
@@ -792,9 +806,12 @@ function applyLook(name) {
   u.uLift.value.set(...L.g[0]); u.uGain.value.set(...L.g[1]); u.uSat.value = L.g[2]; u.uCon.value = L.g[3]; u.uVig.value = L.g[4]; u.uGrain.value = L.g[5]; u.uCA.value = L.g[6];
 }
 /* ---------- render ---------- */
-let fpsAcc = 0, fpsN = 0, light = false;
-function setLight(v) { light = v; R.setPixelRatio(v ? 1 : Math.min(devicePixelRatio, 1.5)); bokeh.enabled = bloom.enabled = !v; R.shadowMap.enabled = !v; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); layout(); $('#bPerf').style.color = v ? 'var(--ac)' : ''; }
-function perf(dt) { if (light || demo || window.__kalki || location.hash === '#hq') return; fpsAcc += dt; fpsN++; if (fpsAcc > 3) { if (fpsN / fpsAcc < 22) { setLight(true); toast('Switched to Light mode for smoother playback on this computer'); } fpsAcc = 0; fpsN = 0; } }
+let fpsAcc = 0, fpsN = 0, light = false, lowRes = false, perfSkip = 0;
+function setLight(v) { light = v; lowRes = false; R.setPixelRatio(v ? 1 : Math.min(devicePixelRatio, 1.5)); bokeh.enabled = bloom.enabled = !v; R.shadowMap.enabled = !v; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); layout(); $('#bPerf').style.color = v ? 'var(--ac)' : ''; }
+/* performance guard, two steps: below PERF.light fps the page goes to Light mode; if it is still below PERF.lowRes fps in Light mode, the picture is drawn at 75% resolution */
+const PERF = { light: 22, lowRes: 14, window: 3 };
+function setLowRes() { lowRes = true; R.setPixelRatio(.75); layout(); }
+function perf(dt) { if (lowRes || demo || window.__kalki || location.hash === '#hq') return; fpsAcc += dt; fpsN++; if (fpsAcc > PERF.window) { const fps = fpsN / fpsAcc; if (perfSkip) perfSkip--; else if (light && fps < PERF.lowRes) { setLowRes(); toast('Lower picture quality to keep playback smooth'); } else if (!light && fps < PERF.light) { perfSkip = 1; setLight(true); toast('Switched to Light mode for smoother playback on this computer'); } fpsAcc = 0; fpsN = 0; } }
 let film = { x: 0, y: 0, w: 1, h: 1 }, ins = null;
 function layout() {
   const v = $('#view'), cw = v.clientWidth, ch = v.clientHeight;
@@ -889,7 +906,7 @@ const FIELDS = [
   ['name', 'text', 'Shot name'],
   ['move', 'sel', 'Camera move', () => MOVES.map(m => [m.id, m.name])],
   ['duration', 'rng', 'Duration', 1, 20, .5, v => v.toFixed(1) + ' s'],
-  ['lens', 'sel', 'Lens', () => LENSES.map(l => [l, l + ' mm' + (crop() > 1.01 ? ` (≈${eqMm(l)} mm FF)` : '') + (l <= 24 ? ' · wide' : l >= 85 ? ' · tele' : ' · normal')])],
+  ['lens', 'sel', 'Lens', () => SHOWN_LENSES().concat(LENSES.includes((P.shots[sel] || {}).lens) && !SHOWN_LENSES().includes((P.shots[sel] || {}).lens) ? [(P.shots[sel] || {}).lens] : []).sort((a, b) => a - b).map(l => [l, l + ' mm' + (crop() > 1.01 ? ` (≈${eqMm(l)} mm FF)` : '') + (l <= 24 ? ' · wide' : l >= 85 ? ' · tele' : ' · normal')])],
   ['fstop', 'sel', 'Aperture', () => FSTOPS.map(f => [f, 'f/' + f + (f <= 2 ? ' · dreamy' : f >= 8 ? ' · all sharp' : '')])],
   ['size', 'sel', 'Shot size', () => Object.entries(SIZES).map(([k, v]) => [k, `${k} · ${v.label}`])],
   ['subject', 'sel', 'Subject', () => Object.entries(SUBJ)],
@@ -922,7 +939,7 @@ function buildInsp() {
   };
   const F = Object.fromEntries(FIELDS.map(x => [x[0], f(x)]));
   box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.rig + F.actionA + F.actionB + laneHTML(sh) + `<div class="f"><label>Placement<em>click the set view</em></label><div class="pl"><button data-pl="A" class="${placing === 'A' ? 'on' : ''}">Place ${ACTOR_NAME.A}</button><button data-pl="B" class="${placing === 'B' ? 'on' : ''}">Place ${ACTOR_NAME.B}</button><button data-pl="R">Reset</button></div><div class="pl" style="margin-top:6px"><button data-pl="rA" class="${placing === 'rA' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.A}</button><button data-pl="rB" class="${placing === 'rB' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.B}</button><button data-pl="RC" title="Remove both walk paths">Clear paths</button></div></div>` + F.faceA + F.faceB + F.notes +
-    `<div class="learn" style="--c:${catColor(mv.cat)}"><h4>Rig: ${RIGS[rigFor(sh)].name}</h4><p>${RIGS[rigFor(sh)].how}</p><p><i>On a budget:</i> ${RIGS[rigFor(sh)].budget}</p></div><div class="learn" style="--c:${catColor(mv.cat)}"><h4>Why “${mv.name}”</h4><p>${mv.why}</p><p><i>Try:</i> ${mv.tip}</p><p><i>${sh.lens} mm on ${sensorOf().label}${crop() > 1.01 ? ' (≈' + eqMm(sh.lens) + ' mm full-frame equivalent)' : ''}:</i> ${lensNote(sh.lens)}</p><p><i>f/${sh.fstop}:</i> ${sh.fstop <= 2 ? 'Shallow focus melts the background and isolates the subject: the classic cinematic look.' : sh.fstop >= 8 ? 'Deep focus keeps everything sharp, so the audience can explore the whole frame.' : 'Moderate depth: subject sharp, background softly separated.'}</p></div>`;
+    `<div class="learn" style="--c:${catColor(mv.cat)}"><h4>Rig: ${RIGS[rigFor(sh)].name}</h4><p>${RIGS[rigFor(sh)].how}</p><p><i>On a budget:</i> ${RIGS[rigFor(sh)].budget}</p></div><div class="learn" style="--c:${catColor(mv.cat)}"><h4>Why “${mv.name}”</h4><p>${mv.why}</p><p><i>Try:</i> ${mv.tip}</p><p><i>${sh.lens} mm on ${sensorOf().label}${crop() > 1.01 ? ' (≈' + eqMm(sh.lens) + ' mm full-frame equivalent)' : ''}:</i> ${lensNote(sh.lens)}</p>${squeezeOf() > 1 ? `<p><i>${SQUEEZE_LABEL[squeezeOf()]}:</i> the picture is squeezed sideways onto the full sensor height, so the vertical view is wider than a ${sh.lens} mm spherical lens on this sensor, and the horizontal view matches a spherical lens of about ${Math.round(sh.lens / squeezeOf())} mm. Oval bokeh and flares are not simulated.</p>` : ''}<p><i>f/${sh.fstop}:</i> ${sh.fstop <= 2 ? 'Shallow focus melts the background and isolates the subject: the classic cinematic look.' : sh.fstop >= 8 ? 'Deep focus keeps everything sharp, so the audience can explore the whole frame.' : 'Moderate depth: subject sharp, background softly separated.'}</p></div>`;
 }
 /* click-to-place: click or drag on the set view to put an actor on the floor of the current shot */
 let placing = null;
@@ -1038,6 +1055,8 @@ $('#set').innerHTML = Object.entries(SETS).map(([k, v]) => `<option value="${k}"
 $('#set').onchange = e => { commit(); P.set = e.target.value; applySet(P.set); toast(SETS[P.set].label + ' set'); };
 $('#look').onchange = e => { commit(); P.look = e.target.value; applyLook(P.look); toast(LOOKS[P.look].label + ' look'); };
 $('#sensor').innerHTML = Object.entries(SENSORS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+$('#squeeze').innerHTML = SQUEEZES.map(k => `<option value="${k}">${SQUEEZE_LABEL[k]}</option>`).join('');
+$('#squeeze').onchange = e => { commit(); P.squeeze = +e.target.value; buildInsp(); pathKey = ''; toast(squeezeOf() > 1 ? `${SQUEEZE_LABEL[squeezeOf()]}: uses the full sensor height, so the picture is taller than a spherical lens of the same focal length` : 'Spherical lens'); };
 $('#sensor').onchange = e => { commit(); P.sensor = e.target.value; buildInsp(); pathKey = ''; toast(`${sensorOf().label} sensor · 35 mm equivalent ×${crop().toFixed(2)}`); };
 $('#aspect').onchange = e => { commit(); P.aspect = e.target.value; if (guides === 'ui' && !isVertical()) setGuides('off'); layout(); updTime(); };
 
@@ -1052,13 +1071,13 @@ $('#modeSeg').onclick = e => { const b = e.target.closest('button'); if (b) setM
 
 /* code mode */
 const ta = $('#ta');
-function loadCode() { ta.value = JSON.stringify({ schemaVersion: SCHEMA, title: P.title, aspect: P.aspect, look: P.look, set: P.set, sensor: P.sensor, actors: castOf(), outfit: outfitOf(), shots: P.shots }, null, 2); $('#cerr').textContent = ''; }
+function loadCode() { ta.value = JSON.stringify({ schemaVersion: SCHEMA, title: P.title, aspect: P.aspect, look: P.look, set: P.set, sensor: P.sensor, squeeze: squeezeOf(), info: normInfo(P.info), actors: castOf(), outfit: outfitOf(), shots: P.shots }, null, 2); $('#cerr').textContent = ''; }
 function applyCode() {
   let o; try { o = JSON.parse(ta.value); } catch (e) { $('#cerr').textContent = '✕ ' + e.message; return; }
   if (!o || !Array.isArray(o.shots)) { $('#cerr').textContent = '✕ The scene needs a "shots" list.'; return; }
   const errs = []; const shots = o.shots.slice(0, 60).map((s, i) => normShot(s || {}, errs, i));
   if ((+o.schemaVersion || 1) < 6) shots.forEach(s => { if (s.move === 'pan') s.dir = -s.dir; }); // before v0.6 a pan with direction Right actually panned left; flipping keeps old scenes playing the same
-  commit(); P = { schemaVersion: SCHEMA, actors: normCast(o.actors), outfit: normOutfit(o.outfit), look: LOOKS[o.look] ? o.look : 'golden', set: SETS[o.set] ? o.set : 'stall', sensor: SENSORS[o.sensor] ? o.sensor : DEFAULT_SENSOR, title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
+  commit(); P = { schemaVersion: SCHEMA, actors: normCast(o.actors), outfit: normOutfit(o.outfit), look: LOOKS[o.look] ? o.look : 'golden', set: SETS[o.set] ? o.set : 'stall', sensor: SENSORS[o.sensor] ? o.sensor : DEFAULT_SENSOR, squeeze: SQUEEZES.includes(+o.squeeze) ? +o.squeeze : 1, info: normInfo(o.info), title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
   if (o.sensor !== undefined && !SENSORS[o.sensor]) errs.push('sensor must be ' + Object.keys(SENSORS).join('/'));
   if (+o.schemaVersion > SCHEMA) errs.push(`made with a newer Kalki (schema ${o.schemaVersion}); some settings were ignored`);
   sel = clamp(sel, 0, shots.length - 1); time = 0; refreshAll(false);
@@ -1075,7 +1094,7 @@ ta.addEventListener('keydown', e => {
 });
 $('#cDoc').onclick = () => {
   const row = (k, v) => `<div><b style="color:var(--ac)">${k}</b> &nbsp;${v}</div>`;
-  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('rig', 'auto, ' + rigIds().join(', ') + ' (equipment drawn in the set view; auto picks the usual rig for the move)') + row('actionA', Object.keys(ACTION_LABEL).join(', ') + ' (what Meera does)') + row('actionB', 'same list (what Arjun does)') + row('actors', '{ "A": "f11", "B": "m17" } who plays each actor: ' + Object.entries(AV).map(([id, a]) => id + ' = ' + a.first).join(', ')) + row('cuesA / cuesB', '[{ "t": 2, "a": "talk" }] action changes during the shot: t = seconds from the start of the shot (0.5 steps), a = any action except walk; walking shots cannot have changes') + row('placeA / placeB', '{ "x": -0.85, "z": 0.2 } position on the floor in metres (x right, z towards the audience); omit for the default spot') + row('faceA / faceB', '-180 to 180 degrees the actor turns (0 = towards the audience); omit to face the other actor') + row('notes', 'free text, up to ' + NOTE_MAX + ' characters (shown in the PDFs and CSV)') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
+  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('squeeze', '1, 1.33, 1.5, 2 (anamorphic squeeze, scene level; above 1 the full sensor height is used for the vertical view)') + row('info', '{ production, director, scene, day, accent, lang, logo } details printed on the PDFs (scene level)') + row('rig', 'auto, ' + rigIds().join(', ') + ' (equipment drawn in the set view; auto picks the usual rig for the move)') + row('actionA', Object.keys(ACTION_LABEL).join(', ') + ' (what Meera does)') + row('actionB', 'same list (what Arjun does)') + row('actors', '{ "A": "f11", "B": "m17" } who plays each actor: ' + Object.entries(AV).map(([id, a]) => id + ' = ' + a.first).join(', ')) + row('cuesA / cuesB', '[{ "t": 2, "a": "talk" }] action changes during the shot: t = seconds from the start of the shot (0.5 steps), a = any action except walk; walking shots cannot have changes') + row('placeA / placeB', '{ "x": -0.85, "z": 0.2 } position on the floor in metres (x right, z towards the audience); omit for the default spot') + row('faceA / faceB', '-180 to 180 degrees the actor turns (0 = towards the audience); omit to face the other actor') + row('notes', 'free text, up to ' + NOTE_MAX + ' characters (shown in the PDFs and CSV)') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
     '<pre style="margin-top:12px;background:#0c0c11;padding:10px;border-radius:8px;color:#d8e3ff;white-space:pre-wrap">{ "move": "orbit", "duration": 6, "lens": 24,\n  "size": "WS", "subject": "both", "amount": 0.5 }</pre>';
   $('#mDoc').classList.add('on');
 };
@@ -1097,7 +1116,7 @@ function download(blob, name) {
 function menu(id, fn) { const m = $(id); m.querySelector('.btn').onclick = e => { e.stopPropagation(); $$('.menu').forEach(x => x !== m && x.classList.remove('open')); m.classList.toggle('open'); }; m.querySelector('.dd').onclick = e => { const b = e.target.closest('button'); if (b) { m.classList.remove('open'); fn(b.dataset.a); } }; }
 document.addEventListener('click', () => $$('.menu').forEach(x => x.classList.remove('open')));
 menu('#mFile', a => {
-  if (a === 'new') { commit(); P = { schemaVersion: SCHEMA, actors: castOf(), title: 'Untitled scene', aspect: P.aspect, look: P.look, set: P.set, outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
+  if (a === 'new') { commit(); P = { schemaVersion: SCHEMA, actors: castOf(), title: 'Untitled scene', aspect: P.aspect, look: P.look, set: P.set, outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, squeeze: squeezeOf(), info: normInfo(P.info), shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
   if (a === 'open') $('#fileIn').click();
   if (a === 'save') { download(new Blob([JSON.stringify(P, null, 2)], { type: 'application/json' }), fname('.kalki.json')); toast('Project saved'); }
 });
@@ -1113,11 +1132,57 @@ menu('#mExport', a => {
     download(new Blob(['﻿' + rows.map(r => r.map(q).join(',')).join('\r\n')], { type: 'text/csv' }), fname('-shotlist.csv')); toast('Shot list exported');
   }
   if (a === 'png') { render(true); const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = film.w * r; c.height = film.h * r; c.getContext('2d').drawImage(cv, film.x * r, film.y * r, c.width, c.height, 0, 0, c.width, c.height); c.toBlob(b => { download(b, fname(`-shot${sel + 1}.png`)); toast('Frame saved'); }); }
+  if (a === 'ai') exportAiReference();
+  if (a === 'docinfo') openInfo();
   if (a === 'pdf') exportPdf('shotlist');
   if (a === 'board') exportPdf('storyboard');
   if (a === 'blocking') exportBlocking();
   if (a === 'rec') startRec();
 });
+/* AI reference: the frame of the current shot as a PNG, plus a text file with a prompt and the camera plan for every shot */
+const HEIGHT_LABEL = HEIGHTS;
+function aiScene() {
+  const st = starts();
+  return { title: P.title, look: P.look, lookLabel: LOOKS[P.look].label, setLabel: SETS[P.set].label, sensorLabel: sensorOf().label, squeeze: squeezeOf(), aspectLabel: { '2.39': '2.39:1', '1.778': '16:9', '0.5625': '9:16 vertical', '1': '1:1 square' }[P.aspect] || P.aspect,
+    shots: P.shots.map((s, i) => ({ n: i + 1, name: s.name, move: s.move, moveName: MV[s.move].name, dir: s.dir, lens: s.lens, eq: crop() > 1.01 ? eqMm(s.lens) : 0, fstop: s.fstop, size: s.size, height: s.height, heightLabel: HEIGHTS[s.height], angle: s.angle, subject: s.subject, amount: s.amount, duration: s.duration, notes: s.notes, actions: [describeActions(s, 'A'), describeActions(s, 'B')].filter(a => a && !/^$/.test(a)) })) };
+}
+function exportAiReference() {
+  if (!P.shots.length) return toast('Add a shot first');
+  render(true); const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = film.w * r; c.height = film.h * r; c.getContext('2d').drawImage(cv, film.x * r, film.y * r, c.width, c.height, 0, 0, c.width, c.height);
+  c.toBlob(b => { download(b, fname(`-shot${sel + 1}-reference.png`)); download(new Blob(['\ufeff' + buildPrompts(aiScene())], { type: 'text/plain' }), fname('-ai-prompts.txt')); toast('Frame and prompts saved'); });
+}
+/* document details dialog */
+function openInfo() {
+  const i = normInfo(P.info); $('#iProd').value = i.production; $('#iDir').value = i.director; $('#iScene').value = i.scene; $('#iDay').value = i.day;
+  $('#iAccent').innerHTML = Object.entries(ACCENTS).map(([k, v]) => `<option value="${k}"${k === i.accent ? ' selected' : ''}>${v[0]}</option>`).join('');
+  $('#iLang').innerHTML = PDF_LANGS.map(k => `<option value="${k}"${k === i.lang ? ' selected' : ''}>${k === 'ui' ? 'Same as the interface' : LANGS[k]}</option>`).join('');
+  $('#iLogoNote').textContent = i.logo ? `Logo set (${i.logoW}×${i.logoH})` : 'No logo'; $('#mInfo').classList.add('on');
+}
+function saveInfo(patch) { commit(); P.info = normInfo({ ...normInfo(P.info), ...patch }); }
+for (const [id, k] of [['#iProd', 'production'], ['#iDir', 'director'], ['#iScene', 'scene'], ['#iDay', 'day']]) $(id).onchange = e => saveInfo({ [k]: e.target.value });
+$('#iAccent').onchange = e => saveInfo({ accent: e.target.value }); $('#iLang').onchange = e => saveInfo({ lang: e.target.value });
+$('#iClose').onclick = () => $('#mInfo').classList.remove('on');
+$('#iLogoPick').onclick = () => $('#iLogoFile').click();
+$('#iLogoClear').onclick = () => { saveInfo({ logo: '', logoW: 0, logoH: 0 }); $('#iLogoNote').textContent = 'No logo'; };
+$('#iLogoFile').onchange = e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return; if (f.size > 4e6) { toast('Choose a smaller image'); return; }
+  const url = URL.createObjectURL(f), im = new Image();
+  im.onload = () => {
+    URL.revokeObjectURL(url); const k = Math.min(1, 320 / im.width, 120 / im.height), w = Math.max(1, Math.round(im.width * k)), h = Math.max(1, Math.round(im.height * k)), c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.drawImage(im, 0, 0, w, h);
+    let q = .85, d = c.toDataURL('image/jpeg', q); while (d.length > LOGO_MAX && q > .3) { q -= .1; d = c.toDataURL('image/jpeg', q); }
+    if (d.length > LOGO_MAX) { toast('That logo is too detailed. Try a simpler or smaller image'); return; }
+    saveInfo({ logo: d, logoW: w, logoH: h }); $('#iLogoNote').textContent = `Logo set (${w}×${h})`; toast('Logo added to the PDFs');
+  };
+  im.onerror = () => { URL.revokeObjectURL(url); toast('That image could not be read'); }; im.src = url;
+};
+/* document details for the PDFs */
+function pdfExtras(label) {
+  const info = normInfo(P.info), code = info.lang === 'ui' ? LANG : info.lang, tr = code === LANG ? trFn : makeTranslator(code);
+  const doc = { t: tr, accent: ACCENTS[info.accent][1], infoLines: infoLine(info, tr) };
+  if (info.logo) { const b = atob(info.logo.split(',')[1]), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); doc.logo = { jpeg: u, jw: info.logoW || 0, jh: info.logoH || 0 }; }
+  return doc;
+}
 function exportPdf(kind) {
   if (!P.shots.length) return toast('Add a shot first');
   if (recording) return;
@@ -1135,9 +1200,9 @@ function exportPdf(kind) {
       easing: s.easing[0].toUpperCase() + s.easing.slice(1), jpeg, jw: tw, jh: th });
   }
   time = t0; setPlay(wasPlaying);
-  const meta = [`${{ '2.39': '2.39:1 Cinema', '1.778': '16:9', '0.5625': '9:16 Vertical', '1': '1:1 Square' }[P.aspect] || P.aspect}`, `${LOOKS[P.look].label} look`, `${sensorOf().label} sensor`, `${P.shots.length} shots`, `Runtime ${tcf(total())}`, new Date().toLocaleDateString('en-IN')];
+  const meta = [`${{ '2.39': '2.39:1 Cinema', '1.778': '16:9', '0.5625': '9:16 Vertical', '1': '1:1 Square' }[P.aspect] || P.aspect}`, `${LOOKS[P.look].label} look`, `${sensorOf().label} sensor${squeezeOf() > 1 ? ', ' + SQUEEZE_LABEL[squeezeOf()] : ''}`, `${P.shots.length} shots`, `Runtime ${tcf(total())}`, new Date().toLocaleDateString('en-IN')];
   const board = kind === 'storyboard';
-  const doc = { raster: rasterText, title: P.title, meta, aspect: film.w / film.h, shots, footer: 'Made with Kalki Simulator  |  Offline camera-movement previsualisation' };
+  const ex = pdfExtras(), doc = { ...ex, raster: rasterText, title: P.title, meta: [...ex.infoLines, ...meta], aspect: film.w / film.h, shots, footer: 'Made with Kalki Simulator  |  Offline camera-movement previsualisation' };
   download(new Blob([(board ? buildStoryboardPdf : buildShotListPdf)(doc)], { type: 'application/pdf' }), fname(board ? '-storyboard.pdf' : '-shotlist.pdf'));
   toast(board ? 'Storyboard PDF saved' : 'Shot list PDF saved');
 }
@@ -1152,7 +1217,8 @@ function blockingDoc() {
       actors: ['A', 'B'].map(k => ({ k, x0: p0.pos[k].x, z0: p0.pos[k].z, x1: p1.pos[k].x, z1: p1.pos[k].z, face0: faceRad(s, k, p0.pos), face1: faceRad(s, k, p1.pos), walk: p0.walkers.includes(k), route: p0.walkers.includes(k) && s['route' + k].length ? [[p0.pos[k].x, p0.pos[k].z], ...s['route' + k].map(q => [q.x, q.z])] : null })),
       cam: { pts, tgx0: a.tg.x, tgz0: a.tg.z, tgx1: b.tg.x, tgz1: b.tg.z, hfov0: hf(a.fov), hfov1: hf(b.fov) } };
   });
-  return { raster: rasterText, title: P.title, meta: [`${P.shots.length} shots`, `Runtime ${tcf(total())}`, `${sensorOf().label} sensor`, new Date().toLocaleDateString('en-IN')], floor: { x0: -8, x1: 8, z0: -6, z1: 6 }, wallZ: -4.3, shots,
+  const ex = pdfExtras();
+  return { ...ex, raster: rasterText, title: P.title, meta: [...ex.infoLines, `${P.shots.length} shots`, `Runtime ${tcf(total())}`, `${sensorOf().label} sensor${squeezeOf() > 1 ? ', ' + SQUEEZE_LABEL[squeezeOf()] : ''}`, new Date().toLocaleDateString('en-IN')], floor: { x0: -8, x1: 8, z0: -6, z1: 6 }, wallZ: -4.3, shots,
     footer: 'Made with Kalki Simulator  |  Offline camera-movement previsualisation' };
 }
 function exportBlocking() {
@@ -1286,7 +1352,7 @@ function applySuggestions(list) {
 }
 function simulateRef() {
   commit();
-  P = { schemaVersion: SCHEMA, actors: castOf(), title: ('Reference: ' + ref.name).slice(0, 60), aspect: P.aspect, look: P.look, set: P.set, outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, shots: toShots(ref.clip, 'Ref', ref.sizes).map(o => newShot(o)) };
+  P = { schemaVersion: SCHEMA, actors: castOf(), title: ('Reference: ' + ref.name).slice(0, 60), aspect: P.aspect, look: P.look, set: P.set, outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, squeeze: squeezeOf(), info: normInfo(P.info), shots: toShots(ref.clip, 'Ref', ref.sizes).map(o => newShot(o)) };
   sel = 0; time = 0; demo = false; refreshAll(); setPlay(true);
 }
 function refPdfDoc() {
@@ -1294,7 +1360,7 @@ function refPdfDoc() {
   const jpegOf = u => { const b = atob(u.split(',')[1]), a = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; };
   const used = Object.keys(S.byMove).filter(m => m !== 'static').sort((a, b) => S.byMove[b] - S.byMove[a]);
   return {
-    raster: rasterText, title: ref.name, subtitle: `${ref.size}  |  ${fmtTime(clip.duration)}  |  ${new Date().toLocaleDateString()}`,
+    ...pdfExtras(), raster: rasterText, title: ref.name, subtitle: `${ref.size}  |  ${fmtTime(clip.duration)}  |  ${new Date().toLocaleDateString()}`,
     cards: [['Shots', S.shotCount], ['Average shot', S.avgShot.toFixed(1) + ' s'], ['Pace', S.pace], ['Camera moving', pct(S.movingShare)], ['Handheld', pct(S.handheldShare)], ['Most used', MV[S.dominant].name]],
     avg: S.avgShot, shots: clip.shots.map((s, i) => ({ n: i + 1, secs: s.dur, at: fmtTime(s.start), len: s.dur.toFixed(1) + ' s', tech: refMoveText(s) + (s.handheld && s.move !== 'handheld' ? ' + handheld shake' : ''), size: ref.sizes[i] ? SIZES[ref.sizes[i]].label : '-', intensity: s.move === 'static' ? '-' : Math.round(s.amount * 100) + '%', easing: s.move === 'static' || s.move === 'handheld' ? '-' : s.easing, conf: Math.round(s.confidence * 100), jpeg: jpegOf(ref.thumbs[i]), jw: 192, jh: 108 })),
     techniques: used.map(m => ({ name: MV[m].name, shots: 'shot' + (clip.shots.filter(s => s.move === m).length > 1 ? 's ' : ' ') + clip.shots.map((s, i) => s.move === m ? i + 1 : 0).filter(Boolean).join(', '), why: MV[m].why })),
@@ -1349,7 +1415,7 @@ function renderLearn() {
 }
 function openLesson(id) {
   const l = allLessons().find(x => x.id === id); if (!l) return;
-  ta.value = JSON.stringify({ ...l.scene, schemaVersion: SCHEMA, actors: castOf(), outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR });
+  ta.value = JSON.stringify({ ...l.scene, schemaVersion: SCHEMA, actors: castOf(), outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, squeeze: squeezeOf(), info: normInfo(P.info) });
   applyCode(); $('#mLearn').classList.remove('on'); toast(`${l.title} · Ctrl+Z to undo`);
 }
 function addTemplate(id) {
@@ -1437,10 +1503,10 @@ $('#obNext').onclick = () => { $('#obStep1').style.display = 'none'; $('#obStep2
 $$('.mode').forEach(b => b.onclick = () => endIntro(b.dataset.m));
 $('#obSkip').onclick = () => endIntro('nocode');
 
-function refreshAll(code = true) { P.actors = normCast(P.actors); P.outfit = normOutfit(P.outfit); syncCast(); P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); P.set = SETS[P.set] ? P.set : 'stall'; $('#set').value = P.set; applySet(P.set); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
+function refreshAll(code = true) { P.squeeze = squeezeOf(); P.info = normInfo(P.info); $('#squeeze').value = P.squeeze; P.actors = normCast(P.actors); P.outfit = normOutfit(P.outfit); syncCast(); P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); P.set = SETS[P.set] ? P.set : 'stall'; $('#set').value = P.set; applySet(P.set); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
 new ResizeObserver(layout).observe($('#view'));
 buildLib(); refreshAll();
-if (location.hash === '#selftest' || location.hash === '#e2e') { if (location.hash === '#selftest') runSelfTest(); window.__kalki = { real: REAL, T, reportUi: async f => { ref = await computeRef(f); $('#mRef').classList.add('on'); renderRef(); const n = $$('#rfRes select[data-rfsize]').length; const sl = $('#rfRes select[data-rfsize]'); sl.value = 'CU'; sl.dispatchEvent(new Event('change', { bubbles: true })); return { selects: n, shots: ref.clip.shots.length, size0: ref.sizes[0], kept: $('#rfRes select[data-rfsize]').value, simSize: toShots(ref.clip, 'Ref', ref.sizes)[0].size }; }, reportPdf: async f => { ref = await computeRef(f); const b = buildAnalysisPdf(refPdfDoc()), t = Array.from(b, c => String.fromCharCode(c)).join(''); return { bytes: b.length, head: t.slice(0, 8), pages: (t.match(/\/Type \/Page /g) || []).length, images: (t.match(/\/Subtype \/Image/g) || []).length }; }, analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
+if (location.hash === '#selftest' || location.hash === '#e2e') { if (location.hash === '#selftest') runSelfTest(); window.__kalki = { real: REAL, T, setStats: () => Object.fromEntries(Object.keys(SETG).map(k => [k, setStats(k)])), reportUi: async f => { ref = await computeRef(f); $('#mRef').classList.add('on'); renderRef(); const n = $$('#rfRes select[data-rfsize]').length; const sl = $('#rfRes select[data-rfsize]'); sl.value = 'CU'; sl.dispatchEvent(new Event('change', { bubbles: true })); return { selects: n, shots: ref.clip.shots.length, size0: ref.sizes[0], kept: $('#rfRes select[data-rfsize]').value, simSize: toShots(ref.clip, 'Ref', ref.sizes)[0].size }; }, reportPdf: async f => { ref = await computeRef(f); const b = buildAnalysisPdf(refPdfDoc()), t = Array.from(b, c => String.fromCharCode(c)).join(''); return { bytes: b.length, head: t.slice(0, 8), pages: (t.match(/\/Type \/Page /g) || []).length, images: (t.match(/\/Subtype \/Image/g) || []).length }; }, analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
 if (store.get('kalki.onboarded')) { demo = false; $('#ob').style.display = 'none'; setPlay(true); }
 
 /* ---------- self test: open the page with #selftest, results go to the title and #selftestOut (used by tests/smoke.mjs) ---------- */
@@ -1517,6 +1583,28 @@ async function runSelfTest() {
   t('sets: six exist, only the chosen one is shown, unknown falls back to the chai stall', () => { const names = Object.keys(SETS); if (names.join() !== 'stall,street,terrace,living,classroom,platform') return false; for (const k of names) { applySet(k); if (!Object.keys(SETG).every(g => SETG[g].visible === (g === k))) return false; } applySet('nope'); const ok = SETG.stall.visible && !SETG.street.visible; $('#ta').value = JSON.stringify({ set: 'street', shots: [{}] }); applyCode(); const a = P.set; $('#ta').value = JSON.stringify({ set: 'moon', shots: [{}] }); applyCode(); return ok && a === 'street' && P.set === 'stall'; });
   t('the set is saved in the project and survives a round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, set: 'terrace', shots: [{}] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value); applyCode(); return o.set === 'terrace' && P.set === 'terrace' && $('#set').value === 'terrace' && SETG.terrace.visible; });
   t('indoor ceilings face down so they are invisible from above, and window daylight follows the look', () => { for (const k of ['living', 'classroom']) { const c = SETG[k].children.find(o => o.geometry && o.geometry.type === 'PlaneGeometry' && o.position.y > 3 && o.position.y < 3.5); if (!c || c.material.side !== T.FrontSide || new T.Vector3(0, 0, 1).applyQuaternion(c.quaternion).y > -.9) return false; } applyLook('night'); const n = SKY[0].color.r; applyLook('golden'); const g = SKY[0].color.r; return SKY.length === 4 && n < g; });
+  t('performance budget: every set stays small (triangles, meshes, textures, lights)', () => Object.keys(SETG).every(k => { const s = setStats(k); return s.tris <= 8000 && s.meshes <= 200 && s.textures <= 6 && s.lights <= 4; }));
+  t('phone sensors exist, small-sensor lenses appear only for them, and the lens list stays valid', () => {
+    const keep = P.sensor; P.sensor = 'PHONE'; const phone = SHOWN_LENSES().includes(6) && crop() > 3 && eqMm(6) >= 20; P.sensor = 'S35'; const s35 = !SHOWN_LENSES().includes(6) && SHOWN_LENSES().includes(14); P.sensor = keep;
+    $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, sensor: 'PHONES', shots: [{ lens: 6 }, { lens: 7 }] }); applyCode(); return phone && s35 && P.sensor === 'PHONES' && P.shots[0].lens === 6 && P.shots[1].lens === 35;
+  });
+  t('anamorphic squeeze uses the full sensor height, is saved, and bad values fall back to spherical', () => {
+    $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, sensor: 'S35', squeeze: 2, shots: [{ lens: 50 }] }); applyCode();
+    const sh = P.shots[0], fovA = solve(sh, 0, 0).fov, hA = sensorH(); P.squeeze = 1; const fovS = solve(sh, 0, 0).fov, hS = sensorH(); P.squeeze = 2;
+    loadCode(); const o = JSON.parse($('#ta').value); $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, squeeze: 3, shots: [{}] }); applyCode();
+    return hA > hS && fovA > fovS && o.squeeze === 2 && P.squeeze === 1 && $('#squeeze').value === '1';
+  });
+  t('document details are cleaned, saved with the project and reach the PDF settings', () => {
+    $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, info: { production: '  Kalki   Films ', director: 'A', accent: 'teal', lang: 'ta', logo: 'javascript:alert(1)' }, shots: [{}] }); applyCode();
+    const i = P.info; loadCode(); const o = JSON.parse($('#ta').value).info, ex = pdfExtras();
+    $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, info: { accent: 'nope', lang: 'xx' }, shots: [{}] }); applyCode();
+    return i.production === 'Kalki Films' && i.logo === '' && o.accent === 'teal' && ex.accent.join() === ACCENTS.teal[1].join() && ex.infoLines.length === 2 && P.info.accent === 'ember' && P.info.lang === 'ui';
+  });
+  t('the AI reference text covers every shot and every move', () => {
+    const sc = aiScene(); const txt = buildPrompts(sc); if (!sc.shots.length || !txt.includes('Prompt:') || /undefined/.test(txt)) return false;
+    for (const m of MOVES) { const sh = newShot({ move: m.id }); P.shots = [sh]; const t2 = buildPrompts(aiScene()); if (/undefined|NaN/.test(t2) || t2.length < 300) return false; }
+    return true;
+  });
   t('every set has its own floor and dressing and the stall keeps its lights', () => ['stall', 'street', 'terrace', 'living', 'classroom', 'platform'].every(k => SETG[k].children.length > 8) && BULBS.length >= 5);
   t('duplicating a shot does not share its walk route', () => { $('#ta').value = JSON.stringify({ shots: [{ actionA: 'walk', routeA: [{ x: 1, z: 1 }] }] }); applyCode(); sel = 0; $('#bDup').click(); P.shots[0].routeA.push({ x: 2, z: 2 }); return P.shots.length === 2 && P.shots[1].routeA.length === 1; });
   t('costumes: unknown ids fall back to plain clothes and the choice survives a round trip', () => { const n = normOutfit({ A: 'turban', B: 'nope' }); if (n.A !== 'turban' || n.B !== 'plain' || normOutfit(null).A !== 'plain') return false; $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, outfit: { A: 'garland', B: 'umbrella' }, shots: [{}] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value); return o.outfit.A === 'garland' && o.outfit.B === 'umbrella' && P.outfit.B === 'umbrella'; });

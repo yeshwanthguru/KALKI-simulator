@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.7.8-ff6b4a?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.8.0-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
   <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
@@ -31,12 +31,12 @@
 
 **In the browser** (nothing to install)
 
-1. Download [`Kalki-versions/Kalki-v0.7.8.html`](Kalki-versions/Kalki-v0.7.8.html), or the zipped package [`Kalki-v0.7.8.zip`](Kalki-versions/Kalki-v0.7.8.zip) with notices.
+1. Download [`Kalki-versions/Kalki-v0.8.0.html`](Kalki-versions/Kalki-v0.8.0.html), or the zipped package [`Kalki-v0.8.0.zip`](Kalki-versions/Kalki-v0.8.0.zip) with notices.
 2. Double-click it. It opens in Chrome or Edge and runs fully offline.
 
 **On Windows** (native app, about 3 MB)
 
-1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.7.8_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.7.8_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
+1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.8.0_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.8.0_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
 2. The installer is **not code-signed yet**, so Windows SmartScreen may warn on first run: choose **More info, Run anyway**.
 3. Exports open a native **Save as** dialog. It uses the WebView2 runtime that ships with Windows 11 (Windows 10 may prompt to install it).
 
@@ -175,6 +175,9 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | **Frame (PNG)** | The current frame without overlays | [`frame-export-sample.png`](docs/images/frame-export-sample.png) |
 | **Preview video (WebM)** | The whole sequence, recorded in one pass | |
 | **Project (`.kalki.json`)** | Save and reopen your scene | |
+| **AI reference (PNG + TXT)** | The current frame plus a text file with a prompt and the camera plan for every shot, to paste into AI video tools. The words are generic and AI tools read them loosely | |
+
+**Document details** (Export menu) put your production, director, scene, shoot day, an accent colour and a small logo at the top of the PDFs, in English, Tamil or Hindi headings. They are saved in the project. Under the lens menu you can also pick phone sensors and an anamorphic squeeze (1.33x, 1.5x, 2x); the anamorphic option uses the full sensor height, so the picture is taller than a spherical lens of the same focal length. Oval bokeh and flares are not simulated.
 
 <p align="center">
   <img src="docs/images/frame-export-sample.png" alt="A frame exported from Kalki Simulator: Arjun walks past the chai stall" width="60%"><br>
@@ -207,7 +210,8 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | v0.7.5 | Indoor window daylight follows the look (dark at night) |
 | v0.7.6 | Railway platform set |
 | v0.7.7 | Pacing chart in the video analysis and its PDF report |
-| **v0.7.8** | **Latest.** Tamil and Hindi for lesson, template and camera rig text |
+| v0.7.8 | Tamil and Hindi for lesson, template and camera rig text |
+| **v0.8.0** | **Latest.** AI reference export, PDF document details (logo, colour, language), phone sensors and anamorphic squeeze, performance guard |
 
 Every build is kept in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 

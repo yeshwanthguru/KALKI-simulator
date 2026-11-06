@@ -25,7 +25,7 @@
 |---|---|---|---|---|
 | 1.1 | ✅ **Shot-list PDF** (done in v0.4) (shot no., move, lens, size, height, angle, duration, notes, thumbnail) | M | P0 | Standard paid feature in Shot Designer Pro, StudioBinder, Previs Pro; CSV alone is insufficient |
 | 1.2 | ✅ **Storyboard sheet export** (done in v0.4.1) (PNG/PDF grid: N frames per page with caption and lens) | M | P0 | Boords/StudioBinder core function; reuses existing PNG capture |
-| 1.3 | ✅ **Lens + sensor presets** (done in v0.4 except phone presets and anamorphic squeeze, still open) (Super 35, Full-frame, Micro 4/3, phone main/tele, Alexa/RED/BMPCC-style film-back names as generic sizes; crop factor, equivalent focal length, anamorphic squeeze) | S-M | P0 | Realism gap vs FrameForge/Blender; cheap; useful for creators with phones/mirrorless |
+| 1.3 | ✅ **Lens + sensor presets** (done in v0.4; phone sensors and anamorphic squeeze added in v0.8.0) (Super 35, Full-frame, Micro 4/3, phone main/tele, Alexa/RED/BMPCC-style film-back names as generic sizes; crop factor, equivalent focal length, anamorphic squeeze) | S-M | P0 | Realism gap vs FrameForge/Blender; cheap; useful for creators with phones/mirrorless |
 | 1.4 | ✅ **Frame guides** (done in v0.4.2) (rule of thirds, safe areas, Reels/Shorts UI overlay zones) | S | P1 | Vertical-first positioning |
 | 1.5 | ✅ **Shot notes + reference field** (notes done in v0.4.1; reference images still open) (free-text per shot, included in PDF/CSV) | S | P1 | Needed for any hand-off |
 | 1.6 | ✅ **Project file versioning/migration** (done in v0.4) (`schemaVersion` in `.kalki.json`) | S | P0 | Prevents breaking files in later phases |
@@ -44,9 +44,9 @@
 | 2.1 | ✅ **Actor picker** (done in v0.5.4: seven Rocketbox avatars, size, skin and height variants still open) (more avatars from existing MIT Rocketbox set; choose per shot/subject; size/skin/height) | M | P0 | Content gap; low legal risk (same source and licence) |
 | 2.2 | ✅ **Actions library v1** (done in v0.5): stand, walk, sit, sit-and-think, talk, listen, nod, sip chai, wave, look around, shrug, invite to sit; hand-over/handshake still open | L | P0 | Highest content value; matches the original idea list; competitors' animatics show actions |
 | 2.3 | ✅ **Action timeline lane** (done in v0.5.2: timed changes per actor inside a shot, 0.5 s steps, 0.25 s blend) (per-actor clips with start/duration) | M | P0 | Needed to sequence actions with camera moves |
-| 2.4 | ◐ **Actor placement and path** (click-to-place and facing done in v0.5.1; multi-point waypoints still open) (click-to-place, simple waypoints) | M | P1 | Basic blocking; narrows gap with Shot Designer |
+| 2.4 | ✅ **Actor placement and path** (click-to-place and facing done in v0.5.1; multi-point waypoints done in v0.6.1) (click-to-place, simple waypoints) | M | P1 | Basic blocking; narrows gap with Shot Designer |
 | 2.5 | ✅ **Top-down blocking diagram export** (done in v0.5.1) (overhead view with camera/actor paths, printable) | M | P1 | Shot Designer's signature feature; reuses set view |
-| 2.6 | ◐ **Performance guard** (animation data adds about 0.9 MB; poly/texture budget still open) (poly/texture budget, auto Light mode thresholds retuned) | S | P0 | Prevents regressions on low-end laptops |
+| 2.6 | ✅ **Performance guard** (done in v0.8.0: a self-test budget per set of 8,000 triangles, 200 meshes, 6 textures and 4 lights, and a second automatic step that drops to 75% resolution below 14 fps in Light mode; animation data adds about 0.9 MB; thresholds are untested on slow real hardware) (poly/texture budget, auto Light mode thresholds retuned) | S | P0 | Prevents regressions on low-end laptops |
 
 **Dependency:** 2.3 requires 2.2; 2.4 and 2.5 depend on 2.1.
 **Done when:** a two-person chai-stall conversation (sit, talk, sip) with a push-in plays and exports in <60 s authoring time for a new user.
@@ -60,8 +60,8 @@
 | 3.1 | ✅ **UI localisation framework** (done in v0.6.0: the page is translated from `src/i18n.js`, English kept as the source; fonts come from the system rather than being embedded) (string table, language switch, font loading for Tamil/Devanagari embedded as subsets) | M | P0 | Prerequisite; nobody benchmarked serves Indic languages; 98% of Indian internet users use Indic content ([Kantar-IAMAI via Business Today](https://www.businesstoday.in/amp/technology/news/story/indias-internet-revolution-key-insights-from-kantar-and-iamai-report-461043-2025-01-16)) |
 | 3.2 | ✅ **Tamil + Hindi UI** (done in v0.6.0, awaiting native-speaker review; other languages can be added as rows in `src/i18n.js`) (then Telugu/Malayalam/Kannada/Bengali/Marathi via community contributions) | M | P0 | Table stakes for stated audience; community-translatable |
 | 3.3 | 🟡 *Partly done in v0.6.1 (topi, turban, glasses, school bag, garland, dupatta, umbrella; texture swaps still open)* **Costume packs v1** (kurta, saree, dhoti/lungi, school uniform, formal shirt; as texture/mesh swaps on existing rigs) | L | P1 | India fit; keep assets self-made/CC0 |
-| 3.4 | 🟡 *Partly done in v0.6.1 (village street and terrace added; living room, temple, office, classroom still open)* **Set packs v1**: tea stall (existing), village street, tiled living room, auto-rickshaw stand, temple courtyard, small office, school classroom | L | P1 | Content depth; ship as optional packs (separate files) to protect size budget |
-| 3.5 | 🟡 *Partly done in v0.6.1 (auto-rickshaw, lamp posts, water tank, clothesline, rope cot; scooter still open)* **Props**: chai glass/cup, plastic chair, scooter, auto, lamp | M | P1 | Needed by actions and sets |
+| 3.4 | 🟡 *Partly done: village street and terrace (v0.6.1), living room and classroom (v0.7.3, v0.7.4), railway platform (v0.7.6); temple, office, tea-shop interior, bus and market still open* **Set packs v1**: tea stall (existing), village street, tiled living room, auto-rickshaw stand, temple courtyard, small office, school classroom | L | P1 | Content depth; ship as optional packs (separate files) to protect size budget |
+| 3.5 | 🟡 *Mostly done: auto-rickshaw, lamp posts, water tank, clothesline, rope cot (v0.6.1), scooter, bicycle, bucket, brass pots, sofa, TV, tea table (v0.7.3); more props still welcome* **Props**: chai glass/cup, plastic chair, scooter, auto, lamp | M | P1 | Needed by actions and sets |
 | 3.6 | ✅ **Time-of-day lighting presets** (done in v0.6.0: dawn, noon, dusk) (dawn, noon, golden hour, dusk, night with street lights) | S-M | P1 | Cheap, high visual payoff, extends existing looks |
 
 **Release plan:** v0.6 = 3.1 + 3.2 (+ 3.6); v0.6.1 = first costumes/props; v0.6.2 = first extra set pack.
@@ -88,7 +88,7 @@
 | 5.1 | ✅ **Lesson scenes/templates** (done in v0.7.0: tour of all 18 moves, shot sizes, lenses, depth of field, push vs zoom, dialogue coverage, camera rigs; 180° rule is covered inside dialogue coverage; Tamil/Hindi titles only, bodies English) ("Learn 18 moves", "Shot sizes", "180° rule", "Lens comparison") | M | P0 | Film-school niche; low production cost; strong marketing |
 | 5.2 | **Instructor kit**: assignment file + checklist, side-by-side before/after compare | M | P1 | Institution licence story |
 | 5.3 | ✅ **Shot templates and presets library** (done in v0.7.0: dialogue pair, walk and talk, tension build, scene opener, Reels hook) (dialogue OTS, walk-and-talk, reveal) | M | P1 | Speeds creators; shows grammar |
-| 5.4 | **Storyboard sheet and PDF theming** (logo, scene/shoot-day metadata, language) | S | P2 | Professional polish |
+| 5.4 | ✅ **Storyboard sheet and PDF theming** (done in v0.8.0: production, director, scene, shoot day, accent colour, logo and heading language in all four PDFs) (logo, scene/shoot-day metadata, language) | S | P2 | Professional polish |
 | 5.5 | ✅ **Camera-rig props** (done in v0.7.0: eight rigs drawn in the set view with a per-shot picker; handheld intensity uses the existing intensity slider, no separate shake profiles; rig not yet in the shot-list PDF) (dolly track, jib, gimbal, handheld shake profiles) with visible rig | M | P1 | Realism vs FrameForge/Cine Designer; teaches how to achieve a move cheaply |
 | 5.6 | ✅ **Budget-friendly alternatives hints** (done in v0.7.0 as the "On a budget" tip for each rig; tips are English only) ("how to get this move with a phone and a bucket") | S | P2 | India fit, content marketing |
 
@@ -124,7 +124,7 @@
 | # | Feature | Effort | Priority | Rationale |
 |---|---|---|---|---|
 | 6.1 | **Text-to-shot via local LLM** (optional download; converts plain text to the existing JSON; Tamil/Hindi prompts if the model supports it) | L | P2 | Differentiator vs cloud AI tools; depends on stable JSON schema (1.6) and the actions library (2.2); hardware constraints in India are significant; keep strictly optional and separate from the core file |
-| 6.2 | **Export reference frames/prompts for generative tools** (frame + lens + move description) | S | P2 | Complements Runway/Kling instead of competing |
+| 6.2 | ✅ **Export reference frames/prompts for generative tools** (done in v0.8.0: PNG plus a text file of prompts and camera plans) (frame + lens + move description) | S | P2 | Complements Runway/Kling instead of competing |
 | 6.3 | **Import script (Fountain/plain text) → shot-list skeleton** | M | P2 | StudioBinder-style flow, offline |
 | 6.4 | **Cloud sync/collab** | L | P3 (not recommended now) | Conflicts with the offline positioning; revisit only on evidence of demand |
 

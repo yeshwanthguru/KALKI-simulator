@@ -125,19 +125,25 @@ export class Pdf {
 }
 
 /* ---------- shot-list layout ---------- */
-const INK = [24, 24, 30], MUTED = [110, 112, 125], RULE = [210, 212, 220], ACCENT = [232, 108, 52], HEAD = [244, 245, 248];
+const INK = [24, 24, 30], MUTED = [110, 112, 125], RULE = [210, 212, 220], HEAD = [244, 245, 248], DEFAULT_ACCENT = [232, 108, 52];
+let ACCENT = DEFAULT_ACCENT; // set from doc.accent at the start of every builder
+const lab = (doc, s) => (doc.t ? doc.t(s) : s);
+const theme = doc => { ACCENT = Array.isArray(doc.accent) && doc.accent.length === 3 ? doc.accent : DEFAULT_ACCENT; };
+/* small logo (JPEG) at the top right of the page: doc.logo = { jpeg, jw, jh } */
+const drawLogo = (pdf, doc) => { const l = doc.logo; if (!l || !l.jpeg) return; const mw = 110, mh = 38, k = Math.min(mw / l.jw, mh / l.jh); pdf.image(l.jpeg, l.jw, l.jh, 842 - 36 - l.jw * k, 20, l.jw * k, l.jh * k); };
 
 /* doc: { title, meta: [string], shots: [{ n, name, move, rig, why, start, duration, lens, eq, fstop, size, height, angle, subject, action, amount, easing,
           jpeg?: Uint8Array, jw?, jh? }], aspect, footer } */
 export function buildShotListPdf(doc) {
+  theme(doc);
   const pdf = new Pdf(842, 595); pdf.raster = doc.raster; const M = 36, ROW = 82, TOP = 112, BOTTOM = 595 - 44;
-  const cols = [{ k: 'Frame', w: 134 }, { k: 'Shot', w: 200 }, { k: 'Timing', w: 78 }, { k: 'Lens', w: 96 }, { k: 'Framing', w: 138 }, { k: 'Subject', w: 124 }];
+  const cols = [{ k: lab(doc, 'Frame'), w: 134 }, { k: lab(doc, 'Shot'), w: 200 }, { k: lab(doc, 'Timing'), w: 78 }, { k: lab(doc, 'Lens'), w: 96 }, { k: lab(doc, 'Framing'), w: 138 }, { k: lab(doc, 'Subject'), w: 124 }];
   const perPage = Math.max(1, Math.floor((BOTTOM - TOP) / ROW)), pages = Math.max(1, Math.ceil(doc.shots.length / perPage));
   for (let p = 0; p < pages; p++) {
     pdf.addPage();
-    pdf.rect(0, 0, 842, 8, { fill: ACCENT });
+    pdf.rect(0, 0, 842, 8, { fill: ACCENT }); drawLogo(pdf, doc);
     pdf.text(M, 48, doc.title || 'Untitled scene', { size: 20, bold: true, color: INK });
-    pdf.text(M, 66, 'SHOT LIST', { size: 8.5, bold: true, color: ACCENT });
+    pdf.text(M, 66, lab(doc, 'Shot list').toUpperCase(), { size: 8.5, bold: true, color: ACCENT });
     pdf.text(M, 82, doc.meta.join('   |   '), { size: 8.5, color: MUTED });
     let x = M; const hy = TOP - 18;
     pdf.rect(M, hy, 770, 16, { fill: HEAD });
@@ -179,7 +185,7 @@ export function buildShotListPdf(doc) {
     });
     pdf.line(M, 595 - 34, M + 770, 595 - 34, { color: RULE });
     pdf.text(M, 595 - 20, doc.footer || '', { size: 7.5, color: MUTED });
-    const pg = `Page ${p + 1} / ${pages}`;
+    const pg = `${lab(doc, 'Page')} ${p + 1} / ${pages}`;
     pdf.text(M + 770 - textWidth(pg, 7.5), 595 - 20, pg, { size: 7.5, color: MUTED });
   }
   return pdf.build();
@@ -188,14 +194,15 @@ export function buildShotListPdf(doc) {
 /* ---------- storyboard sheet ---------- */
 /* doc as for buildShotListPdf. The grid adapts to the frame aspect ratio. */
 export function buildStoryboardPdf(doc) {
+  theme(doc);
   const pdf = new Pdf(842, 595); pdf.raster = doc.raster; const M = 36, TOP = 100, BOTTOM = 595 - 44, ar = doc.aspect || 1.778;
   const cols = ar >= 1.5 ? 3 : ar >= 1 ? 5 : 6, gap = 12, cw = (770 - gap * (cols - 1)) / cols, fh = cw / ar, CAP = 50, cellH = fh + CAP + 10;
   const rows = Math.max(1, Math.floor((BOTTOM - TOP + 10) / cellH)), perPage = cols * rows, pages = Math.max(1, Math.ceil(doc.shots.length / perPage));
   for (let p = 0; p < pages; p++) {
     pdf.addPage();
-    pdf.rect(0, 0, 842, 8, { fill: ACCENT });
+    pdf.rect(0, 0, 842, 8, { fill: ACCENT }); drawLogo(pdf, doc);
     pdf.text(M, 48, doc.title || 'Untitled scene', { size: 20, bold: true, color: INK });
-    pdf.text(M, 66, 'STORYBOARD', { size: 8.5, bold: true, color: ACCENT });
+    pdf.text(M, 66, lab(doc, 'Storyboard').toUpperCase(), { size: 8.5, bold: true, color: ACCENT });
     pdf.text(M, 82, doc.meta.join('   |   '), { size: 8.5, color: MUTED });
     doc.shots.slice(p * perPage, (p + 1) * perPage).forEach((s, k) => {
       const x = M + (k % cols) * (cw + gap), y = TOP + Math.floor(k / cols) * cellH;
@@ -210,7 +217,7 @@ export function buildStoryboardPdf(doc) {
     });
     pdf.line(M, 595 - 34, M + 770, 595 - 34, { color: RULE });
     pdf.text(M, 595 - 20, doc.footer || '', { size: 7.5, color: MUTED });
-    const pg = `Page ${p + 1} / ${pages}`;
+    const pg = `${lab(doc, 'Page')} ${p + 1} / ${pages}`;
     pdf.text(M + 770 - textWidth(pg, 7.5), 595 - 20, pg, { size: 7.5, color: MUTED });
   }
   return pdf.build();
@@ -223,6 +230,7 @@ export function buildStoryboardPdf(doc) {
                     cam: { pts: [[x, z]...], tgx0, tgz0, tgx1, tgz1, hfov0, hfov1 } }] }
    World x runs left to right, world z runs towards the audience (drawn downwards). */
 export function buildBlockingPdf(doc) {
+  theme(doc);
   const pdf = new Pdf(842, 595); pdf.raster = doc.raster; const M = 36, TOP = 100, BOTTOM = 595 - 44, GAP = 14, cols = 3, cw = (770 - GAP * (cols - 1)) / cols, MAPH = 168, CAP = 44, cellH = MAPH + CAP + 8;
   const rows = Math.max(1, Math.floor((BOTTOM - TOP + 8) / cellH)), perPage = cols * rows, pages = Math.max(1, Math.ceil(doc.shots.length / perPage));
   /* one shared world window so every cell uses the same scale: zoomed to the actors and the camera start points
@@ -238,9 +246,9 @@ export function buildBlockingPdf(doc) {
   const COLOR = { A: ACCENT, B: [42, 141, 132] };
   for (let p = 0; p < pages; p++) {
     pdf.addPage();
-    pdf.rect(0, 0, 842, 8, { fill: ACCENT });
+    pdf.rect(0, 0, 842, 8, { fill: ACCENT }); drawLogo(pdf, doc);
     pdf.text(M, 48, doc.title || 'Untitled scene', { size: 20, bold: true, color: INK });
-    pdf.text(M, 66, 'BLOCKING DIAGRAM  (view from above, audience at the bottom)', { size: 8.5, bold: true, color: ACCENT });
+    pdf.text(M, 66, `${lab(doc, 'Blocking diagram').toUpperCase()}  (${lab(doc, 'view from above, audience at the bottom')})`, { size: 8.5, bold: true, color: ACCENT });
     pdf.text(M, 82, doc.meta.join('   |   '), { size: 8.5, color: MUTED });
     doc.shots.slice(p * perPage, (p + 1) * perPage).forEach((s, k) => {
       const cx = M + (k % cols) * (cw + GAP), cy = TOP + Math.floor(k / cols) * cellH;
@@ -301,7 +309,7 @@ export function buildBlockingPdf(doc) {
     pdf.line(M + 275, lg - 2.5, M + 295, lg - 2.5, { color: ACCENT, lw: 1.2, dash: [4, 3] }); pdf.text(M + 299, lg, 'Actor movement', { size: 7.5, color: MUTED });
     pdf.line(M, 595 - 34, M + 770, 595 - 34, { color: RULE });
     pdf.text(M, 595 - 20, doc.footer || '', { size: 7.5, color: MUTED });
-    const pg = `Page ${p + 1} / ${pages}`;
+    const pg = `${lab(doc, 'Page')} ${p + 1} / ${pages}`;
     pdf.text(M + 770 - textWidth(pg, 7.5), 595 - 20, pg, { size: 7.5, color: MUTED });
   }
   return pdf.build();
@@ -311,12 +319,13 @@ export function buildBlockingPdf(doc) {
 /* doc: { title, subtitle, cards: [[label, value]], shots: [{ n, at, len, tech, intensity, easing, conf (0-100), jpeg?, jw?, jh? }],
           techniques: [{ name, shots, why }], tips: [{ rule, text }], tipsNote, note, footer, raster } */
 export function buildAnalysisPdf(doc) {
+  theme(doc);
   const pdf = new Pdf(842, 595); pdf.raster = doc.raster; const M = 36, CW = 770, TOP = 108, BOTTOM = 595 - 44;
   let y = TOP;
   const head = () => {
-    pdf.addPage(); pdf.rect(0, 0, 842, 8, { fill: ACCENT });
+    pdf.addPage(); pdf.rect(0, 0, 842, 8, { fill: ACCENT }); drawLogo(pdf, doc);
     pdf.text(M, 48, doc.title || 'Camera analysis', { size: 20, bold: true, color: INK });
-    pdf.text(M, 66, 'REFERENCE VIDEO ANALYSIS', { size: 8.5, bold: true, color: ACCENT });
+    pdf.text(M, 66, lab(doc, 'Reference video analysis').toUpperCase(), { size: 8.5, bold: true, color: ACCENT });
     if (doc.subtitle) pdf.text(M, 82, wrapMax(doc.subtitle, CW, 8.5, 1)[0], { size: 8.5, color: MUTED });
     y = TOP;
   };
@@ -377,7 +386,7 @@ export function buildAnalysisPdf(doc) {
   pdf.pages.forEach((pg, i) => {
     pdf.cur = pg; pdf.line(M, 595 - 34, M + CW, 595 - 34, { color: RULE });
     pdf.text(M, 595 - 20, doc.footer || '', { size: 7.5, color: MUTED });
-    const label = `Page ${i + 1} / ${pdf.pages.length}`; pdf.text(M + CW - textWidth(label, 7.5), 595 - 20, label, { size: 7.5, color: MUTED });
+    const label = `${lab(doc, 'Page')} ${i + 1} / ${pdf.pages.length}`; pdf.text(M + CW - textWidth(label, 7.5), 595 - 20, label, { size: 7.5, color: MUTED });
   });
   return pdf.build();
 }

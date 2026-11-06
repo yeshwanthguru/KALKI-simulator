@@ -63,6 +63,15 @@ fs.mkdirSync('tests/out', { recursive: true });
 fs.writeFileSync('tests/out/sample-shotlist.pdf', bin);
 console.log('pdf ok:', bin.length, 'bytes,', pages, 'pages');
 
+/* document theme: accent colour, logo and translated headings */
+{
+  const logoJpeg = new Uint8Array(await sharp({ create: { width: 90, height: 30, channels: 3, background: '#06c' } }).jpeg().toBuffer());
+  const doc = { title: 'Themed', meta: ['x'], aspect: 2.39, footer: 'f', shots: [shot(1)], accent: [42, 141, 132], t: s => (s === 'Shot list' ? 'Xlist' : s), logo: { jpeg: logoJpeg, jw: 90, jh: 30 } };
+  const themed = Buffer.from(buildShotListPdf(doc)).toString('latin1'), plain = Buffer.from(buildShotListPdf({ ...doc, accent: undefined, logo: undefined, t: undefined, shots: [shot(1)] })).toString('latin1');
+  assert.ok(themed.includes('0.16 0.55 0.52 rg') && !themed.includes('0.91 0.42 0.2 rg'), 'accent colour is used'); assert.ok(plain.includes('0.91 0.42 0.2 rg'), 'default accent comes back (the theme is not sticky)');
+  assert.ok(themed.includes('XLIST') && plain.includes('SHOT LIST'), 'heading words are translated'); assert.ok((themed.match(/\/Subtype \/Image/g) || []).length === 2 && (plain.match(/\/Subtype \/Image/g) || []).length === 1, 'the logo is embedded');
+  for (const f of [buildStoryboardPdf, buildBlockingPdf]) assert.ok(Buffer.from(f({ title: 'T', meta: ['m'], aspect: 1.78, footer: 'f', shots: [], floor: { x0: -8, x1: 8, z0: -6, z1: 6 }, wallZ: -4.3, accent: [1, 2, 3], logo: { jpeg: logoJpeg, jw: 90, jh: 30 } })).toString('latin1').startsWith('%PDF'));
+}
 /* reference-video analysis report: paginates a long shot table, keeps the structure valid and embeds each thumbnail once */
 {
   const rows = Array.from({ length: 30 }, (_, i) => ({ n: i + 1, at: '0:' + String(i).padStart(2, '0'), len: '2.5 s', tech: 'Push in (forward) + handheld shake and a very long technique description that has to be cut', intensity: '60%', easing: 'smooth', conf: 80, jpeg, jw: 64, jh: 36, secs: 1 + i % 5 }));
