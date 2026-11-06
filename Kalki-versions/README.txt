@@ -1,4 +1,4 @@
-KALKI · கல்கி — Camera Studio (v0.9.0)
+KALKI · கல்கி — Camera Studio (v0.9.1)
 See your shot before you shoot it.
 
 HOW TO START
@@ -12,7 +12,7 @@ WHAT YOU CAN DO
   - Switch between No-code and Code (edit the scene as structured data)
   - Cinematic looks: Golden hour, Teal & orange, Night, Noir, Neutral
   - Real lens behaviour: aperture (f/1.4–f/11) controls background blur
-  - Give each actor an action per shot: stand, walk, sit, talk, listen, nod, sip chai, wave, look around, shrug, invite to sit
+  - Give each actor an action per shot: stand, walk, sit, talk, listen, nod, sip chai, wave, look around, shrug, invite to sit, eat a snack, talk on the phone, offer something (the last three reuse existing animations with a prop)
   - Lessons and templates (the graduation-cap button): a tour of all 18 moves, shot sizes, lenses, depth of field, dialogue coverage and camera rigs, plus ready-made shot templates
   - Camera rigs (tripod, dolly track, slider, circular track, jib, gimbal, handheld) drawn in the set view, with a low-budget tip for each
   - Phone layout: on narrow screens the view sits on top with tabs for moves and shot settings

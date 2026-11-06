@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.9.0-ff6b4a?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.9.1-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
   <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
@@ -31,12 +31,12 @@
 
 **In the browser** (nothing to install)
 
-1. Download [`Kalki-versions/Kalki-v0.9.0.html`](Kalki-versions/Kalki-v0.9.0.html), or the zipped package [`Kalki-v0.9.0.zip`](Kalki-versions/Kalki-v0.9.0.zip) with notices.
+1. Download [`Kalki-versions/Kalki-v0.9.1.html`](Kalki-versions/Kalki-v0.9.1.html), or the zipped package [`Kalki-v0.9.1.zip`](Kalki-versions/Kalki-v0.9.1.zip) with notices.
 2. Double-click it. It opens in Chrome or Edge and runs fully offline.
 
 **On Windows** (native app, about 3 MB)
 
-1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.9.0_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.9.0_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
+1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.9.1_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.9.1_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
 2. The installer is **not code-signed yet**, so Windows SmartScreen may warn on first run: choose **More info, Run anyway**.
 3. Exports open a native **Save as** dialog. It uses the WebView2 runtime that ships with Windows 11 (Windows 10 may prompt to install it).
 
@@ -68,7 +68,7 @@ flowchart LR
 | **Walk paths** | Click up to six points on the set view and the actor walks through them, facing the way they move. The route shows in the set view and the blocking diagram. |
 | **Tamil, Hindi and English** | Switch the whole interface between English, தமிழ் and हिन्दी with the language menu. Titles, shot names and notes in any script also come out correctly in the PDFs. |
 | **Choose your actors** | Seven Microsoft Rocketbox avatars (three women, four men, including an older man) play the two roles. Pick them in the cast dialog; names, eye heights and animations follow your choice, and the cast is saved in the project. |
-| **Actions for each actor** | Choose what Meera and Arjun do in every shot: stand, walk, sit on a plastic chair, talk, listen, nod, sip chai, wave, look around, shrug, or invite the other to sit. See the [contact sheet](docs/samples/actions-contact-sheet.pdf). |
+| **Actions for each actor** | Choose what Meera and Arjun do in every shot: stand, walk, sit on a plastic chair, talk, listen, nod, sip chai, wave, look around, shrug, invite the other to sit, eat a snack, talk on the phone or offer something. See the [contact sheet](docs/samples/actions-contact-sheet.pdf). |
 | **Reference video analysis** | Import a clip: Kalki finds its shots, names the camera move in each (pan, tilt, truck, push, pull, zoom, handheld or locked off), shows the pacing, suggests changes to your scene with the reason for each, and plays the result as a simulation. It runs on your computer and the video is never uploaded. |
 | **Action lane** | Sequence actions inside one shot: Meera sits, then talks at 2.5 s, then sips chai at 5.5 s, while Arjun listens and nods. Parts blend smoothly and you retime them with a slider. |
 | **Place the actors** | Click or drag on the set view to put Meera and Arjun anywhere on the floor, and set which way they face. The camera follows them. |
@@ -128,7 +128,7 @@ Pick a set from the menu in the top bar, dress each actor in the cast dialog, an
 
 ### Choose your actors
 
-Press the people button to open the cast dialog and pick who plays each role. Every avatar uses the same twelve actions, placement and camera work.
+Press the people button to open the cast dialog and pick who plays each role. Every avatar uses the same fifteen actions, placement and camera work. Eating a snack, being on the phone and offering something reuse the sipping and inviting animations with a different prop, so they look like those motions rather than new ones.
 
 <p align="center">
   <img src="docs/images/cast-picker.jpg" alt="The cast dialog: seven avatars to choose from for each of the two roles" width="85%">
@@ -218,7 +218,8 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | v0.7.7 | Pacing chart in the video analysis and its PDF report |
 | v0.7.8 | Tamil and Hindi for lesson, template and camera rig text |
 | v0.8.0 | AI reference export, PDF document details (logo, colour, language), phone sensors and anamorphic squeeze, performance guard |
-| **v0.9.0** | **Latest.** Assignments for teachers, project comparison, script import |
+| v0.9.0 | Assignments for teachers, project comparison, script import |
+| **v0.9.1** | **Latest.** Three new actions: eating a snack, on the phone, offering something |
 
 Every build is kept in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 

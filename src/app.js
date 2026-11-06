@@ -38,8 +38,12 @@ const SIZES = {
   MCU: { h: 0.7, ty: 1.5, label: 'Medium close-up' }, CU: { h: 0.42, ty: 1.64, label: 'Close-up' },
   ECU: { h: 0.2, ty: 1.7, label: 'Extreme close-up' }
 };
-const ACTION_LABEL = { stand: 'Standing', walk: 'Walking across', sit: 'Sitting', think: 'Sitting, thinking', talk: 'Talking', listen: 'Listening', nod: 'Nodding', sip: 'Sipping chai', wave: 'Waving', look: 'Looking around', shrug: 'Shrugging', invite: 'Inviting to sit' };
-const ACTION_SHORT = { stand: 'Stand', walk: 'Walk', sit: 'Sit', think: 'Think', talk: 'Talk', listen: 'Listen', nod: 'Nod', sip: 'Sip chai', wave: 'Wave', look: 'Look', shrug: 'Shrug', invite: 'Invite' };
+const ACTION_LABEL = { stand: 'Standing', walk: 'Walking across', sit: 'Sitting', think: 'Sitting, thinking', talk: 'Talking', listen: 'Listening', nod: 'Nodding', sip: 'Sipping chai', wave: 'Waving', look: 'Looking around', shrug: 'Shrugging', invite: 'Inviting to sit', eat: 'Eating a snack', phone: 'On the phone', offer: 'Offering something' };
+/* three actions reuse an existing animation with a different prop: eating is the sipping motion with a snack, the phone call holds the hand-at-face pose of the
+   sipping clip, and offering holds the outstretched arm of the inviting clip. Their time inside the source clip is given by ACTION_T. */
+const ACTION_SRC = { eat: 'sip', phone: 'sip', offer: 'invite' };
+const ACTION_T = { phone: rel => 1.4 + .35 * Math.sin(rel * .9), offer: rel => 2.15 + .45 * Math.sin(rel * .8) };
+const ACTION_SHORT = { stand: 'Stand', walk: 'Walk', sit: 'Sit', think: 'Think', talk: 'Talk', listen: 'Listen', nod: 'Nod', sip: 'Sip chai', wave: 'Wave', look: 'Look', shrug: 'Shrug', invite: 'Invite', eat: 'Eat', phone: 'Phone', offer: 'Offer' };
 const SEATED = { sit: 1, think: 1 };
 const KA0 = window.__KA || {}; // captured here: loadReal() clears window.__KA once the assets are parsed
 /* the avatars that can play an actor; the two built-in ones are Rocketbox Female_Adult_11 and Male_Adult_17, the others come from assets_src/avatars */
@@ -499,6 +503,10 @@ function makeChair() {
   for (const [x, z] of [[-.17, .08], [.17, .08], [-.17, -.22], [.17, -.22]]) { const l = new T.Mesh(new T.CylinderGeometry(.016, .016, .45, 8), mat); l.position.set(x, .225, z); g.add(l); }
   g.traverse(o => { if (o.isMesh) o.castShadow = o.receiveShadow = true; }); g.visible = false; return g;
 }
+/* hand props for the derived actions: a samosa, a phone and a steel plate with sweets */
+function makeSnack() { const g = new T.Group(), m = new T.Mesh(new T.ConeGeometry(.04, .075, 3), new T.MeshStandardMaterial({ color: 0xc98a3a, roughness: .8 })); m.rotation.x = Math.PI / 2; m.rotation.z = .4; g.add(m); g.visible = false; return g; }
+function makePhone() { const g = new T.Group(), b = new T.Mesh(new T.BoxGeometry(.032, .15, .01), new T.MeshStandardMaterial({ color: 0x15161a, roughness: .3, metalness: .4 })), s = new T.Mesh(new T.BoxGeometry(.027, .13, .002), new T.MeshStandardMaterial({ color: 0x223044, roughness: .1 })); s.position.z = .006; g.add(b, s); g.visible = false; return g; }
+function makePlate() { const g = new T.Group(), p = new T.Mesh(new T.CylinderGeometry(.085, .07, .012, 18), new T.MeshStandardMaterial({ color: 0xcfd2d8, metalness: 1, roughness: .25 })); g.add(p); for (const [x, z] of [[-.025, 0], [.025, .01], [0, -.03]]) { const l = new T.Mesh(new T.SphereGeometry(.022, 10, 8), new T.MeshStandardMaterial({ color: 0xe8a33a, roughness: .7 })); l.position.set(x, .02, z); g.add(l); } g.visible = false; return g; }
 function makeGlass() {
   const g = new T.Group();
   const body = new T.Mesh(new T.CylinderGeometry(.034, .027, .085, 16), new T.MeshStandardMaterial({ color: 0xe9eef0, transparent: true, opacity: .55, roughness: .1 }));
@@ -575,10 +583,10 @@ async function installActor(k, id) {
   if (old) { g.remove(old.root); g.remove(old.chair); } else g.children.forEach(c => c.visible = false);
   g.add(w);
   const act = {}, AD = KA0.actions;
-  if (AD) for (const nm of Object.keys(ACTION_LABEL)) { const d = AD.clips[av.g + '_' + nm]; if (!d) continue; const a = mx.clipAction(actionClip(nm, d, AD.bones, AD.fps)); a.play(); a.weight = 0; act[nm] = { a, dur: d.dur }; }
+  if (AD) for (const nm of Object.keys(ACTION_LABEL)) { const d = AD.clips[av.g + '_' + (ACTION_SRC[nm] || nm)]; if (!d) continue; const a = mx.clipAction(actionClip(nm, d, AD.bones, AD.fps)); a.play(); a.weight = 0; act[nm] = { a, dur: d.dur }; }
   const chair = makeChair(); g.add(chair);
-  const glass = makeGlass(), hand = m.getObjectByName('Bip01_R_Hand'); if (hand) { glass.position.set(.09, .02, .03); hand.add(glass); } else g.add(glass);
-  REAL[k] = { mx, ia, wa, act, chair, glass, sc, bx: [bx.min.toArray().map(v => +v.toFixed(2)), bx.max.toArray().map(v => +v.toFixed(2))], root: w, avatar: id, iD: ic.animations[0].duration, wD: wc.animations[0].duration };
+  const glass = makeGlass(), snack = makeSnack(), phone = makePhone(), plate = makePlate(), hand = m.getObjectByName('Bip01_R_Hand'); if (hand) { glass.position.set(.09, .02, .03); hand.add(glass); snack.position.set(.09, .02, .03); hand.add(snack); phone.position.set(.08, .04, .03); phone.rotation.set(0, 0, 1.2); hand.add(phone); plate.position.set(.1, 0, .02); hand.add(plate); } else g.add(glass, snack, phone, plate);
+  REAL[k] = { mx, ia, wa, act, chair, glass, snack, phone, plate, sc, bx: [bx.min.toArray().map(v => +v.toFixed(2)), bx.max.toArray().map(v => +v.toFixed(2))], root: w, avatar: id, iD: ic.animations[0].duration, wD: wc.animations[0].duration };
   installing[k] = null; pathKey = ''; applyOutfit(k);
 }
 /* makes the scene's actors match P.actors (called after every change of the project) */
@@ -785,9 +793,9 @@ function poseActors(sh, t, sec, clock) {
       Q.wa.weight = wt.walk || 0; Q.ia.weight = wt.stand || 0;
       for (const nm in Q.act) Q.act[nm].a.weight = wt[nm] || 0;
       Q.ia.time = (clock + (k === 'A' ? 0 : 1.3)) % Q.iD; Q.wa.time = (sec * 1.1) % Q.wD;
-      for (const nm in Q.act) if (wt[nm]) Q.act[nm].a.time = pingPong(sec - st0[nm] + (k === 'A' ? 0 : .7), Q.act[nm].dur);
+      for (const nm in Q.act) if (wt[nm]) { const rel = sec - st0[nm] + (k === 'A' ? 0 : .7); Q.act[nm].a.time = ACTION_T[nm] ? clamp(ACTION_T[nm](rel), 0, Q.act[nm].dur) : pingPong(rel, Q.act[nm].dur); }
       Q.mx.update(0); g.position.y = 0;
-      Q.chair.visible = ((wt.sit || 0) + (wt.think || 0)) > 0; Q.glass.visible = (wt.sip || 0) > 0;
+      Q.chair.visible = ((wt.sit || 0) + (wt.think || 0)) > 0; Q.glass.visible = (wt.sip || 0) > 0; Q.snack.visible = (wt.eat || 0) > 0; Q.phone.visible = (wt.phone || 0) > 0; Q.plate.visible = (wt.offer || 0) > 0;
     }
   }
 }
@@ -1597,7 +1605,7 @@ $('#obSkip').onclick = () => endIntro('nocode');
 function refreshAll(code = true) { P.assignment = normAssignment(P.assignment, TASK_KNOWN) || undefined; if (!P.assignment) delete P.assignment; updateTaskBadge(); P.squeeze = squeezeOf(); P.info = normInfo(P.info); $('#squeeze').value = P.squeeze; P.actors = normCast(P.actors); P.outfit = normOutfit(P.outfit); syncCast(); P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); P.set = SETS[P.set] ? P.set : 'stall'; $('#set').value = P.set; applySet(P.set); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
 new ResizeObserver(layout).observe($('#view'));
 buildLib(); refreshAll();
-if (location.hash === '#selftest' || location.hash === '#e2e') { if (location.hash === '#selftest') runSelfTest(); window.__kalki = { real: REAL, T, setStats: () => Object.fromEntries(Object.keys(SETG).map(k => [k, setStats(k)])), reportUi: async f => { ref = await computeRef(f); $('#mRef').classList.add('on'); renderRef(); const n = $$('#rfRes select[data-rfsize]').length; const sl = $('#rfRes select[data-rfsize]'); sl.value = 'CU'; sl.dispatchEvent(new Event('change', { bubbles: true })); return { selects: n, shots: ref.clip.shots.length, size0: ref.sizes[0], kept: $('#rfRes select[data-rfsize]').value, simSize: toShots(ref.clip, 'Ref', ref.sizes)[0].size }; }, reportPdf: async f => { ref = await computeRef(f); const b = buildAnalysisPdf(refPdfDoc()), t = Array.from(b, c => String.fromCharCode(c)).join(''); return { bytes: b.length, head: t.slice(0, 8), pages: (t.match(/\/Type \/Page /g) || []).length, images: (t.match(/\/Subtype \/Image/g) || []).length }; }, analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
+if (location.hash === '#selftest' || location.hash === '#e2e') { if (location.hash === '#selftest') runSelfTest(); window.__kalki = { real: REAL, T, frameAt: sec => { playing = false; demo = false; time = sec; step(); step(); render(true); const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = 320; c.height = Math.round(320 * film.h / film.w); c.getContext('2d').drawImage(cv, film.x * r, film.y * r, film.w * r, film.h * r, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', .8); }, setStats: () => Object.fromEntries(Object.keys(SETG).map(k => [k, setStats(k)])), reportUi: async f => { ref = await computeRef(f); $('#mRef').classList.add('on'); renderRef(); const n = $$('#rfRes select[data-rfsize]').length; const sl = $('#rfRes select[data-rfsize]'); sl.value = 'CU'; sl.dispatchEvent(new Event('change', { bubbles: true })); return { selects: n, shots: ref.clip.shots.length, size0: ref.sizes[0], kept: $('#rfRes select[data-rfsize]').value, simSize: toShots(ref.clip, 'Ref', ref.sizes)[0].size }; }, reportPdf: async f => { ref = await computeRef(f); const b = buildAnalysisPdf(refPdfDoc()), t = Array.from(b, c => String.fromCharCode(c)).join(''); return { bytes: b.length, head: t.slice(0, 8), pages: (t.match(/\/Type \/Page /g) || []).length, images: (t.match(/\/Subtype \/Image/g) || []).length }; }, analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
 if (store.get('kalki.onboarded')) { demo = false; $('#ob').style.display = 'none'; setPlay(true); }
 
 /* ---------- self test: open the page with #selftest, results go to the title and #selftestOut (used by tests/smoke.mjs) ---------- */
@@ -1659,7 +1667,7 @@ async function runSelfTest() {
   t('guides draw into the frame', () => { setGuides('safe'); const a = $('#gd').querySelectorAll('rect').length === 2; setGuides('ui'); const b = $('#gd').querySelectorAll('rect.z').length === 3; setGuides('off'); return a && b && $('#gd').style.display === 'none'; });
   t('legacy single action becomes a per-actor action', () => { const a = normShot({ action: 'walk', subject: 'B' }), b = normShot({ action: 'walk' }), c = normShot({ action: 'idle' }); return a.actionB === 'walk' && a.actionA === 'stand' && b.actionA === 'walk' && c.actionA === 'stand' && c.actionB === 'stand'; });
   t('unknown actions fall back to standing', () => { const s = normShot({ actionA: 'dance', actionB: 'sit' }); return s.actionA === 'stand' && s.actionB === 'sit'; });
-  t('every action has a label', () => Object.keys(ACTION_LABEL).length === 12 && Object.keys(SEATED).every(k => ACTION_LABEL[k]));
+  t('every action has a label', () => Object.keys(ACTION_LABEL).length === 15 && Object.keys(ACTION_SRC).every(k => ACTION_LABEL[k] && ACTION_SHORT[k]) && Object.keys(SEATED).every(k => ACTION_LABEL[k]));
   t('both actors can walk in one shot', () => { const sh = newShot({ actionA: 'walk', actionB: 'walk' }); const p0 = subjPos(sh, 0), p1 = subjPos(sh, 1); return p0.walkers.length === 2 && p1.pos.A.x > p0.pos.A.x && p1.pos.B.x > p0.pos.B.x; });
   t('only the subject walks on a follow move', () => { const sh = newShot({ move: 'follow', subject: 'B' }); const w = subjPos(sh, .5).walkers; return w.length === 1 && w[0] === 'B'; });
   t('actions survive a project round trip', () => { $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ actionA: 'sit', actionB: 'sip' }] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value).shots[0]; return o.actionA === 'sit' && o.actionB === 'sip'; });
@@ -1733,7 +1741,7 @@ async function runSelfTest() {
   for (let i = 0; i < 160 && !(REAL.A && REAL.B); i++) await new Promise(r => setTimeout(r, 100));
   t('both actors loaded', () => !!(REAL.A && REAL.B));
   t('every action clip is bound for both actors', () => ['A', 'B'].every(k => Object.keys(ACTION_LABEL).filter(n => n !== 'stand' && n !== 'walk').every(n => REAL[k].act[n] && REAL[k].act[n].dur > 1)));
-  t('seated and sip props exist', () => ['A', 'B'].every(k => REAL[k].chair && REAL[k].glass));
+  t('seated, sip, snack, phone and plate props exist and show only for their action', () => ['A', 'B'].every(k => REAL[k].chair && REAL[k].glass && REAL[k].snack && REAL[k].phone && REAL[k].plate) && (() => { const sh = newShot({ actionA: 'phone', duration: 6 }); poseActors(sh, .3, 1.5, 0); const a = REAL.A.phone.visible && !REAL.A.glass.visible && !REAL.A.snack.visible && !REAL.A.plate.visible; const sh2 = newShot({ actionA: 'eat', duration: 6 }); poseActors(sh2, .3, 1.5, 0); const b = REAL.A.snack.visible && !REAL.A.phone.visible; poseActors(null, 0, 0, 0); return a && b; })());
   t('actions pose the skeleton differently', () => {
     const sh = newShot({ subject: 'A', actionA: 'stand' }); poseActors(sh, .5, 1, 0); const bone = AC.A.getObjectByName('Bip01_R_Hand'); AC.A.updateMatrixWorld(true);
     const p0 = bone.getWorldPosition(new T.Vector3()); sh.actionA = 'wave'; poseActors(sh, .5, 1, 0); AC.A.updateMatrixWorld(true);
