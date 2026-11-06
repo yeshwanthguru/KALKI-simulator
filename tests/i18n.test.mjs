@@ -25,6 +25,7 @@ for (const code of ['ta', 'hi']) {
   assert.ok(t('Shot 2: the reference uses pan (0:03, 95% sure); you use static. Switch to pan.').includes('95%'));
   assert.ok(t('18 shots · replaces the scene').includes('18') && script[code].test(t('4 shots · added to the end')), 'lesson card counts');
   assert.ok(t('Rig: Dolly + track').includes(t('Dolly + track')) && script[code].test(t('Rig: Dolly + track')) && script[code].test(t('Automatic · Gimbal / stabiliser')), 'rig heading and automatic entry');
+  assert.ok(t('Use at least 4 shots').includes('4') && script[code].test(t('Use at least 4 shots')) && script[code].test(t('3 of 5 checks met')), 'assignment checks');
   assert.equal(t('  Save project  '), '  ' + t('Save project') + '  ', 'whitespace is preserved');
   assert.equal(t('12:00:05'), '12:00:05', 'timecodes are left alone');
   assert.equal(t('Some text of the user\'s own'), 'Some text of the user\'s own', 'unknown text is never changed');

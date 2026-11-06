@@ -93,6 +93,11 @@ html[lang=ta] body,html[lang=hi] body,html[lang=ta] .sel,html[lang=hi] .sel,html
 .lc:hover{border-color:var(--ac,#e8b04b)}.lc span{font-size:12px;color:var(--mu);line-height:1.45}.lc small{font-size:11px;color:var(--mu);opacity:.8}
 .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.info-grid label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mu)}.info-grid input,.info-grid select{background:var(--p2);border:1px solid var(--ln);border-radius:9px;padding:7px 9px;color:var(--tx)}
 @media (max-width:560px){.info-grid{grid-template-columns:1fr}}
+.task-bar{height:10px;border-radius:99px;background:var(--p3);overflow:hidden;margin:6px 0 10px}.task-bar i{display:block;height:100%;background:var(--dynamic)}
+.task-it{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--ln)}.task-it b{width:18px;flex:none;text-align:center}.task-it.ok b{color:var(--dynamic)}.task-it.no b{color:var(--ac2)}.task-it small{display:block;color:var(--mu);font-size:11px}
+.task-brief{white-space:pre-wrap;color:#d9d7e3;font-size:12.5px;line-height:1.55;margin:6px 0}
+.task-form{display:grid;gap:8px;margin:8px 0}.task-form input,.task-form textarea,.task-form select{background:var(--p2);border:1px solid var(--ln);border-radius:9px;padding:7px 9px;color:var(--tx);font:inherit;width:100%}.task-form textarea{min-height:84px;resize:vertical}
+.cmp-tab{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}.cmp-tab th{text-align:left;color:var(--mu);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--ln2)}.cmp-tab td{padding:6px 8px;border-bottom:1px solid var(--ln);vertical-align:top}.cmp-tab td.df{background:rgba(255,181,71,.10)}.cmp-tab em{font-style:normal;color:var(--ac);font-size:11px}
 .rf-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 .rf-note{font-size:12px;color:var(--mu);line-height:1.5}.rf-note.err{color:#ff8a7a}
 .rf-prog{height:8px;border-radius:5px;background:var(--p2);overflow:hidden;margin:6px 0}.rf-prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff6b4a,#ffb547);transition:width .15s}
@@ -217,6 +222,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
     <button class="btn ic" id="bGuide" title="Frame guides (G): thirds, safe areas, Reels interface zones">⊞</button>
     <button class="btn ic" id="bSet" title="Show set view">◩</button>
     <button class="btn ic" id="bCast" title="Choose the actors: pick an avatar for each of the two roles">👥</button>
+    <button class="btn ic" id="bTask" title="Assignment: the brief and a live checklist for this scene">📋</button>
     <button class="btn ic" id="bLearn" title="Lessons and shot templates: learn the camera moves or add ready-made shots">🎓</button>
     <button class="btn ic" id="bRef" title="Analyse a reference video: camera moves, pacing and suggestions">🎞</button>
     <button class="btn ic" id="bPerf" title="Light mode for CPU-only laptops">⚡</button>
@@ -225,6 +231,8 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
     <div class="menu" id="mFile"><button class="btn">File ▾</button><div class="dd">
       <button data-a="new">New scene<small>Start from an empty timeline</small></button>
       <button data-a="open">Open project…<small>.kalki.json file</small></button>
+      <button data-a="script">Import script…<small>Fountain or plain text into a shot list</small></button>
+      <button data-a="compare">Compare with another project…<small>Shot by shot, what differs</small></button>
       <button data-a="save">Save project<small>Download as .kalki.json</small></button>
     </div></div>
     <div class="menu" id="mExport"><button class="btn pri">Export ▾</button><div class="dd">
@@ -285,7 +293,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
 <div id="toast"></div>
 
 <div class="modal" id="mHelp"><div class="card">
-  <h2>Kalki · கல்கி <span style="color:var(--mu);font-weight:500;font-size:13px">v0.8.0</span></h2>
+  <h2>Kalki · கல்கி <span style="color:var(--mu);font-weight:500;font-size:13px">v0.9.0</span></h2>
   <p>Plan and learn camera movement before you shoot. Pick a move, shape it, press play.</p>
   <div class="kb"><kbd>Space</kbd><span>Play / pause</span><kbd>← →</kbd><span>Previous / next shot</span><kbd>Home</kbd><span>Back to start</span><kbd>Ctrl Z / Y</kbd><span>Undo / redo</span><kbd>Ctrl D</kbd><span>Duplicate shot</span><kbd>Del</kbd><span>Delete shot</span><kbd>G</kbd><span>Rule-of-thirds guides</span><kbd>⚡</kbd><span>Light mode: smoother on CPU-only laptops (turns on automatically if needed)</span></div>
   <p style="font-size:12px;color:var(--mu)">Works fully offline. No account, no tracking, nothing leaves your computer. Projects are saved only where you choose.<br>3D rendering by three.js (MIT License, © 2010–2026 three.js authors).<br>Actor models and motion: Microsoft Rocketbox (MIT License, © 2020 Microsoft).<br>© 2026 Kalki. All rights reserved.</p>
@@ -304,6 +312,19 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
   <p class="rf-note" style="margin:0 0 10px">Lesson scenes teach one idea each and replace the current scene (Ctrl+Z brings it back). Templates add a ready-made run of shots to the end of your scene. Your actors and costumes are kept.</p>
   <div id="learnBody" style="overflow:auto"></div>
   <button class="btn pri" style="margin-top:12px;align-self:flex-start" id="learnClose">Done</button>
+</div></div>
+
+<input type="file" id="scriptIn" accept=".fountain,.txt,.md,text/plain" style="display:none"><input type="file" id="cmpIn" accept=".json,application/json" style="display:none">
+<div class="modal" id="mTask"><div class="card" style="width:min(720px,96vw);max-height:90vh;display:flex;flex-direction:column">
+  <h2>Assignment</h2>
+  <div id="taskBody" style="overflow:auto"></div>
+  <button class="btn pri" style="margin-top:12px;align-self:flex-start" id="taskClose">Done</button>
+</div></div>
+
+<div class="modal" id="mCmp"><div class="card" style="width:min(940px,96vw);max-height:90vh;display:flex;flex-direction:column">
+  <h2>Compare projects</h2>
+  <div id="cmpBody" style="overflow:auto"></div>
+  <button class="btn pri" style="margin-top:12px;align-self:flex-start" id="cmpClose">Done</button>
 </div></div>
 
 <div class="modal" id="mInfo"><div class="card" style="width:min(560px,94vw)">

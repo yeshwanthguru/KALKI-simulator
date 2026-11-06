@@ -3,6 +3,9 @@ import { LANGS, makeTranslator } from './i18n.js';
 import { LESSONS, TEMPLATES } from './lessons.js';
 import { RIGS, rigFor, rigIds, normRig } from './rigs.js';
 import { buildPrompts } from './prompts.js';
+import { CHECK_TYPES, normAssignment, evaluate, summary as taskSummary, reportText } from './assignment.js';
+import { compareScenes } from './compare.js';
+import { scriptToShots } from './script.js';
 import { ACCENTS, PDF_LANGS, LOGO_MAX, normInfo, infoLine } from './docinfo.js';
 import { analyzeClip, toShots, suggest, SIZE_NAME, toGray, AW, AH, fmtTime } from './analyze.js';
 (function () {
@@ -21,7 +24,7 @@ const SENSORS = {
 /* anamorphic squeeze: the lens squeezes the picture sideways so the full sensor height is used. The vertical view is then that of the full 4:3 gate. */
 const SQUEEZES = [1, 1.33, 1.5, 2];
 const SQUEEZE_LABEL = { 1: 'Spherical lens', 1.33: '1.33x anamorphic', 1.5: '1.5x anamorphic', 2: '2x anamorphic' };
-const DEFAULT_SENSOR = 'S35', SCHEMA = 9, NOTE_MAX = 240;
+const DEFAULT_SENSOR = 'S35', SCHEMA = 10, NOTE_MAX = 240;
 const sensorOf = () => SENSORS[P.sensor] || SENSORS[DEFAULT_SENSOR];
 const squeezeOf = () => (SQUEEZES.includes(+P.squeeze) ? +P.squeeze : 1);
 const sensorH = () => (squeezeOf() > 1 ? Math.max(sensorOf().h, sensorOf().w * .75) : sensorOf().h);
@@ -1071,13 +1074,13 @@ $('#modeSeg').onclick = e => { const b = e.target.closest('button'); if (b) setM
 
 /* code mode */
 const ta = $('#ta');
-function loadCode() { ta.value = JSON.stringify({ schemaVersion: SCHEMA, title: P.title, aspect: P.aspect, look: P.look, set: P.set, sensor: P.sensor, squeeze: squeezeOf(), info: normInfo(P.info), actors: castOf(), outfit: outfitOf(), shots: P.shots }, null, 2); $('#cerr').textContent = ''; }
+function loadCode() { ta.value = JSON.stringify({ schemaVersion: SCHEMA, title: P.title, aspect: P.aspect, look: P.look, set: P.set, sensor: P.sensor, squeeze: squeezeOf(), info: normInfo(P.info), assignment: P.assignment || undefined, actors: castOf(), outfit: outfitOf(), shots: P.shots }, null, 2); $('#cerr').textContent = ''; }
 function applyCode() {
   let o; try { o = JSON.parse(ta.value); } catch (e) { $('#cerr').textContent = '✕ ' + e.message; return; }
   if (!o || !Array.isArray(o.shots)) { $('#cerr').textContent = '✕ The scene needs a "shots" list.'; return; }
   const errs = []; const shots = o.shots.slice(0, 60).map((s, i) => normShot(s || {}, errs, i));
   if ((+o.schemaVersion || 1) < 6) shots.forEach(s => { if (s.move === 'pan') s.dir = -s.dir; }); // before v0.6 a pan with direction Right actually panned left; flipping keeps old scenes playing the same
-  commit(); P = { schemaVersion: SCHEMA, actors: normCast(o.actors), outfit: normOutfit(o.outfit), look: LOOKS[o.look] ? o.look : 'golden', set: SETS[o.set] ? o.set : 'stall', sensor: SENSORS[o.sensor] ? o.sensor : DEFAULT_SENSOR, squeeze: SQUEEZES.includes(+o.squeeze) ? +o.squeeze : 1, info: normInfo(o.info), title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
+  commit(); P = { schemaVersion: SCHEMA, actors: normCast(o.actors), outfit: normOutfit(o.outfit), look: LOOKS[o.look] ? o.look : 'golden', set: SETS[o.set] ? o.set : 'stall', sensor: SENSORS[o.sensor] ? o.sensor : DEFAULT_SENSOR, squeeze: SQUEEZES.includes(+o.squeeze) ? +o.squeeze : 1, info: normInfo(o.info), assignment: normAssignment(o.assignment, TASK_KNOWN) || undefined, title: String(o.title || 'Untitled scene').slice(0, 60), aspect: ['2.39', '1.778', '0.5625', '1'].includes(String(o.aspect)) ? String(o.aspect) : '2.39', shots };
   if (o.sensor !== undefined && !SENSORS[o.sensor]) errs.push('sensor must be ' + Object.keys(SENSORS).join('/'));
   if (+o.schemaVersion > SCHEMA) errs.push(`made with a newer Kalki (schema ${o.schemaVersion}); some settings were ignored`);
   sel = clamp(sel, 0, shots.length - 1); time = 0; refreshAll(false);
@@ -1094,7 +1097,7 @@ ta.addEventListener('keydown', e => {
 });
 $('#cDoc').onclick = () => {
   const row = (k, v) => `<div><b style="color:var(--ac)">${k}</b> &nbsp;${v}</div>`;
-  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('squeeze', '1, 1.33, 1.5, 2 (anamorphic squeeze, scene level; above 1 the full sensor height is used for the vertical view)') + row('info', '{ production, director, scene, day, accent, lang, logo } details printed on the PDFs (scene level)') + row('rig', 'auto, ' + rigIds().join(', ') + ' (equipment drawn in the set view; auto picks the usual rig for the move)') + row('actionA', Object.keys(ACTION_LABEL).join(', ') + ' (what Meera does)') + row('actionB', 'same list (what Arjun does)') + row('actors', '{ "A": "f11", "B": "m17" } who plays each actor: ' + Object.entries(AV).map(([id, a]) => id + ' = ' + a.first).join(', ')) + row('cuesA / cuesB', '[{ "t": 2, "a": "talk" }] action changes during the shot: t = seconds from the start of the shot (0.5 steps), a = any action except walk; walking shots cannot have changes') + row('placeA / placeB', '{ "x": -0.85, "z": 0.2 } position on the floor in metres (x right, z towards the audience); omit for the default spot') + row('faceA / faceB', '-180 to 180 degrees the actor turns (0 = towards the audience); omit to face the other actor') + row('notes', 'free text, up to ' + NOTE_MAX + ' characters (shown in the PDFs and CSV)') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
+  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('assignment', '{ title, brief, checks: [{ type, value }] } a task with checks that Kalki verifies (scene level, optional)') + row('squeeze', '1, 1.33, 1.5, 2 (anamorphic squeeze, scene level; above 1 the full sensor height is used for the vertical view)') + row('info', '{ production, director, scene, day, accent, lang, logo } details printed on the PDFs (scene level)') + row('rig', 'auto, ' + rigIds().join(', ') + ' (equipment drawn in the set view; auto picks the usual rig for the move)') + row('actionA', Object.keys(ACTION_LABEL).join(', ') + ' (what Meera does)') + row('actionB', 'same list (what Arjun does)') + row('actors', '{ "A": "f11", "B": "m17" } who plays each actor: ' + Object.entries(AV).map(([id, a]) => id + ' = ' + a.first).join(', ')) + row('cuesA / cuesB', '[{ "t": 2, "a": "talk" }] action changes during the shot: t = seconds from the start of the shot (0.5 steps), a = any action except walk; walking shots cannot have changes') + row('placeA / placeB', '{ "x": -0.85, "z": 0.2 } position on the floor in metres (x right, z towards the audience); omit for the default spot') + row('faceA / faceB', '-180 to 180 degrees the actor turns (0 = towards the audience); omit to face the other actor') + row('notes', 'free text, up to ' + NOTE_MAX + ' characters (shown in the PDFs and CSV)') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
     '<pre style="margin-top:12px;background:#0c0c11;padding:10px;border-radius:8px;color:#d8e3ff;white-space:pre-wrap">{ "move": "orbit", "duration": 6, "lens": 24,\n  "size": "WS", "subject": "both", "amount": 0.5 }</pre>';
   $('#mDoc').classList.add('on');
 };
@@ -1118,6 +1121,8 @@ document.addEventListener('click', () => $$('.menu').forEach(x => x.classList.re
 menu('#mFile', a => {
   if (a === 'new') { commit(); P = { schemaVersion: SCHEMA, actors: castOf(), title: 'Untitled scene', aspect: P.aspect, look: P.look, set: P.set, outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, squeeze: squeezeOf(), info: normInfo(P.info), shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
   if (a === 'open') $('#fileIn').click();
+  if (a === 'script') $('#scriptIn').click();
+  if (a === 'compare') $('#cmpIn').click();
   if (a === 'save') { download(new Blob([JSON.stringify(P, null, 2)], { type: 'application/json' }), fname('.kalki.json')); toast('Project saved'); }
 });
 $('#fileIn').onchange = e => {
@@ -1151,6 +1156,92 @@ function exportAiReference() {
   render(true); const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = film.w * r; c.height = film.h * r; c.getContext('2d').drawImage(cv, film.x * r, film.y * r, c.width, c.height, 0, 0, c.width, c.height);
   c.toBlob(b => { download(b, fname(`-shot${sel + 1}-reference.png`)); download(new Blob(['\ufeff' + buildPrompts(aiScene())], { type: 'text/plain' }), fname('-ai-prompts.txt')); toast('Frame and prompts saved'); });
 }
+/* ---------- script import ---------- */
+function importScript(text) {
+  const r = scriptToShots(text);
+  if (!r.shots.length) return { ok: false, n: 0 };
+  commit();
+  const cast = { ...castOf() }, byName = Object.fromEntries(Object.entries(AV).map(([id, a]) => [a.first.toUpperCase(), id]));
+  [0, 1].forEach(i => { const id = r.speakers[i] && byName[r.speakers[i].replace(/\s*\(.*$/, '').trim().toUpperCase()]; if (id) cast[i ? 'B' : 'A'] = id; });
+  P = { ...P, title: r.title || P.title, set: SETS[r.set] ? r.set : P.set, actors: cast, shots: r.shots.map(o => newShot(o)) };
+  sel = 0; time = 0; demo = false; refreshAll(); setPlay(true);
+  return { ok: true, n: r.shots.length, truncated: r.truncated, set: P.set, speakers: r.speakers };
+}
+$('#scriptIn').onchange = e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return; if (f.size > 5e5) { toast('That script is too large (500 KB at most)'); return; }
+  const rd = new FileReader(); rd.onload = () => { const r = importScript(String(rd.result)); toast(!r.ok ? 'No scenes or dialogue found in that file' : r.truncated ? `Imported the first ${r.n} shots · Ctrl+Z to undo` : `Imported ${r.n} shots · Ctrl+Z to undo`); }; rd.readAsText(f);
+};
+
+/* ---------- assignment ---------- */
+const TASK_KNOWN = { moves: MOVES.map(m => m.id), sizes: Object.keys(SIZES), aspects: ['2.39', '1.778', '0.5625', '1'] };
+const ASPECT_NAME = { '2.39': '2.39:1 cinema', '1.778': '16:9 YouTube', '0.5625': '9:16 Reels / Shorts', '1': '1:1 square' };
+const taskNames = () => ({ moves: Object.fromEntries(MOVES.map(m => [m.id, m.name])), sizes: Object.fromEntries(Object.entries(SIZES).map(([k, v]) => [k, v.label.toLowerCase()])), aspects: ASPECT_NAME });
+const taskScene = () => ({ title: P.title, aspect: P.aspect, shots: P.shots.map(s => ({ ...s, moveName: MV[s.move].name })) });
+let taskEdit = false;
+function updateTaskBadge() {
+  const b = $('#bTask'); if (!b) return; if (!P.assignment) { b.style.color = ''; b.title = 'Assignment: the brief and a live checklist for this scene'; return; }
+  const s = taskSummary(evaluate(P.assignment, taskScene(), taskNames())); b.style.color = s.total && s.done === s.total ? 'var(--dynamic)' : 'var(--ac)'; b.title = `Assignment: ${s.done} of ${s.total} checks met`;
+}
+function taskValueInput(type, v) {
+  const u = CHECK_TYPES[type].unit;
+  if (u === 'move') return `<select data-tv>${MOVES.map(m => `<option value="${m.id}"${m.id === v ? ' selected' : ''}>${m.name}</option>`).join('')}</select>`;
+  if (u === 'size') return `<select data-tv>${Object.entries(SIZES).map(([k, z]) => `<option value="${k}"${k === v ? ' selected' : ''}>${k} · ${z.label}</option>`).join('')}</select>`;
+  if (u === 'aspect') return `<select data-tv>${Object.entries(ASPECT_NAME).map(([k, n]) => `<option value="${k}"${k === String(v) ? ' selected' : ''}>${n}</option>`).join('')}</select>`;
+  if (u === '') return '<input data-tv type="hidden" value="1">';
+  return `<input data-tv type="number" min="1" max="600" value="${v}">`;
+}
+function renderTask() {
+  const A = P.assignment, box = $('#taskBody');
+  if (!A) { box.innerHTML = '<p class="rf-note">This project has no assignment. Teachers can add a brief and checks that Kalki verifies on the scene; the assignment is saved in the project file, so a student who opens it sees the same checklist.</p><button class="btn pri" data-task="create">Create an assignment</button>'; return; }
+  if (taskEdit) {
+    box.innerHTML = `<div class="task-form"><input data-tt value="${esc(A.title)}" maxlength="80" placeholder="Assignment title"><textarea data-tb maxlength="800" placeholder="What should the student do? (up to 800 characters)">${esc(A.brief)}</textarea></div>
+      <h3>Checks</h3>${A.checks.map((c, i) => `<div class="task-it"><b>${i + 1}</b><div>${esc(describeCheckText(c))}</div><button class="btn" style="margin-left:auto" data-task="del" data-i="${i}">Remove</button></div>`).join('') || '<p class="rf-note">No checks yet.</p>'}
+      <div class="task-form" style="grid-template-columns:2fr 1fr auto;align-items:center"><select data-tnew>${Object.entries(CHECK_TYPES).map(([k, c]) => `<option value="${k}">${c.label}</option>`).join('')}</select><span data-tval></span><button class="btn" data-task="add">Add check</button></div>
+      <div style="display:flex;gap:8px;margin-top:8px"><button class="btn pri" data-task="doneedit">Finish editing</button><button class="btn" data-task="remove">Remove the assignment</button></div>`;
+    const sel = box.querySelector('[data-tnew]'), put = () => { box.querySelector('[data-tval]').innerHTML = taskValueInput(sel.value, CHECK_TYPES[sel.value].def); }; sel.onchange = put; put(); return;
+  }
+  const res = evaluate(A, taskScene(), taskNames()), s = taskSummary(res);
+  box.innerHTML = `${A.title ? `<h3 style="margin:4px 0">${esc(A.title)}</h3>` : ''}${A.brief ? `<div class="task-brief">${esc(A.brief)}</div>` : ''}
+    <div class="rf-note">${s.done} of ${s.total} checks met</div><div class="task-bar"><i style="width:${s.total ? Math.round(100 * s.done / s.total) : 0}%"></i></div>
+    ${res.map(r => `<div class="task-it ${r.ok ? 'ok' : 'no'}"><b>${r.ok ? '✓' : '○'}</b><div>${esc(r.label)}<small>${esc(r.detail)}</small></div></div>`).join('') || '<p class="rf-note">This assignment has no checks.</p>'}
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><input id="taskStudent" class="sel" placeholder="Your name (for the report)" maxlength="60" style="min-width:200px"><button class="btn pri" data-task="report">Save report (.txt)</button><button class="btn" data-task="edit">Edit assignment</button></div>`;
+}
+const describeCheckText = c => { const A = normAssignment({ checks: [c] }, TASK_KNOWN); return A ? evaluate(A, { shots: [] }, taskNames())[0].label : c.type; };
+$('#bTask').onclick = () => { taskEdit = false; renderTask(); $('#mTask').classList.add('on'); };
+$('#taskClose').onclick = () => { $('#mTask').classList.remove('on'); updateTaskBadge(); };
+$('#taskBody').addEventListener('click', e => {
+  const b = e.target.closest('[data-task]'); if (!b) return; const k = b.dataset.task, box = $('#taskBody');
+  if (k === 'create') { commit(); P.assignment = { title: '', brief: '', checks: [] }; taskEdit = true; }
+  else if (k === 'edit') taskEdit = true;
+  else if (k === 'doneedit') { saveTaskText(); taskEdit = false; }
+  else if (k === 'remove') { commit(); delete P.assignment; taskEdit = false; }
+  else if (k === 'del') { saveTaskText(); commit(); P.assignment.checks.splice(+b.dataset.i, 1); }
+  else if (k === 'add') { saveTaskText(); const type = box.querySelector('[data-tnew]').value, v = box.querySelector('[data-tv]').value; commit(); const n = normAssignment({ ...P.assignment, checks: [...P.assignment.checks, { type, value: v }] }, TASK_KNOWN); if (n) P.assignment = n; else toast('That check is not valid'); }
+  else if (k === 'report') { const A = P.assignment, scene = taskScene(), who = { student: ($('#taskStudent').value || '').trim(), date: new Date().toLocaleDateString('en-IN') }; download(new Blob(['\ufeff' + reportText(A, scene, evaluate(A, scene, taskNames()), who)], { type: 'text/plain' }), fname('-assignment-report.txt')); toast('Report saved'); return; }
+  renderTask(); updateTaskBadge();
+});
+function saveTaskText() { const A = P.assignment, box = $('#taskBody'), t = box.querySelector('[data-tt]'), br = box.querySelector('[data-tb]'); if (!A || !t) return; A.title = t.value.replace(/\s+/g, ' ').trim().slice(0, 80); A.brief = br.value.replace(/\r/g, '').trim().slice(0, 800); }
+
+/* ---------- compare with another project ---------- */
+function compareProject(text, name) {
+  let o; try { o = JSON.parse(text); } catch (e) { return null; } if (!o || !Array.isArray(o.shots)) return null;
+  const other = o.shots.slice(0, 60).map((s, i) => normShot(s || {}, null, i)); if ((+o.schemaVersion || 1) < 6) other.forEach(s => { if (s.move === 'pan') s.dir = -s.dir; });
+  return { name, title: String(o.title || name), cmp: compareScenes({ shots: P.shots }, { shots: other }) };
+}
+const shotText = s => s ? `${MV[s.move].name} · ${s.lens} mm · ${s.size} · ${s.duration} s` : '(none)';
+function renderCompare(c) {
+  const S = c.cmp.summary;
+  $('#cmpBody').innerHTML = `<p class="rf-note">Yours: <b>${esc(P.title)}</b> (${S.shotsA} shots, ${S.runtimeA.toFixed(1)} s) · Other: <b>${esc(c.title)}</b> (${S.shotsB} shots, ${S.runtimeB.toFixed(1)} s). ${S.compared ? `${S.identical} of ${S.compared} shots compared are identical; the same move is used in ${S.match}% of the shot positions.` : ''}${S.onlyA.length ? ` Only in yours: ${S.onlyA.map(m => MV[m].name).join(', ')}.` : ''}${S.onlyB.length ? ` Only in the other: ${S.onlyB.map(m => MV[m].name).join(', ')}.` : ''}</p>
+    <table class="cmp-tab"><thead><tr><th>#</th><th>Yours</th><th>Other</th><th>Differences</th></tr></thead><tbody>${c.cmp.rows.map(r => { const df = r.diffs.length ? ' class="df"' : ''; return `<tr><td>${r.n}</td><td${df}>${esc(shotText(r.a))}</td><td${df}>${esc(shotText(r.b))}</td><td>${r.diffs.map(d => `<em>${esc(d.label)}</em>`).join(', ') || (r.a && r.b ? '–' : '')}</td></tr>`; }).join('')}</tbody></table>
+    <p class="rf-note">The comparison is by position: shot 1 against shot 1, and so on. Nothing in your project was changed.</p>`;
+  $('#mCmp').classList.add('on');
+}
+$('#cmpIn').onchange = e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return; if (f.size > 2e6) { toast('File is too large'); return; }
+  const rd = new FileReader(); rd.onload = () => { const c = compareProject(String(rd.result), f.name.replace(/\.kalki\.json$|\.json$/i, '')); if (c) renderCompare(c); else toast('That file is not a Kalki project'); }; rd.readAsText(f);
+};
+$('#cmpClose').onclick = () => $('#mCmp').classList.remove('on');
+
 /* document details dialog */
 function openInfo() {
   const i = normInfo(P.info); $('#iProd').value = i.production; $('#iDir').value = i.director; $('#iScene').value = i.scene; $('#iDay').value = i.day;
@@ -1352,7 +1443,7 @@ function applySuggestions(list) {
 }
 function simulateRef() {
   commit();
-  P = { schemaVersion: SCHEMA, actors: castOf(), title: ('Reference: ' + ref.name).slice(0, 60), aspect: P.aspect, look: P.look, set: P.set, outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, squeeze: squeezeOf(), info: normInfo(P.info), shots: toShots(ref.clip, 'Ref', ref.sizes).map(o => newShot(o)) };
+  P = { schemaVersion: SCHEMA, actors: castOf(), title: ('Reference: ' + ref.name).slice(0, 60), aspect: P.aspect, look: P.look, set: P.set, outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, squeeze: squeezeOf(), info: normInfo(P.info), assignment: P.assignment, shots: toShots(ref.clip, 'Ref', ref.sizes).map(o => newShot(o)) };
   sel = 0; time = 0; demo = false; refreshAll(); setPlay(true);
 }
 function refPdfDoc() {
@@ -1415,7 +1506,7 @@ function renderLearn() {
 }
 function openLesson(id) {
   const l = allLessons().find(x => x.id === id); if (!l) return;
-  ta.value = JSON.stringify({ ...l.scene, schemaVersion: SCHEMA, actors: castOf(), outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, squeeze: squeezeOf(), info: normInfo(P.info) });
+  ta.value = JSON.stringify({ ...l.scene, schemaVersion: SCHEMA, actors: castOf(), outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, squeeze: squeezeOf(), info: normInfo(P.info), assignment: P.assignment || undefined });
   applyCode(); $('#mLearn').classList.remove('on'); toast(`${l.title} · Ctrl+Z to undo`);
 }
 function addTemplate(id) {
@@ -1503,7 +1594,7 @@ $('#obNext').onclick = () => { $('#obStep1').style.display = 'none'; $('#obStep2
 $$('.mode').forEach(b => b.onclick = () => endIntro(b.dataset.m));
 $('#obSkip').onclick = () => endIntro('nocode');
 
-function refreshAll(code = true) { P.squeeze = squeezeOf(); P.info = normInfo(P.info); $('#squeeze').value = P.squeeze; P.actors = normCast(P.actors); P.outfit = normOutfit(P.outfit); syncCast(); P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); P.set = SETS[P.set] ? P.set : 'stall'; $('#set').value = P.set; applySet(P.set); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
+function refreshAll(code = true) { P.assignment = normAssignment(P.assignment, TASK_KNOWN) || undefined; if (!P.assignment) delete P.assignment; updateTaskBadge(); P.squeeze = squeezeOf(); P.info = normInfo(P.info); $('#squeeze').value = P.squeeze; P.actors = normCast(P.actors); P.outfit = normOutfit(P.outfit); syncCast(); P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); P.set = SETS[P.set] ? P.set : 'stall'; $('#set').value = P.set; applySet(P.set); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
 new ResizeObserver(layout).observe($('#view'));
 buildLib(); refreshAll();
 if (location.hash === '#selftest' || location.hash === '#e2e') { if (location.hash === '#selftest') runSelfTest(); window.__kalki = { real: REAL, T, setStats: () => Object.fromEntries(Object.keys(SETG).map(k => [k, setStats(k)])), reportUi: async f => { ref = await computeRef(f); $('#mRef').classList.add('on'); renderRef(); const n = $$('#rfRes select[data-rfsize]').length; const sl = $('#rfRes select[data-rfsize]'); sl.value = 'CU'; sl.dispatchEvent(new Event('change', { bubbles: true })); return { selects: n, shots: ref.clip.shots.length, size0: ref.sizes[0], kept: $('#rfRes select[data-rfsize]').value, simSize: toShots(ref.clip, 'Ref', ref.sizes)[0].size }; }, reportPdf: async f => { ref = await computeRef(f); const b = buildAnalysisPdf(refPdfDoc()), t = Array.from(b, c => String.fromCharCode(c)).join(''); return { bytes: b.length, head: t.slice(0, 8), pages: (t.match(/\/Type \/Page /g) || []).length, images: (t.match(/\/Subtype \/Image/g) || []).length }; }, analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
@@ -1604,6 +1695,21 @@ async function runSelfTest() {
     const sc = aiScene(); const txt = buildPrompts(sc); if (!sc.shots.length || !txt.includes('Prompt:') || /undefined/.test(txt)) return false;
     for (const m of MOVES) { const sh = newShot({ move: m.id }); P.shots = [sh]; const t2 = buildPrompts(aiScene()); if (/undefined|NaN/.test(t2) || t2.length < 300) return false; }
     return true;
+  });
+  t('an assignment is saved with the project, cleaned, checked live and survives New scene only when asked', () => {
+    $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, assignment: { title: 'Dialogue', brief: 'Cover it.', checks: [{ type: 'minShots', value: 2 }, { type: 'useMove', value: 'push_in' }, { type: 'useMove', value: 'nope' }] }, shots: [{ move: 'push_in' }, { move: 'pan' }] }); applyCode();
+    const a = P.assignment; if (!a || a.checks.length !== 2) return false; const res = evaluate(a, taskScene(), taskNames()); if (!res.every(r => r.ok)) return false;
+    loadCode(); const o = JSON.parse($('#ta').value); if (!o.assignment || o.assignment.checks.length !== 2) return false;
+    updateTaskBadge(); const good = $('#bTask').title === 'Assignment: 2 of 2 checks met';
+    $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{}] }); applyCode(); return good && !P.assignment && $('#bTask').title.startsWith('Assignment: the brief');
+  });
+  t('script import builds shots, picks the set and the actors from the names, and can be undone', () => {
+    const before = JSON.stringify(P), r = importScript('EXT. TERRACE - DAWN\n\nPRIYA\nGood morning.\n\nRAVI\nHello!'); if (!r.ok || r.n !== 3 || P.set !== 'terrace' || P.shots.length !== 3) return false;
+    const names = AV[P.actors.A].first === 'Priya' && AV[P.actors.B].first === 'Ravi'; $('#bUndo').click(); const bad = importScript('   '); return names && !bad.ok && JSON.stringify(P) === before;
+  });
+  t('compare with another project lists the differences without changing the project', () => {
+    const keep = JSON.stringify(P), c = compareProject(JSON.stringify({ title: 'Other', schemaVersion: SCHEMA, shots: [{ move: 'orbit', size: 'CU' }] }), 'other');
+    const bad = compareProject('not json', 'x') === null && compareProject('{"a":1}', 'x') === null; return !!c && c.title === 'Other' && c.cmp.rows.length === Math.max(P.shots.length, 1) && c.cmp.rows[0].diffs.some(d => d.field === 'move') && bad && JSON.stringify(P) === keep;
   });
   t('every set has its own floor and dressing and the stall keeps its lights', () => ['stall', 'street', 'terrace', 'living', 'classroom', 'platform'].every(k => SETG[k].children.length > 8) && BULBS.length >= 5);
   t('duplicating a shot does not share its walk route', () => { $('#ta').value = JSON.stringify({ shots: [{ actionA: 'walk', routeA: [{ x: 1, z: 1 }] }] }); applyCode(); sel = 0; $('#bDup').click(); P.shots[0].routeA.push({ x: 2, z: 2 }); return P.shots.length === 2 && P.shots[1].routeA.length === 1; });

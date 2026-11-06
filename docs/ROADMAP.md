@@ -86,7 +86,7 @@
 | # | Feature | Effort | Priority | Rationale |
 |---|---|---|---|---|
 | 5.1 | ✅ **Lesson scenes/templates** (done in v0.7.0: tour of all 18 moves, shot sizes, lenses, depth of field, push vs zoom, dialogue coverage, camera rigs; 180° rule is covered inside dialogue coverage; Tamil/Hindi titles only, bodies English) ("Learn 18 moves", "Shot sizes", "180° rule", "Lens comparison") | M | P0 | Film-school niche; low production cost; strong marketing |
-| 5.2 | **Instructor kit**: assignment file + checklist, side-by-side before/after compare | M | P1 | Institution licence story |
+| 5.2 | ✅ **Instructor kit** (done in v0.9.0: assignments with live checks and a report, and a shot-by-shot comparison table; no side-by-side playback, no grading): assignment file + checklist, side-by-side before/after compare | M | P1 | Institution licence story |
 | 5.3 | ✅ **Shot templates and presets library** (done in v0.7.0: dialogue pair, walk and talk, tension build, scene opener, Reels hook) (dialogue OTS, walk-and-talk, reveal) | M | P1 | Speeds creators; shows grammar |
 | 5.4 | ✅ **Storyboard sheet and PDF theming** (done in v0.8.0: production, director, scene, shoot day, accent colour, logo and heading language in all four PDFs) (logo, scene/shoot-day metadata, language) | S | P2 | Professional polish |
 | 5.5 | ✅ **Camera-rig props** (done in v0.7.0: eight rigs drawn in the set view with a per-shot picker; handheld intensity uses the existing intensity slider, no separate shake profiles; rig not yet in the shot-list PDF) (dolly track, jib, gimbal, handheld shake profiles) with visible rig | M | P1 | Realism vs FrameForge/Cine Designer; teaches how to achieve a move cheaply |
@@ -125,7 +125,7 @@
 |---|---|---|---|---|
 | 6.1 | **Text-to-shot via local LLM** (optional download; converts plain text to the existing JSON; Tamil/Hindi prompts if the model supports it) | L | P2 | Differentiator vs cloud AI tools; depends on stable JSON schema (1.6) and the actions library (2.2); hardware constraints in India are significant; keep strictly optional and separate from the core file |
 | 6.2 | ✅ **Export reference frames/prompts for generative tools** (done in v0.8.0: PNG plus a text file of prompts and camera plans) (frame + lens + move description) | S | P2 | Complements Runway/Kling instead of competing |
-| 6.3 | **Import script (Fountain/plain text) → shot-list skeleton** | M | P2 | StudioBinder-style flow, offline |
+| 6.3 | ✅ **Import script (Fountain/plain text) → shot-list skeleton** (done in v0.9.0) | M | P2 | StudioBinder-style flow, offline |
 | 6.4 | **Cloud sync/collab** | L | P3 (not recommended now) | Conflicts with the offline positioning; revisit only on evidence of demand |
 
 ## Prioritised master feature list
