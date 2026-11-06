@@ -12,7 +12,7 @@ For each row:
 - Film terms (pan, tilt, zoom, dolly) are meant to stay as the transliterated forms crews actually say; say so in Notes if a crew would use another word.
 - Some strings contain placeholders such as numbers or names; keep them as they are.
 
-Lesson descriptions, shot notes and rig tips are English only and are not in this file. After review, send the file back and the corrections go into `src/i18n.js`.
+Lesson and template descriptions and the rig names, explanations and low-budget tips are translated too (marked as unreviewed like the rest). Shot notes inside the lesson scenes are English only and are not in this file. After review, send the file back and the corrections go into `src/i18n.js`.
 
 Regenerate the file after interface changes with `node tools/export-translations.mjs`.
 
