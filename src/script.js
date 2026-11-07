@@ -4,7 +4,7 @@
 
 const HEADING = /^(\.(?=[A-Za-z0-9])|(INT|EXT|EST|INT\.?\/EXT|EXT\.?\/INT|I\/E)[. ])/i;
 const TRANSITION = /^(>|[A-Z ]+TO:$)/;
-const SET_WORDS = [['platform', /STATION|PLATFORM|TRAIN|RAILWAY|\bRAIL\b/i], ['classroom', /CLASS|SCHOOL|COLLEGE|LECTURE/i], ['terrace', /TERRACE|ROOF|ROOFTOP/i], ['stall', /CHAI|\bTEA\b|STALL|CAFE|CAFÉ|CANTEEN/i], ['street', /STREET|LANE|ROAD|VILLAGE|MARKET/i], ['living', /LIVING|HOUSE|HOME|ROOM|KITCHEN|BEDROOM|FLAT|APARTMENT/i]];
+const SET_WORDS = [['temple', /TEMPLE|KOIL|MANDIR|SHRINE|GOPURAM|PRAKARAM/i], ['office', /OFFICE|BANK|COMPANY|WORKPLACE|CUBICLE|MEETING ROOM/i], ['platform', /STATION|PLATFORM|TRAIN|RAILWAY|\bRAIL\b/i], ['classroom', /CLASS|SCHOOL|COLLEGE|LECTURE/i], ['terrace', /TERRACE|ROOF|ROOFTOP/i], ['stall', /CHAI|\bTEA\b|STALL|CAFE|CAFÉ|CANTEEN/i], ['street', /STREET|LANE|ROAD|VILLAGE|MARKET/i], ['living', /LIVING|HOUSE|HOME|ROOM|KITCHEN|BEDROOM|FLAT|APARTMENT/i]];
 const WALK = /\b(walks?|enters?|runs?|crosses|strolls?|steps? in|arrives?|leaves?|exits?)\b/i;
 const words = s => (String(s).trim().match(/\S+/g) || []).length;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

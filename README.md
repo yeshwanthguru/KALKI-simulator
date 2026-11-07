@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.10.0-ff6b4a?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.10.1-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
   <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
@@ -31,12 +31,12 @@
 
 **In the browser** (nothing to install)
 
-1. Download [`Kalki-versions/Kalki-v0.10.0.html`](Kalki-versions/Kalki-v0.10.0.html), or the zipped package [`Kalki-v0.10.0.zip`](Kalki-versions/Kalki-v0.10.0.zip) with notices.
+1. Download [`Kalki-versions/Kalki-v0.10.1.html`](Kalki-versions/Kalki-v0.10.1.html), or the zipped package [`Kalki-v0.10.1.zip`](Kalki-versions/Kalki-v0.10.1.zip) with notices.
 2. Double-click it. It opens in Chrome or Edge and runs fully offline.
 
 **On Windows** (native app, about 3 MB)
 
-1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.10.0_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.10.0_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
+1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.10.1_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.10.1_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
 2. The installer is **not code-signed yet**, so Windows SmartScreen may warn on first run: choose **More info, Run anyway**.
 3. Exports open a native **Save as** dialog. It uses the WebView2 runtime that ships with Windows 11 (Windows 10 may prompt to install it).
 
@@ -63,7 +63,7 @@ flowchart LR
 | **Real lens behaviour** | Focal length 14 to 135 mm, aperture f/1.4 to f/11 driving depth of field, plus bloom, motion blur and film grain. |
 | **Camera sensors** | Super 35, Full frame, APS-C, Micro Four Thirds, 1-inch. Lenses show their full-frame equivalent. |
 | **Cinematic looks** | Golden hour, Teal and orange, Night, Noir, Neutral, plus time-of-day looks (dawn, noon, dusk), with window light and sun shafts. |
-| **Six sets** | Chai stall, village street (houses, lamp post, auto-rickshaw, scooter, bicycle), a rooftop terrace (water tank, clothesline, rope cot, brass pots, bucket), a tiled living room (barred window with curtains, sofa, TV, tea table with steel tumblers, wall clock, standing lamp) and a school classroom (blackboard, bench-desks, teacher's table with a globe, ceiling fan, barred windows) and a railway platform (coach on the line, pillars and canopy, a station board in English, Tamil and Hindi, benches, luggage). The set is saved in the project. |
+| **Eight sets** | Chai stall, village street (houses, lamp post, auto-rickshaw, scooter, bicycle), a rooftop terrace (water tank, clothesline, rope cot, brass pots, bucket), a tiled living room (barred window with curtains, sofa, TV, tea table with steel tumblers, wall clock, standing lamp) and a school classroom (blackboard, bench-desks, teacher's table with a globe, ceiling fan, barred windows) and a railway platform (coach on the line, pillars and canopy, a station board in English, Tamil and Hindi, benches, luggage), a temple courtyard (stepped gateway tower, pillars with marigold garlands, brass lamp tower, flag pole, bell) and an office (desks with monitors, whiteboard, window, filing cabinet). The set is saved in the project. |
 | **Costumes** | Dress each actor with a topi and glasses, turban, student bag, marigold garland, dupatta or umbrella, or a whole outfit: kurta and pyjama, shirt and dhoti, shirt and lungi, saree and blouse, school uniform, formal wear. |
 | **Walk paths** | Click up to six points on the set view and the actor walks through them, facing the way they move. The route shows in the set view and the blocking diagram. |
 | **Tamil, Hindi and English** | Switch the whole interface between English, தமிழ் and हिन्दी with the language menu. Titles, shot names and notes in any script also come out correctly in the PDFs. |
@@ -124,6 +124,11 @@ Pick a set from the menu in the top bar, dress each actor in the cast dialog, an
 <p align="center">
   <img src="docs/images/set-platform.jpg" alt="Railway platform set with a blue coach, canopy pillars and a station board" width="48%"><br>
   <sub>Railway platform</sub>
+</p>
+
+<p align="center">
+  <img src="docs/images/set-temple.jpg" alt="Temple courtyard set with a stepped gateway tower and a brass lamp" width="48%"> <img src="docs/images/set-office.jpg" alt="Office set with desks, monitors and a whiteboard" width="48%"><br>
+  <sub>Temple courtyard and office</sub>
 </p>
 
 ### Whole-garment costumes
@@ -224,7 +229,8 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | v0.8.0 | AI reference export, PDF document details (logo, colour, language), phone sensors and anamorphic squeeze, performance guard |
 | v0.9.0 | Assignments for teachers, project comparison, script import |
 | v0.9.1 | Three new actions: eating a snack, on the phone, offering something |
-| **v0.10.0** | **Latest.** Whole-garment costumes: kurta, dhoti, lungi, saree, school uniform, formal wear |
+| v0.10.0 | Whole-garment costumes: kurta, dhoti, lungi, saree, school uniform, formal wear |
+| **v0.10.1** | **Latest.** Temple courtyard and office sets |
 
 Every build is kept in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 
