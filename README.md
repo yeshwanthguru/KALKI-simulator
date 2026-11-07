@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.10.1-ff6b4a?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.11.0-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
   <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
@@ -31,12 +31,12 @@
 
 **In the browser** (nothing to install)
 
-1. Download [`Kalki-versions/Kalki-v0.10.1.html`](Kalki-versions/Kalki-v0.10.1.html), or the zipped package [`Kalki-v0.10.1.zip`](Kalki-versions/Kalki-v0.10.1.zip) with notices.
+1. Download [`Kalki-versions/Kalki-v0.11.0.html`](Kalki-versions/Kalki-v0.11.0.html), or the zipped package [`Kalki-v0.11.0.zip`](Kalki-versions/Kalki-v0.11.0.zip) with notices.
 2. Double-click it. It opens in Chrome or Edge and runs fully offline.
 
 **On Windows** (native app, about 3 MB)
 
-1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.10.1_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.10.1_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
+1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.11.0_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.11.0_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
 2. The installer is **not code-signed yet**, so Windows SmartScreen may warn on first run: choose **More info, Run anyway**.
 3. Exports open a native **Save as** dialog. It uses the WebView2 runtime that ships with Windows 11 (Windows 10 may prompt to install it).
 
@@ -63,7 +63,7 @@ flowchart LR
 | **Real lens behaviour** | Focal length 14 to 135 mm, aperture f/1.4 to f/11 driving depth of field, plus bloom, motion blur and film grain. |
 | **Camera sensors** | Super 35, Full frame, APS-C, Micro Four Thirds, 1-inch. Lenses show their full-frame equivalent. |
 | **Cinematic looks** | Golden hour, Teal and orange, Night, Noir, Neutral, plus time-of-day looks (dawn, noon, dusk), with window light and sun shafts. |
-| **Eight sets** | Chai stall, village street (houses, lamp post, auto-rickshaw, scooter, bicycle), a rooftop terrace (water tank, clothesline, rope cot, brass pots, bucket), a tiled living room (barred window with curtains, sofa, TV, tea table with steel tumblers, wall clock, standing lamp) and a school classroom (blackboard, bench-desks, teacher's table with a globe, ceiling fan, barred windows) and a railway platform (coach on the line, pillars and canopy, a station board in English, Tamil and Hindi, benches, luggage), a temple courtyard (stepped gateway tower, pillars with marigold garlands, brass lamp tower, flag pole, bell) and an office (desks with monitors, whiteboard, window, filing cabinet). The set is saved in the project. |
+| **Ten sets** | Chai stall, village street (houses, lamp post, auto-rickshaw, scooter, bicycle), a rooftop terrace (water tank, clothesline, rope cot, brass pots, bucket), a tiled living room (barred window with curtains, sofa, TV, tea table with steel tumblers, wall clock, standing lamp) and a school classroom (blackboard, bench-desks, teacher's table with a globe, ceiling fan, barred windows) and a railway platform (coach on the line, pillars and canopy, a station board in English, Tamil and Hindi, benches, luggage), a temple courtyard (stepped gateway tower, pillars with marigold garlands, brass lamp tower, flag pole, bell) and an office (desks with monitors, whiteboard, window, filing cabinet), a bus interior (cutaway with bench seats, hand rails, a driver's end) and a market (stalls with awnings and produce, a hand cart, a vendor's umbrella, a balance scale). The set is saved in the project. |
 | **Costumes** | Dress each actor with a topi and glasses, turban, student bag, marigold garland, dupatta or umbrella, or a whole outfit: kurta and pyjama, shirt and dhoti, shirt and lungi, saree and blouse, school uniform, formal wear. |
 | **Walk paths** | Click up to six points on the set view and the actor walks through them, facing the way they move. The route shows in the set view and the blocking diagram. |
 | **Tamil, Hindi and English** | Switch the whole interface between English, தமிழ் and हिन्दी with the language menu. Titles, shot names and notes in any script also come out correctly in the PDFs. |
@@ -131,6 +131,11 @@ Pick a set from the menu in the top bar, dress each actor in the cast dialog, an
   <sub>Temple courtyard and office</sub>
 </p>
 
+<p align="center">
+  <img src="docs/images/set-bus.jpg" alt="Bus interior set, a cutaway with bench seats and hand rails" width="48%"> <img src="docs/images/set-market.jpg" alt="Market set with stalls, awnings and produce" width="48%"><br>
+  <sub>Bus interior and market</sub>
+</p>
+
 ### Whole-garment costumes
 
 Besides the small accessories (topi, turban, garland, dupatta, umbrella, school bag), the cast dialog now has six whole outfits: **kurta and pyjama**, **shirt and dhoti**, **shirt and lungi** (a blue check), **saree and blouse** (with a pallu over the shoulder), **school uniform** (with bag) and **formal shirt and trousers**. A garment is a second skin laid over the avatar's own clothes, in plain or simply patterned cloth, so it bends with every action and works on all seven avatars. It is an approximation: no folds, drape or fine detail, a few details of the original clothes (a belt, a cuff) can still show, and the saree is a skirt, blouse and shoulder cloth rather than a real wrap.
@@ -146,6 +151,15 @@ Press the people button to open the cast dialog and pick who plays each role. Ev
 ### Lessons, templates and camera rigs
 
 The graduation-cap button opens ready-made lesson scenes (a tour of all 18 moves, shot sizes, lenses, depth of field, push in vs zoom, dialogue coverage and camera rigs) and shot templates (dialogue pair, walk and talk, tension build, scene opener, Reels hook) that are added to the end of your scene. Each shot can also show the camera rig that would make the move in real life: tripod, dolly and track, slider, circular track, jib, gimbal or handheld, drawn in the set view with a low-budget tip. On a phone-sized screen the view sits on top, with tabs for the moves and the shot settings.
+
+### Realism
+
+v0.11.0 is a first realism pass. What changed, and what did not:
+
+- **Actors with signs of life.** On top of the recorded animation, each actor now breathes, shifts weight while standing, blinks every few seconds (sometimes twice), and looks at the other actor: the eyes follow fully, the head and neck partly, with the small quick eye movements people make. Eyelids use the avatar's own eyelid bones.
+- **Real lens behaviour.** Wide lenses bend straight lines at the edges (barrel distortion), long lenses very slightly the other way; a lens opened wide vignettes and fringes more than one stopped down. Handheld shake is now a three-layer motion (slow drift, body sway, fine tremor) instead of a mix of sine waves. Bloom only comes from real highlights, so bright walls no longer fog the picture.
+- **Less toy-like sets.** Skies behind the outdoor sets (blue at noon, orange at dusk, dark at night), floors that continue instead of ending in black, plaster with soft mottling and grime, lumpy foliage, a soft contact shadow under each actor, and a warm sheen on skin and cloth.
+- **Not done, and honest limits.** The sets are still built from simple shapes with flat colours, with no photographic textures, so they remain stylised. The recorded animations are limited to the ten original clips plus three that reuse them with props. There is no foot-sliding correction on walk paths, no facial expressions beyond blinking and eye direction, and no cloth or hair movement. Detail bump-mapping was tried and removed because it made frames shimmer and confused the camera-motion analysis.
 
 ### Teaching and writing tools
 
@@ -230,7 +244,8 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | v0.9.0 | Assignments for teachers, project comparison, script import |
 | v0.9.1 | Three new actions: eating a snack, on the phone, offering something |
 | v0.10.0 | Whole-garment costumes: kurta, dhoti, lungi, saree, school uniform, formal wear |
-| **v0.10.1** | **Latest.** Temple courtyard and office sets |
+| v0.10.1 | Temple courtyard and office sets |
+| **v0.11.0** | **Latest.** Realism pass, bus interior and market sets |
 
 Every build is kept in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 

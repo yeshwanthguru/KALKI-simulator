@@ -1,4 +1,4 @@
-KALKI · கல்கி — Camera Studio (v0.10.1)
+KALKI · கல்கி — Camera Studio (v0.11.0)
 See your shot before you shoot it.
 
 HOW TO START
@@ -18,6 +18,8 @@ WHAT YOU CAN DO
   - Phone layout: on narrow screens the view sits on top with tabs for moves and shot settings
   - Download the reference-video analysis as a PDF report (pacing chart, shots, techniques, suggestions); the shot-list PDF now shows the camera rig
   - Mark the shot size of each shot in a reference video; Kalki uses it for suggestions, the simulation and the reports
+  - Realism pass: actors breathe, shift their weight, blink and look at each other; lenses distort, vignette and fringe like real ones; natural handheld shake; skies, soft contact shadows, plaster and foliage that look less like toys
+  - Two more sets, a bus interior and a market
   - Two more sets: a temple courtyard (gateway tower, pillars with garlands, brass lamp, flag pole, bell) and an office (desks with monitors, whiteboard, window)
   - A sixth set, a railway platform (coach on the line, pillars and canopy, station board in English, Tamil and Hindi, benches, luggage)
   - A fifth set, a school classroom (blackboard, bench-desks, teacher's table, ceiling fan), and daylight behind the windows of the indoor sets (dark at night)

@@ -1,0 +1,89 @@
+/* Small signs of life for the actors, added on top of the recorded animation: breathing, weight shifts, blinking and eye movements.
+   Everything here is a plain function of time and a seed, so the same moment always looks the same and the functions can be tested without a 3D scene. */
+
+/* a small, fast, repeatable pseudo-random generator (mulberry32) */
+export function rng(seed) {
+  let a = (seed >>> 0) || 1;
+  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+/* blinking: people blink every 2 to 6 seconds, the lid closes in about 70 ms and opens more slowly; now and then there is a double blink.
+   Returns how closed the lids are: 0 open, 1 shut. */
+const blinkCache = new Map();
+function blinkTimes(seed, upTo) {
+  let c = blinkCache.get(seed); if (!c) { c = { r: rng(seed * 7919 + 13), list: [], t: 1 + (seed % 7) * .3 }; blinkCache.set(seed, c); }
+  while (c.t < upTo + 8) { c.list.push(c.t); const double = c.r() < .12; if (double) { c.list.push(c.t + .32); } c.t += (double ? .32 : 0) + 2.2 + c.r() * 3.8; }
+  if (c.list.length > 4000) { blinkCache.delete(seed); }
+  return c.list;
+}
+export function blinkLevel(t, seed = 1) {
+  if (t < 0) return 0;
+  for (const s of blinkTimes(seed, t)) {
+    const d = t - s; if (d < 0) return 0;
+    if (d < .07) return d / .07;
+    if (d < .07 + .13) return 1 - (d - .07) / .13;
+  }
+  return 0;
+}
+
+/* breathing: about 14 breaths a minute, a little faster while talking; returns -1..1 (in-breath positive) */
+export const breath = (t, rate = .24, phase = 0) => { const x = Math.sin(2 * Math.PI * rate * t + phase); return x * .8 + Math.sin(4 * Math.PI * rate * t + phase * 1.7) * .2; };
+
+/* slow weight shifts while standing: a lean from one foot to the other every 5 to 9 seconds; returns -1..1 */
+export const sway = (t, seed = 1) => { const p = 5.5 + (seed % 5) * .7; return Math.sin(2 * Math.PI * t / p + seed) * .75 + Math.sin(2 * Math.PI * t / (p * 2.3) + seed * 2) * .25; };
+
+/* eye movements: the gaze rests on its target and makes small quick jumps (saccades) every 0.5 to 1.8 seconds, and sometimes a short glance away.
+   Returns { x, y } offsets in degrees (x to the side, y up). */
+const gazeCache = new Map();
+function gazeEvents(seed, upTo) {
+  let c = gazeCache.get(seed); if (!c) { c = { r: rng(seed * 104729 + 7), list: [], t: 0 }; gazeCache.set(seed, c); }
+  while (c.t < upTo + 6) { const glance = c.r() < .1; c.list.push({ t: c.t, x: (c.r() - .5) * (glance ? 14 : 3.2), y: (c.r() - .5) * (glance ? 8 : 2.2), len: glance ? .5 + c.r() * .6 : 0 }); c.t += (glance ? .9 : 0) + .5 + c.r() * 1.3; }
+  if (c.list.length > 4000) gazeCache.delete(seed);
+  return c.list;
+}
+export function gazeOffset(t, seed = 1) {
+  const ev = gazeEvents(seed, t); let cur = { x: 0, y: 0 };
+  for (let i = 0; i < ev.length; i++) { const e = ev[i]; if (e.t > t) break; cur = e.len && t > e.t + e.len ? { x: 0, y: 0 } : e; }
+  return { x: cur.x, y: cur.y };
+}
+
+/* which axis of a bone points forward, up and to the side of the character: the local axes of a bone are different in every rig, so they are found once
+   from the bone's rotation relative to the character (a 3x3 rotation matrix in row-major order, columns = the bone's x, y, z axes in character space) */
+export function boneAxes(m) {
+  const dirs = { fwd: [0, 0, 1], up: [0, 1, 0], side: [1, 0, 0] }, out = {};
+  for (const [k, d] of Object.entries(dirs)) {
+    let best = { axis: 0, sign: 1, dot: -1 };
+    for (let c = 0; c < 3; c++) { const dot = m[0 + c] * d[0] + m[3 + c] * d[1] + m[6 + c] * d[2]; if (Math.abs(dot) > best.dot) best = { axis: c, sign: dot < 0 ? -1 : 1, dot: Math.abs(dot) }; }
+    out[k] = { axis: best.axis, sign: best.sign };
+  }
+  return out;
+}
+
+/* how strongly the head and the eyes follow the other person for each action (the eyes follow fully, the head partly) */
+export const GAZE_WEIGHTS = {
+  stand: { head: .45, eyes: 1 }, talk: { head: .55, eyes: 1 }, listen: { head: .55, eyes: 1 }, nod: { head: .5, eyes: 1 }, wave: { head: .5, eyes: 1 }, shrug: { head: .4, eyes: 1 },
+  invite: { head: .5, eyes: 1 }, look: { head: .12, eyes: .3 }, sit: { head: .35, eyes: 1 }, think: { head: .1, eyes: .35 }, sip: { head: .2, eyes: .7 }, eat: { head: .2, eyes: .7 },
+  phone: { head: .1, eyes: .3 }, offer: { head: .5, eyes: 1 }, walk: { head: .3, eyes: .7 }
+};
+
+/* ---------- the camera: what a real lens and a real operator do ---------- */
+
+/* smooth random wobble: value noise with cubic smoothing, range -1..1, repeatable for a seed */
+const hash = n => { let x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return (x - Math.floor(x)) * 2 - 1; };
+export function noise1(t, seed = 0) { const i = Math.floor(t), f = t - i, u = f * f * (3 - 2 * f); return hash(i + seed * 17.3) * (1 - u) + hash(i + 1 + seed * 17.3) * u; }
+
+/* handheld shake as the sum of three layers, like a person holding a camera: a slow drift (about 0.4 Hz), the body's sway (1.2 Hz) and a fine tremor (7 Hz).
+   k is the strength, 0..1. Returns offsets in metres for the position and in radians for the rotation. */
+export function handheld(t, k) {
+  const n = (f, s) => noise1(t * f, s);
+  const slow = [n(.4, 1), n(.4, 2), n(.4, 3), n(.4, 4), n(.4, 5)], mid = [n(1.2, 6), n(1.2, 7), n(1.2, 8), n(1.2, 9), n(1.2, 10)], fine = [n(7, 11), n(7, 12), n(7, 13), n(7, 14), n(7, 15)];
+  const m = i => slow[i] * .55 + mid[i] * .35 + fine[i] * .1;
+  return { x: m(0) * .03 * k, y: m(1) * .022 * k, roll: m(2) * .022 * k, pitch: m(3) * .016 * k, yaw: m(4) * .02 * k };
+}
+
+/* the optical character of a lens: wide lenses bend straight lines outwards at the edges (barrel distortion), long lenses very slightly inwards; a lens
+   opened wide darkens and colour-fringes the corners more than one stopped down. f is the focal length in mm, fstop the aperture. */
+export function lensLook(f, fstop) {
+  const wide = Math.max(0, Math.min(1, (35 - f) / 21)), tele = Math.max(0, Math.min(1, (f - 85) / 100)), open = Math.max(0, Math.min(1, (8 - fstop) / 6.6));
+  return { distortion: wide * .085 - tele * .018, vignette: .75 + open * .55, fringe: 1 + wide * .9 + open * .35 };
+}

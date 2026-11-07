@@ -92,6 +92,12 @@
 | 5.5 | ✅ **Camera-rig props** (done in v0.7.0: eight rigs drawn in the set view with a per-shot picker; handheld intensity uses the existing intensity slider, no separate shake profiles; rig not yet in the shot-list PDF) (dolly track, jib, gimbal, handheld shake profiles) with visible rig | M | P1 | Realism vs FrameForge/Cine Designer; teaches how to achieve a move cheaply |
 | 5.6 | ✅ **Budget-friendly alternatives hints** (done in v0.7.0 as the "On a budget" tip for each rig; tips are English only) ("how to get this move with a phone and a bucket") | S | P2 | India fit, content marketing |
 
+## Realism (started in v0.11.0)
+
+Done in v0.11.0: signs of life for the actors (breathing, weight shift, blinking, eye and head tracking), lens distortion, vignette and fringing tied to focal length and aperture, a three-layer handheld model, tamed bloom, skies, continuous floors, plaster mottling, lumpy foliage, contact shadows, skin and cloth sheen.
+
+Next candidates (estimates): foot-sliding correction on walk paths and turning in place (M), facial expressions and lip movement while talking (L, needs the avatars' face rig explored), more recorded animation (L, needs new animation data), photographic or hand-painted textures for sets (L, size cost), cloth and hair movement (L), light bounce and soft indirect shadows (M, performance cost on slow laptops), an exposure/ISO model (S).
+
 ## Phase 5b — Reference video analysis ("Analyse my video") (v0.8.x–v0.9)
 
 **Goal:** the user imports a clip; Kalki reports which camera techniques it detects, suggests improvements, and plays both the *detected* and the *suggested* version as a simulation on the 3D set. Everything runs locally in the browser/exe; the video never leaves the machine.
