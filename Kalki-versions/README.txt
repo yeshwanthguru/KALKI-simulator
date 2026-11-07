@@ -1,4 +1,4 @@
-KALKI · கல்கி — Camera Studio (v0.9.1)
+KALKI · கல்கி — Camera Studio (v0.10.0)
 See your shot before you shoot it.
 
 HOW TO START
@@ -22,6 +22,7 @@ WHAT YOU CAN DO
   - A fifth set, a school classroom (blackboard, bench-desks, teacher's table, ceiling fan), and daylight behind the windows of the indoor sets (dark at night)
   - A fourth set, a tiled living room, and new props (scooter, bicycle, bucket, brass pots, sofa, TV, tea table with steel tumblers, wall clock, standing lamp)
   - Two new sets (village street, terrace), costumes (topi, turban, garland, dupatta, umbrella, school bag, glasses) and multi-point walk paths
+  - Whole-garment costumes: kurta and pyjama, shirt and dhoti, shirt and lungi, saree and blouse, school uniform, formal shirt and trousers (they bend with the actors; plain or simply patterned cloth)
   - Teaching: assignments (a brief plus checks Kalki verifies live, a report students can hand in) and a before/after comparison of two projects
   - Import a script (Fountain or plain text) into a shot-list skeleton: scene headings, actions and dialogue become shots
   - AI reference export (frame .png + text prompts for every shot) for AI video tools

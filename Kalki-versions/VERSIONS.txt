@@ -32,7 +32,8 @@ v0.7.7  Pacing chart in the video analysis and its PDF report
 v0.7.8  Tamil and Hindi for lesson, template and camera rig text
 v0.8.0  AI reference export, PDF document details (logo, colour, language), phone sensors and anamorphic squeeze, performance guard
 v0.9.0  Assignments for teachers, project comparison, script import
-v0.9.1  Latest: three new actions (eating a snack, on the phone, offering something)  << recommended
+v0.9.1  Three new actions (eating a snack, on the phone, offering something)
+v0.10.0  Latest: whole-garment costumes (kurta, dhoti, lungi, saree, school uniform, formal wear)  << recommended
 
 ZIP PACKAGES (same versions, each with README + license notices)
-  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip, Kalki-v0.5.zip, Kalki-v0.5.1.zip, Kalki-v0.5.2.zip, Kalki-v0.5.3.zip, Kalki-v0.5.4.zip, Kalki-v0.6.0.zip, Kalki-v0.6.1.zip, Kalki-v0.7.0.zip, Kalki-v0.7.1.zip, Kalki-v0.7.2.zip, Kalki-v0.7.3.zip, Kalki-v0.7.4.zip, Kalki-v0.7.5.zip, Kalki-v0.7.6.zip, Kalki-v0.7.7.zip, Kalki-v0.7.8.zip, Kalki-v0.8.0.zip, Kalki-v0.9.0.zip, Kalki-v0.9.1.zip
+  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip, Kalki-v0.5.zip, Kalki-v0.5.1.zip, Kalki-v0.5.2.zip, Kalki-v0.5.3.zip, Kalki-v0.5.4.zip, Kalki-v0.6.0.zip, Kalki-v0.6.1.zip, Kalki-v0.7.0.zip, Kalki-v0.7.1.zip, Kalki-v0.7.2.zip, Kalki-v0.7.3.zip, Kalki-v0.7.4.zip, Kalki-v0.7.5.zip, Kalki-v0.7.6.zip, Kalki-v0.7.7.zip, Kalki-v0.7.8.zip, Kalki-v0.8.0.zip, Kalki-v0.9.0.zip, Kalki-v0.9.1.zip, Kalki-v0.10.0.zip

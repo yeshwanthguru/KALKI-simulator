@@ -521,8 +521,81 @@ const OUTFITS = {
   student: { label: 'Student with bag', parts: ['bag', 'glasses'] },
   garland: { label: 'Marigold garland', parts: ['garland'] },
   dupatta: { label: 'Dupatta', parts: ['dupatta'] },
-  umbrella: { label: 'Umbrella', parts: ['umbrella'] }
+  umbrella: { label: 'Umbrella', parts: ['umbrella'] },
+  kurta: { label: 'Kurta and pyjama', parts: [], shells: ['kurta', 'pyjama'] },
+  dhoti: { label: 'Shirt and dhoti', parts: [], shells: ['shirtWhite', 'dhoti'] },
+  lungi: { label: 'Shirt and lungi', parts: [], shells: ['shirtBlue', 'lungi'] },
+  saree: { label: 'Saree and blouse', parts: ['pallu'], shells: ['blouse', 'sareeSkirt'] },
+  school: { label: 'School uniform', parts: ['bag'], shells: ['shirtWhite', 'navyBottom'] },
+  formal: { label: 'Formal shirt and trousers', parts: [], shells: ['shirtSky', 'trousers'] }
 };
+/* Whole garments are "shells": a copy of the part of the avatar's body mesh that a garment covers, pushed out a little along its normals and drawn in a
+   plain or patterned cloth. It shares the avatar's skeleton, so it bends with every animation. z0/z1 are heights as a fraction of the body (feet 0, head top 1). */
+const ARM = ['Bip01_L_UpperArm', 'Bip01_R_UpperArm', 'Bip01_L_Forearm', 'Bip01_R_Forearm'], SHOULDER = ['Bip01_L_Clavicle', 'Bip01_R_Clavicle', 'Bip01_L_UpperArm', 'Bip01_R_UpperArm'];
+const TORSO = ['Bip01_Pelvis', 'Bip01_Spine', 'Bip01_Spine1', 'Bip01_Spine2', 'Bip01_L_Clavicle', 'Bip01_R_Clavicle'], LEGS = ['Bip01_Pelvis', 'Bip01_L_Thigh', 'Bip01_R_Thigh', 'Bip01_L_Calf', 'Bip01_R_Calf'];
+const SHELLS = {
+  kurta: { bones: [...TORSO, ...ARM, 'Bip01_L_Thigh', 'Bip01_R_Thigh'], z0: .3, z1: .9, grow: .0065, color: 0xefe3c8 },
+  pyjama: { bones: LEGS, z0: .045, z1: .56, grow: .003, color: 0xf6f3ea },
+  shirtWhite: { bones: [...TORSO, ...ARM], z0: .38, z1: .9, grow: .0045, color: 0xf4f6f8 },
+  shirtBlue: { bones: [...TORSO, ...ARM], z0: .38, z1: .9, grow: .0045, color: 0x7aa0c8 },
+  shirtSky: { bones: [...TORSO, ...ARM], z0: .38, z1: .9, grow: .0045, color: 0xa9c8e6 },
+  dhoti: { bones: LEGS, z0: .045, z1: .6, grow: .013, color: 0xfbfaf4 },
+  lungi: { bones: LEGS, z0: .045, z1: .6, grow: .013, color: 0xffffff, pattern: 'check' },
+  blouse: { bones: [...TORSO, ...SHOULDER], z0: .5, z1: .9, grow: .0045, color: 0x1f6f5a },
+  sareeSkirt: { bones: [...LEGS, 'Bip01_Spine', 'Bip01_Spine1'], z0: .04, z1: .62, grow: .014, color: 0xc2283d, pattern: 'zari' },
+  navyBottom: { bones: LEGS, z0: .045, z1: .56, grow: .004, color: 0x1c2b57 },
+  trousers: { bones: LEGS, z0: .045, z1: .56, grow: .004, color: 0x2b2d33 }
+};
+const FABRIC = {};
+function fabricTex(kind) {
+  if (!kind) return null; if (FABRIC[kind]) return FABRIC[kind];
+  const t = canvasTex(64, 64, (g, w, h) => {
+    if (kind === 'check') { g.fillStyle = '#f2f2ee'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(40,70,150,.85)'; g.fillRect(0, 0, w / 2, h / 2); g.fillRect(w / 2, h / 2, w / 2, h / 2); g.strokeStyle = 'rgba(30,50,110,.9)'; g.lineWidth = 3; g.strokeRect(0, 0, w, h); }
+    else { g.fillStyle = '#c2283d'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(235,190,90,.95)'; for (const [x, y] of [[16, 16], [48, 48]]) { g.beginPath(); g.arc(x, y, 3.2, 0, 7); g.fill(); } }
+  });
+  t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(kind === 'check' ? 70 : 55, kind === 'check' ? 70 : 55); t.anisotropy = 4; return (FABRIC[kind] = t);
+}
+/* every skinned mesh of an avatar (some avatars keep their clothes in separate meshes), and the height range of them all */
+function bodyMeshesOf(root) {
+  const list = []; root.traverse(o => { if (o.isSkinnedMesh && o.geometry.index && o.geometry.attributes.skinIndex) list.push(o); });
+  /* which way is up in the mesh's own coordinates differs between avatars (some are Z-up, some Y-up): take it from the skeleton, foot to head */
+  let axis = 2, sign = 1;
+  if (list.length) { const sk = list[0].skeleton, at = n => { const i = sk.bones.findIndex(b => b.name === n); return i < 0 ? null : new T.Matrix4().copy(sk.boneInverses[i]).invert().elements; }, h = at('Bip01_Head'), f = at('Bip01_L_Foot');
+    if (h && f) { const d = [h[12] - f[12], h[13] - f[13], h[14] - f[14]]; axis = d.map(Math.abs).indexOf(Math.max(...d.map(Math.abs))); sign = d[axis] < 0 ? -1 : 1; } }
+  let zmin = Infinity, zmax = -Infinity; for (const o of list) { const p = o.geometry.attributes.position; for (let k = 0; k < p.count; k++) { const z = p.getComponent(k, axis) * sign; if (z < zmin) zmin = z; if (z > zmax) zmax = z; } }
+  return { list, zmin, zmax, axis, sign };
+}
+/* the "opacity" mesh of an avatar holds hair but also loose cloth (flaps, collars); under a whole garment those pieces would poke through, so their
+   triangles that are weighted to the body (not the head) are hidden while a garment is worn, and restored afterwards */
+const BODYBONES = new Set([...TORSO, ...ARM, ...LEGS, 'Bip01_L_Hand', 'Bip01_R_Hand', 'Bip01_L_Foot', 'Bip01_R_Foot']);
+function hideLooseCloth(root, on) {
+  root.traverse(o => {
+    if (!o.isSkinnedMesh || !(o.material && o.material.alphaTest > 0) || !o.geometry.index) return;
+    const g = o.geometry;
+    if (!on) { if (g.userData.fullIndex) { g.setIndex(g.userData.fullIndex); delete g.userData.fullIndex; } return; }
+    if (g.userData.fullIndex) return;
+    const si = g.attributes.skinIndex, sw = g.attributes.skinWeight, names = o.skeleton.bones.map(b => b.name), body = new Uint8Array(g.attributes.position.count);
+    for (let i = 0; i < body.length; i++) { let bi = 0, bw = -1; for (let c = 0; c < 4; c++) { const w = sw.getComponent(i, c); if (w > bw) { bw = w; bi = si.getComponent(i, c); } } body[i] = BODYBONES.has(names[bi]) ? 1 : 0; }
+    const idx = g.index.array, keep = []; for (let t = 0; t < idx.length; t += 3) if (!(body[idx[t]] || body[idx[t + 1]] || body[idx[t + 2]])) keep.push(idx[t], idx[t + 1], idx[t + 2]);
+    g.userData.fullIndex = g.index; g.setIndex(keep);
+  });
+}
+function buildShell(body, spec, zr) {
+  const g = body.geometry, pos = g.attributes.position, nrm = g.attributes.normal, si = g.attributes.skinIndex, sw = g.attributes.skinWeight, idx = g.index.array, names = body.skeleton.bones.map(b => b.name);
+  if (!nrm || !si || !sw) return null;
+  const zmin = zr.zmin, H = zr.zmax - zr.zmin, set = new Set(spec.bones);
+  const ok = new Uint8Array(pos.count);
+  for (let i = 0; i < pos.count; i++) { let bi = 0, bw = -1; for (let c = 0; c < 4; c++) { const w = sw.getComponent(i, c); if (w > bw) { bw = w; bi = si.getComponent(i, c); } } const f = (pos.getComponent(i, zr.axis) * zr.sign - zmin) / H; ok[i] = set.has(names[bi]) && f >= spec.z0 && f <= spec.z1 ? 1 : 0; }
+  const map = new Int32Array(pos.count).fill(-1), keep = []; const tri = [];
+  for (let t = 0; t < idx.length; t += 3) { const a = idx[t], b = idx[t + 1], c = idx[t + 2]; if (!(ok[a] && ok[b] && ok[c])) continue; for (const v of [a, b, c]) if (map[v] < 0) { map[v] = keep.length; keep.push(v); } tri.push(map[a], map[b], map[c]); }
+  if (tri.length < 30) return null;
+  const n = keep.length, P = new Float32Array(n * 3), N = new Float32Array(n * 3), U = new Float32Array(n * 2), SI = new Uint16Array(n * 4), SW = new Float32Array(n * 4), uv = g.attributes.uv, d = spec.grow * H;
+  keep.forEach((v, i) => { for (let c = 0; c < 3; c++) { const nv = nrm.getComponent(v, c); N[i * 3 + c] = nv; P[i * 3 + c] = pos.getComponent(v, c) + nv * d; } if (uv) { U[i * 2] = uv.getX(v); U[i * 2 + 1] = uv.getY(v); } for (let c = 0; c < 4; c++) { SI[i * 4 + c] = si.getComponent(v, c); SW[i * 4 + c] = sw.getComponent(v, c); } });
+  const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.BufferAttribute(P, 3)); geo.setAttribute('normal', new T.BufferAttribute(N, 3)); geo.setAttribute('uv', new T.BufferAttribute(U, 2)); geo.setAttribute('skinIndex', new T.BufferAttribute(SI, 4)); geo.setAttribute('skinWeight', new T.BufferAttribute(SW, 4)); geo.setIndex(tri);
+  const map2 = fabricTex(spec.pattern), mat2 = new T.MeshStandardMaterial({ color: spec.color, map: map2, roughness: .9, metalness: 0, envMapIntensity: .6 });
+  const m = new T.SkinnedMesh(geo, mat2); m.bind(body.skeleton, body.bindMatrix); m.position.copy(body.position); m.quaternion.copy(body.quaternion); m.scale.copy(body.scale); m.frustumCulled = false; m.castShadow = m.receiveShadow = true; m.userData.shell = true;
+  return m;
+}
 const normOutfit = o => ({ A: o && OUTFITS[o.A] ? o.A : 'plain', B: o && OUTFITS[o.B] ? o.B : 'plain' });
 const outfitOf = () => normOutfit(typeof P !== 'undefined' && P && P.outfit);
 function makeParts(name) {
@@ -544,8 +617,8 @@ function makeParts(name) {
   } else if (name === 'garland') {
     bone = 'Bip01_Spine2';
     for (const [r, c, dx] of [[.17, 0xff8a00, .17], [.15, 0xd6336c, .12]]) { const t = new T.Mesh(new T.TorusGeometry(r, .036, 8, 24).rotateY(Math.PI / 2), m(c, { roughness: .95 })); t.scale.set(1, 1.25, 1); t.rotation.z = .3; g.add(at(t, dx, .05, 0)); }
-  } else if (name === 'dupatta') {
-    bone = 'Bip01_Spine2'; const mm = m(0xd9708a, { roughness: .95, side: T.DoubleSide });
+  } else if (name === 'dupatta' || name === 'pallu') {
+    bone = 'Bip01_Spine2'; const mm = m(name === 'pallu' ? 0xc2283d : 0xd9708a, { roughness: .95, side: T.DoubleSide });
     const loop = new T.Mesh(new T.TorusGeometry(.17, .03, 8, 24).rotateY(Math.PI / 2), mm); loop.scale.set(1, 1.2, 1); g.add(at(loop, .17, .02, 0));
     g.add(at(new T.Mesh(new T.BoxGeometry(.6, .012, .12), mm), -.02, .14, .06)); g.add(at(new T.Mesh(new T.BoxGeometry(.45, .012, .12), mm), .02, -.13, -.04));
   } else if (name === 'umbrella') {
@@ -559,9 +632,12 @@ function makeParts(name) {
 /* puts the chosen costume on actor k (removes the previous one) */
 function applyOutfit(k) {
   const R = REAL[k]; if (!R) return; const id = outfitOf()[k]; if (R.outfit === id) return;
-  for (const a of R.acc || []) a.removeFromParent();
+  hideLooseCloth(R.root, false);
+  for (const a of R.acc || []) { a.removeFromParent(); if (a.userData && a.userData.shell) { a.geometry.dispose(); a.material.dispose(); } }
   R.acc = []; R.outfit = id;
   for (const p of OUTFITS[id].parts) { const { bone, obj } = makeParts(p), b = R.root.getObjectByName(bone); if (b) { b.add(obj); R.acc.push(obj); } }
+  const bm = OUTFITS[id].shells && bodyMeshesOf(R.root); if (bm) hideLooseCloth(R.root, true);
+  if (bm) for (const sn of OUTFITS[id].shells) for (const body of bm.list) { const sh = buildShell(body, SHELLS[sn], bm); if (sh) { sh.userData.shellOf = sn; body.parent.add(sh); R.acc.push(sh); } }
 }
 /* ---------- cast: which avatar plays actor A and actor B ---------- */
 const normCast = o => ({ A: AV[o && o.A] ? o.A : DEFAULT_CAST.A, B: AV[o && o.B] ? o.B : DEFAULT_CAST.B });
@@ -1605,7 +1681,7 @@ $('#obSkip').onclick = () => endIntro('nocode');
 function refreshAll(code = true) { P.assignment = normAssignment(P.assignment, TASK_KNOWN) || undefined; if (!P.assignment) delete P.assignment; updateTaskBadge(); P.squeeze = squeezeOf(); P.info = normInfo(P.info); $('#squeeze').value = P.squeeze; P.actors = normCast(P.actors); P.outfit = normOutfit(P.outfit); syncCast(); P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); P.set = SETS[P.set] ? P.set : 'stall'; $('#set').value = P.set; applySet(P.set); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
 new ResizeObserver(layout).observe($('#view'));
 buildLib(); refreshAll();
-if (location.hash === '#selftest' || location.hash === '#e2e') { if (location.hash === '#selftest') runSelfTest(); window.__kalki = { real: REAL, T, frameAt: sec => { playing = false; demo = false; time = sec; step(); step(); render(true); const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = 320; c.height = Math.round(320 * film.h / film.w); c.getContext('2d').drawImage(cv, film.x * r, film.y * r, film.w * r, film.h * r, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', .8); }, setStats: () => Object.fromEntries(Object.keys(SETG).map(k => [k, setStats(k)])), reportUi: async f => { ref = await computeRef(f); $('#mRef').classList.add('on'); renderRef(); const n = $$('#rfRes select[data-rfsize]').length; const sl = $('#rfRes select[data-rfsize]'); sl.value = 'CU'; sl.dispatchEvent(new Event('change', { bubbles: true })); return { selects: n, shots: ref.clip.shots.length, size0: ref.sizes[0], kept: $('#rfRes select[data-rfsize]').value, simSize: toShots(ref.clip, 'Ref', ref.sizes)[0].size }; }, reportPdf: async f => { ref = await computeRef(f); const b = buildAnalysisPdf(refPdfDoc()), t = Array.from(b, c => String.fromCharCode(c)).join(''); return { bytes: b.length, head: t.slice(0, 8), pages: (t.match(/\/Type \/Page /g) || []).length, images: (t.match(/\/Subtype \/Image/g) || []).length }; }, analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
+if (location.hash === '#selftest' || location.hash === '#e2e') { if (location.hash === '#selftest') runSelfTest(); window.__kalki = { real: REAL, T, frameAt: (sec, W = 320) => { playing = false; demo = false; time = sec; step(); step(); render(true); const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = W; c.height = Math.round(W * film.h / film.w); c.getContext('2d').drawImage(cv, film.x * r, film.y * r, film.w * r, film.h * r, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', .8); }, setStats: () => Object.fromEntries(Object.keys(SETG).map(k => [k, setStats(k)])), reportUi: async f => { ref = await computeRef(f); $('#mRef').classList.add('on'); renderRef(); const n = $$('#rfRes select[data-rfsize]').length; const sl = $('#rfRes select[data-rfsize]'); sl.value = 'CU'; sl.dispatchEvent(new Event('change', { bubbles: true })); return { selects: n, shots: ref.clip.shots.length, size0: ref.sizes[0], kept: $('#rfRes select[data-rfsize]').value, simSize: toShots(ref.clip, 'Ref', ref.sizes)[0].size }; }, reportPdf: async f => { ref = await computeRef(f); const b = buildAnalysisPdf(refPdfDoc()), t = Array.from(b, c => String.fromCharCode(c)).join(''); return { bytes: b.length, head: t.slice(0, 8), pages: (t.match(/\/Type \/Page /g) || []).length, images: (t.match(/\/Subtype \/Image/g) || []).length }; }, analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
 if (store.get('kalki.onboarded')) { demo = false; $('#ob').style.display = 'none'; setPlay(true); }
 
 /* ---------- self test: open the page with #selftest, results go to the title and #selftestOut (used by tests/smoke.mjs) ---------- */
@@ -1742,6 +1818,19 @@ async function runSelfTest() {
   t('both actors loaded', () => !!(REAL.A && REAL.B));
   t('every action clip is bound for both actors', () => ['A', 'B'].every(k => Object.keys(ACTION_LABEL).filter(n => n !== 'stand' && n !== 'walk').every(n => REAL[k].act[n] && REAL[k].act[n].dur > 1)));
   t('seated, sip, snack, phone and plate props exist and show only for their action', () => ['A', 'B'].every(k => REAL[k].chair && REAL[k].glass && REAL[k].snack && REAL[k].phone && REAL[k].plate) && (() => { const sh = newShot({ actionA: 'phone', duration: 6 }); poseActors(sh, .3, 1.5, 0); const a = REAL.A.phone.visible && !REAL.A.glass.visible && !REAL.A.snack.visible && !REAL.A.plate.visible; const sh2 = newShot({ actionA: 'eat', duration: 6 }); poseActors(sh2, .3, 1.5, 0); const b = REAL.A.snack.visible && !REAL.A.phone.visible; poseActors(null, 0, 0, 0); return a && b; })());
+  t('whole garments: every outfit builds skinned shells that follow the skeleton, and switching back removes them', () => {
+    const keep = { ...P.outfit };
+    for (const k of ['A', 'B']) {
+      const bm = bodyMeshesOf(REAL[k].root); if (!bm.list.length) return false; const skel = bm.list[0].skeleton, total = bm.list.reduce((a, o) => a + o.geometry.attributes.position.count, 0);
+      for (const id of Object.keys(OUTFITS)) {
+        P.outfit = { ...outfitOf(), [k]: id }; applyOutfit(k); const shells = REAL[k].acc.filter(a => a.userData && a.userData.shell);
+        if (!(OUTFITS[id].shells || []).every(sn => shells.some(x => x.userData.shellOf === sn))) { P.outfit = keep; return false; }
+        for (const sh of shells) { const c = sh.geometry.attributes.position.count; if (!sh.isSkinnedMesh || sh.skeleton !== skel || c < 30 || c >= total || !Array.from(sh.geometry.attributes.position.array.subarray(0, 300)).every(Number.isFinite)) { P.outfit = keep; return false; } }
+      }
+      P.outfit = { ...outfitOf(), [k]: 'plain' }; applyOutfit(k); if (REAL[k].acc.length) { P.outfit = keep; return false; }
+    }
+    P.outfit = keep; for (const k of ['A', 'B']) applyOutfit(k); return true;
+  });
   t('actions pose the skeleton differently', () => {
     const sh = newShot({ subject: 'A', actionA: 'stand' }); poseActors(sh, .5, 1, 0); const bone = AC.A.getObjectByName('Bip01_R_Hand'); AC.A.updateMatrixWorld(true);
     const p0 = bone.getWorldPosition(new T.Vector3()); sh.actionA = 'wave'; poseActors(sh, .5, 1, 0); AC.A.updateMatrixWorld(true);
