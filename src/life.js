@@ -110,3 +110,34 @@ export function speech(t, seed = 1) {
   }
   return { open: 0, wide: 0, talking: 0 };
 }
+
+/* ---------- facial expressions ----------
+   An expression is a set of small movements of the face bones, in millimetres in the head's own frame: up is towards the top of the head, out is away from
+   the middle of the face (negative = towards it), fwd is forward. Each entry says which group of bones moves; the app applies them to the left and right
+   sides symmetrically. Several expressions mix by weight. */
+export const MOODS = ['neutral', 'smile', 'serious', 'sad', 'surprised', 'angry'];
+export const EXPR = {
+  smile: { corner: { up: 4.8, out: 5.6 }, cheek: { up: 4.2, fwd: 1.2 }, lidB: { up: 1.8 }, lipU: { up: 1.3 }, browO: { up: .8 } },
+  serious: { browI: { up: -1.8, out: -1.2 }, browM: { up: -1.2 }, browO: { up: -.8 }, corner: { up: -1 } },
+  sad: { browI: { up: 3.2 }, browM: { up: 1.2 }, browO: { up: -1.6 }, corner: { up: -3.4, out: -.5 }, lidT: { up: -.8 } },
+  surprised: { browI: { up: 5 }, browM: { up: 5 }, browO: { up: 5.5 }, lidT: { up: 1.6 } },
+  angry: { browI: { up: -3.6, out: -1.8 }, browM: { up: -3 }, browO: { up: -1.5 }, lidT: { up: -.8 }, corner: { up: -1.6 }, lipU: { up: -.8 } },
+  concern: { browI: { up: 2.4 }, browM: { up: .5 }, browO: { up: -.4 } }
+};
+/* the expression an actor wears when the director has not chosen one: what a person doing this would naturally show */
+export const AUTO_MOOD = {
+  stand: { smile: .12 }, walk: {}, sit: { smile: .08 }, think: { concern: .8, serious: .2 }, talk: { smile: .2 }, listen: { concern: .25, smile: .1 }, nod: { smile: .3 },
+  sip: {}, wave: { smile: .85 }, look: { concern: .2 }, shrug: { sad: .25, surprised: .2 }, invite: { smile: .7 }, eat: { smile: .1 }, phone: { concern: .1 }, offer: { smile: .65 }
+};
+/* weights of each expression at time t: { smile, serious, sad, surprised, angry, concern } (0..1) plus raise (0..1), a brief lifting of the brows for emphasis
+   while talking and the occasional flick of attention while listening. mood is 'auto' or one of MOODS. */
+export function mixExpression(mood, action, t, seed = 1, speechOpen = 0) {
+  const w = { smile: 0, serious: 0, sad: 0, surprised: 0, angry: 0, concern: 0 };
+  if (mood && mood !== 'auto' && MOODS.includes(mood)) { if (mood !== 'neutral') w[mood] = 1; }
+  else { const a = AUTO_MOOD[action] || {}; for (const k of Object.keys(a)) w[k] = a[k]; }
+  /* slow drift so a held expression is never frozen: the strength wanders by up to about 20% */
+  const drift = 1 + noise1(t * .35, seed + 40) * .2; for (const k of Object.keys(w)) w[k] = Math.max(0, Math.min(1, w[k] * drift));
+  const talkingNow = action === 'talk' || action === 'phone', flick = Math.max(0, noise1(t * .8, seed + 50) - .55) * 2.2;
+  const raise = Math.max(0, Math.min(1, (talkingNow ? speechOpen * .55 + flick * .3 : flick * .6)));
+  return { w, raise };
+}

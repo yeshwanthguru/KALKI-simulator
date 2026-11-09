@@ -1,6 +1,6 @@
 // Tests for src/life.js: the small signs of life (blinks, breathing, weight shifts, eye movements) must be repeatable, bounded and natural in rate.
 import assert from 'node:assert/strict';
-import { rng, blinkLevel, breath, sway, gazeOffset, boneAxes, GAZE_WEIGHTS, noise1, handheld, lensLook, speech } from '../src/life.js';
+import { rng, blinkLevel, breath, sway, gazeOffset, boneAxes, GAZE_WEIGHTS, noise1, handheld, lensLook, speech, MOODS, EXPR, AUTO_MOOD, mixExpression } from '../src/life.js';
 
 /* the generator is repeatable and stays in 0..1 */
 const a = rng(5), b = rng(5); for (let i = 0; i < 50; i++) { const x = a(); assert.equal(x, b()); assert.ok(x >= 0 && x < 1); }
@@ -54,4 +54,12 @@ assert.ok(talk / total > .45 && talk / total < .85, 'talks most of the time with
 assert.ok(sylls / (talk / 100) > 2.5 && sylls / (talk / 100) < 7.5, 'about 3 to 7 syllables a second while talking: ' + (sylls / (talk / 100)).toFixed(1));
 assert.ok(phraseStarts > 20 && phraseStarts < 70, 'phrases: ' + phraseStarts);
 assert.notDeepEqual(Array.from({ length: 300 }, (_, i) => speech(i * .1, 1).open), Array.from({ length: 300 }, (_, i) => speech(i * .1, 2).open)); assert.deepEqual(speech(-1, 1), { open: 0, wide: 0, talking: 0 });
+/* expressions: every action has an automatic expression, explicit moods give the full expression, everything stays in 0..1 and repeatable */
+const ACTIONS = ['stand', 'walk', 'sit', 'think', 'talk', 'listen', 'nod', 'sip', 'wave', 'look', 'shrug', 'invite', 'eat', 'phone', 'offer'];
+assert.ok(ACTIONS.every(a => a in AUTO_MOOD), 'every action has an automatic expression'); assert.ok(MOODS.every(m => m === 'neutral' || EXPR[m]));
+for (const a of ACTIONS) for (let tt = 0; tt < 20; tt += .25) { const m = mixExpression('auto', a, tt, 3, .5), m2 = mixExpression('auto', a, tt, 3, .5); assert.deepEqual(m, m2); assert.ok(Object.values(m.w).every(v => v >= 0 && v <= 1) && m.raise >= 0 && m.raise <= 1); }
+for (const m of MOODS) { const x = mixExpression(m, 'listen', 5, 2, 0); assert.ok(m === 'neutral' ? Object.values(x.w).every(v => v === 0) : x.w[m] > .75 && Object.entries(x.w).filter(([k]) => k !== m).every(([, v]) => v === 0), 'a chosen mood is the whole expression: ' + m); }
+assert.ok(mixExpression('auto', 'wave', 5, 1).w.smile > .5 && mixExpression('auto', 'think', 5, 1).w.concern > .4 && mixExpression('auto', 'walk', 5, 1).w.smile === 0);
+assert.equal(mixExpression('nonsense', 'wave', 5, 1).w.smile > .5, true, 'an unknown mood falls back to automatic');
+let raiseTalk = 0, raiseQuiet = 0; for (let tt = 0; tt < 60; tt += .1) { raiseTalk += mixExpression('auto', 'talk', tt, 1, speech(tt, 1).open).raise; raiseQuiet += mixExpression('auto', 'stand', tt, 1, 0).raise; } assert.ok(raiseTalk > raiseQuiet * 2, 'brows lift with speech');
 console.log('life ok');

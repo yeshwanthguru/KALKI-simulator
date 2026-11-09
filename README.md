@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.11.2-ff6b4a?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.12.0-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
   <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
@@ -31,12 +31,12 @@
 
 **In the browser** (nothing to install)
 
-1. Download [`Kalki-versions/Kalki-v0.11.2.html`](Kalki-versions/Kalki-v0.11.2.html), or the zipped package [`Kalki-v0.11.2.zip`](Kalki-versions/Kalki-v0.11.2.zip) with notices.
+1. Download [`Kalki-versions/Kalki-v0.12.0.html`](Kalki-versions/Kalki-v0.12.0.html), or the zipped package [`Kalki-v0.12.0.zip`](Kalki-versions/Kalki-v0.12.0.zip) with notices.
 2. Double-click it. It opens in Chrome or Edge and runs fully offline.
 
 **On Windows** (native app, about 3 MB)
 
-1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.11.0_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.11.0_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
+1. Download [`Kalki-versions/desktop/Kalki-Simulator_0.12.0_x64-setup.exe`](Kalki-versions/desktop/Kalki-Simulator_0.12.0_x64-setup.exe) and run it. It installs for the current user, with no administrator rights.
 2. The installer is **not code-signed yet**, so Windows SmartScreen may warn on first run: choose **More info, Run anyway**.
 3. Exports open a native **Save as** dialog. It uses the WebView2 runtime that ships with Windows 11 (Windows 10 may prompt to install it).
 
@@ -159,9 +159,10 @@ v0.11.0 is a first realism pass. What changed, and what did not:
 - **Actors with signs of life.** On top of the recorded animation, each actor now breathes, shifts weight while standing, blinks every few seconds (sometimes twice), and looks at the other actor: the eyes follow fully, the head and neck partly, with the small quick eye movements people make. Eyelids use the avatar's own eyelid bones.
 - **Real lens behaviour.** Wide lenses bend straight lines at the edges (barrel distortion), long lenses very slightly the other way; a lens opened wide vignettes and fringes more than one stopped down. Handheld shake is now a three-layer motion (slow drift, body sway, fine tremor) instead of a mix of sine waves. Bloom only comes from real highlights, so bright walls no longer fog the picture.
 - **Less toy-like sets.** Skies behind the outdoor sets (blue at noon, orange at dusk, dark at night), floors that continue instead of ending in black, plaster with soft mottling and grime, lumpy foliage, a soft contact shadow under each actor, and a warm sheen on skin and cloth.
+- **Facial expressions (v0.12.0).** Each shot has an Expression menu for each actor: Automatic, Neutral, Smiling, Serious, Sad, Surprised or Angry. Automatic lets the action decide (a wave or an invitation smiles, thinking frowns slightly, a shrug raises the brows), the strength drifts a little so a held face is never frozen, expressions fade smoothly from one to the next, and the brows lift for emphasis while talking. The expressions move the avatars' own brow, cheek, lid and lip bones; they are subtle, not exaggerated, and the surprised face keeps the mouth closed because opening it slightly exposed the mouth interior as a dark slab. The choice is saved in the project (file format version 11).
 - **Talking mouths (v0.11.2).** While an actor is talking (or on the phone) the jaw opens and closes with the rhythm of speech, 3 to 7 syllables a second in phrases of 1 to 4 seconds with pauses, and the lips spread and round with the vowel; a listening actor keeps the mouth still. It is the natural rhythm of speech, not lip-sync to words.
 - **Walking without sliding feet (v0.11.1).** The walk cycle is now played by distance travelled instead of by time, using each avatar's measured natural walking speed, so the planted foot stays on the floor: measured sliding of the planted foot fell from about 0.74 to 0.07 m/s at a slow walk and from 0.46 to 0.23 m/s at a fast one.
-- **Not done, and honest limits.** The sets are still built from simple shapes with flat colours, with no photographic textures, so they remain stylised. The recorded animations are limited to the ten original clips plus three that reuse them with props. Turning in place is not corrected, there are no facial expressions beyond blinking, eye direction and talking mouths, and no cloth or hair movement. Detail bump-mapping was tried and removed because it made frames shimmer and confused the camera-motion analysis.
+- **Not done, and honest limits.** The sets are still built from simple shapes with flat colours, with no photographic textures, so they remain stylised. The recorded animations are limited to the ten original clips plus three that reuse them with props. Turning in place is not corrected, there are no wrinkles, tears or fine skin movement, only the simple expressions above, and no cloth or hair movement. Detail bump-mapping was tried and removed because it made frames shimmer and confused the camera-motion analysis.
 
 ### Teaching and writing tools
 
@@ -249,7 +250,8 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | v0.10.1 | Temple courtyard and office sets |
 | v0.11.0 | Realism pass, bus interior and market sets |
 | v0.11.1 | Walking without sliding feet |
-| **v0.11.2** | **Latest.** Talking mouths |
+| v0.11.2 | Talking mouths |
+| **v0.12.0** | **Latest.** Facial expressions per actor and shot |
 
 Every build is kept in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 

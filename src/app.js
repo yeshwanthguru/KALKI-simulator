@@ -3,7 +3,7 @@ import { LANGS, makeTranslator } from './i18n.js';
 import { LESSONS, TEMPLATES } from './lessons.js';
 import { RIGS, rigFor, rigIds, normRig } from './rigs.js';
 import { buildPrompts } from './prompts.js';
-import { blinkLevel, breath, sway, gazeOffset, boneAxes, GAZE_WEIGHTS, handheld, lensLook, speech } from './life.js';
+import { blinkLevel, breath, sway, gazeOffset, boneAxes, GAZE_WEIGHTS, handheld, lensLook, speech, EXPR, MOODS, mixExpression } from './life.js';
 import { CHECK_TYPES, normAssignment, evaluate, summary as taskSummary, reportText } from './assignment.js';
 import { compareScenes } from './compare.js';
 import { scriptToShots } from './script.js';
@@ -25,7 +25,7 @@ const SENSORS = {
 /* anamorphic squeeze: the lens squeezes the picture sideways so the full sensor height is used. The vertical view is then that of the full 4:3 gate. */
 const SQUEEZES = [1, 1.33, 1.5, 2];
 const SQUEEZE_LABEL = { 1: 'Spherical lens', 1.33: '1.33x anamorphic', 1.5: '1.5x anamorphic', 2: '2x anamorphic' };
-const DEFAULT_SENSOR = 'S35', SCHEMA = 10, NOTE_MAX = 240;
+const DEFAULT_SENSOR = 'S35', SCHEMA = 11, NOTE_MAX = 240;
 const sensorOf = () => SENSORS[P.sensor] || SENSORS[DEFAULT_SENSOR];
 const squeezeOf = () => (SQUEEZES.includes(+P.squeeze) ? +P.squeeze : 1);
 const sensorH = () => (squeezeOf() > 1 ? Math.max(sensorOf().h, sensorOf().w * .75) : sensorOf().h);
@@ -44,6 +44,8 @@ const ACTION_LABEL = { stand: 'Standing', walk: 'Walking across', sit: 'Sitting'
    sipping clip, and offering holds the outstretched arm of the inviting clip. Their time inside the source clip is given by ACTION_T. */
 const ACTION_SRC = { eat: 'sip', phone: 'sip', offer: 'invite' };
 const ACTION_T = { phone: rel => 1.4 + .35 * Math.sin(rel * .9), offer: rel => 2.15 + .45 * Math.sin(rel * .8) };
+const MOOD_LABEL = { auto: 'Automatic', neutral: 'Neutral', smile: 'Smiling', serious: 'Serious', sad: 'Sad', surprised: 'Surprised', angry: 'Angry' };
+const MOOD_OPTIONS = () => Object.entries(MOOD_LABEL);
 const ACTION_SHORT = { stand: 'Stand', walk: 'Walk', sit: 'Sit', think: 'Think', talk: 'Talk', listen: 'Listen', nod: 'Nod', sip: 'Sip chai', wave: 'Wave', look: 'Look', shrug: 'Shrug', invite: 'Invite', eat: 'Eat', phone: 'Phone', offer: 'Offer' };
 const SEATED = { sit: 1, think: 1 };
 const KA0 = window.__KA || {}; // captured here: loadReal() clears window.__KA once the assets are parsed
@@ -112,7 +114,7 @@ function normShot(o, errs, i) {
   }
   for (const k of ['A', 'B']) s['route' + k] = Array.isArray(o['route' + k]) ? o['route' + k].map(pl).filter(Boolean).slice(0, 6) : [];
   s.placeA = pl(o.placeA); s.placeB = pl(o.placeB); s.faceA = fc(o.faceA); s.faceB = fc(o.faceB);
-  s.rig = normRig(o.rig);
+  s.rig = normRig(o.rig); for (const k of ['A', 'B']) s['mood' + k] = o['mood' + k] === 'auto' || MOODS.includes(o['mood' + k]) ? o['mood' + k] : 'auto';
   s.notes = String(o.notes || '').replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
   return s;
 }
@@ -832,7 +834,10 @@ function measureSlide(dur, route) {
     }
 /* ---------- signs of life: breathing, weight shifts, eye and head movements, blinking (see src/life.js) ---------- */
 const LIFE = { on: true, blink: null }; // blink: a number forces the lids (used by tests and screenshots)
-const LIFE_BONES = { spine: 'Bip01_Spine', spine2: 'Bip01_Spine2', pelvis: 'Bip01_Pelvis', neck: 'Bip01_Neck', head: 'Bip01_Head', eyeL: 'Bip01_LEye', eyeR: 'Bip01_REye', lidTL: 'Bip01_LEyeBlinkTop', lidTR: 'Bip01_REyeBlinkTop', lidBL: 'Bip01_LEyeBlinkBottom', lidBR: 'Bip01_REyeBlinkBottom', jaw: 'Bip01_MJaw', lipB: 'Bip01_MBottomLip', lipU: 'Bip01_MUpperLip', cornerL: 'Bip01_LMouthCorner', cornerR: 'Bip01_RMouthCorner' };
+const LIFE_BONES = { spine: 'Bip01_Spine', spine2: 'Bip01_Spine2', pelvis: 'Bip01_Pelvis', neck: 'Bip01_Neck', head: 'Bip01_Head', eyeL: 'Bip01_LEye', eyeR: 'Bip01_REye', lidTL: 'Bip01_LEyeBlinkTop', lidTR: 'Bip01_REyeBlinkTop', lidBL: 'Bip01_LEyeBlinkBottom', lidBR: 'Bip01_REyeBlinkBottom', jaw: 'Bip01_MJaw', lipB: 'Bip01_MBottomLip', lipU: 'Bip01_MUpperLip', cornerL: 'Bip01_LMouthCorner', cornerR: 'Bip01_RMouthCorner',
+  browIL: 'Bip01_LInnerEyebrow', browIR: 'Bip01_RInnerEyebrow', browM: 'Bip01_MMiddleEyebrow', browOL: 'Bip01_LOuterEyebrow', browOR: 'Bip01_ROuterEyebrow', cheekL: 'Bip01_LCheek', cheekR: 'Bip01_RCheek', lipUL: 'Bip01_LUpperlip', lipUR: 'Bip01_RUpperlip' };
+const FACE_GROUPS = { browI: ['browIL', 'browIR'], browM: ['browM'], browO: ['browOL', 'browOR'], corner: ['cornerL', 'cornerR'], cheek: ['cheekL', 'cheekR'], lidT: ['lidTL', 'lidTR'], lidB: ['lidBL', 'lidBR'], lipU: ['lipU', 'lipUL', 'lipUR'] };
+const FACE_BONES = Object.values(FACE_GROUPS).flat();
 function lifeSetup(Q, k) {
   Q.root.updateMatrixWorld(true); const bones = {}, ax = {}, rest = {}, rq = Q.root.getWorldQuaternion(new T.Quaternion()).invert();
   for (const [nm, bn] of Object.entries(LIFE_BONES)) { const b = Q.root.getObjectByName(bn); if (!b) continue; bones[nm] = b; rest[nm] = b.position.clone();
@@ -840,10 +845,11 @@ function lifeSetup(Q, k) {
   /* which way the jaw opens: try a small turn about its side axis both ways and keep the one that lowers the bottom lip */
   let jawSign = 1;
   if (bones.jaw && bones.lipB && ax.jaw) { const probe = sg => { const q0 = bones.jaw.quaternion.clone(); bones.jaw.quaternion.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3().setComponent(ax.jaw.side.axis, ax.jaw.side.sign * sg), .12)); Q.root.updateMatrixWorld(true); const y = bones.lipB.getWorldPosition(new T.Vector3()).y; bones.jaw.quaternion.copy(q0); Q.root.updateMatrixWorld(true); return y; }; jawSign = probe(1) <= probe(-1) ? 1 : -1; }
+  const out = {}; if (ax.head) for (const nm of FACE_BONES) if (rest[nm]) { const c = rest[nm].getComponent(ax.head.side.axis) * ax.head.side.sign; out[nm] = Math.abs(c) < 1e-4 ? 0 : Math.sign(c); }
   /* a soft contact shadow under the feet: without it an actor in ambient light seems to hover above the floor */
   if (!AC[k].userData.blob) { const tex = canvasTex(64, 64, (g, w, h) => { const r = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); r.addColorStop(0, 'rgba(0,0,0,.75)'); r.addColorStop(.55, 'rgba(0,0,0,.35)'); r.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = r; g.fillRect(0, 0, w, h); });
     const b = new T.Mesh(new T.PlaneGeometry(1.05, .8), new T.MeshBasicMaterial({ map: tex, transparent: true, opacity: .55, depthWrite: false, fog: false })); b.rotation.x = -Math.PI / 2; b.position.y = .012; b.renderOrder = 1; AC[k].add(b); AC[k].userData.blob = b; }
-  return { bones, ax, rest, jawSign, seed: k === 'A' ? 3 : 5, off: k === 'A' ? 0 : 1.9, last: 0, tgt: null, sc: Q.sc || 1 };
+  return { bones, ax, rest, out, jawSign, seed: k === 'A' ? 3 : 5, off: k === 'A' ? 0 : 1.9, last: 0, tgt: null, sc: Q.sc || 1 };
 }
 const _lq = new T.Quaternion(), _lv = new T.Vector3(), _lw = new T.Vector3(), _lp = new T.Quaternion(), _lb = new T.Quaternion();
 const axisVec = (a, out = new T.Vector3()) => out.set(0, 0, 0).setComponent(a.axis, a.sign);
@@ -860,7 +866,7 @@ function aimBone(b, a, target, limit, weight) {
 }
 const HEAD_H = { f: 1.56, m: 1.66 };
 function lifeLayer(k, Q, an, sp, clock, shotActive) {
-  const L = Q.life; if (!L) return; if (!LIFE.on) { for (const nm of ['lidTL', 'lidTR', 'lidBL', 'lidBR', 'lipU', 'cornerL', 'cornerR']) if (L.bones[nm]) L.bones[nm].position.copy(L.rest[nm]); return; } const B = L.bones, A = L.ax, dt = clamp(clock - L.last, 0, .1); L.last = clock;
+  const L = Q.life; if (!L) return; if (!LIFE.on) { for (const nm of FACE_BONES) if (L.bones[nm]) L.bones[nm].position.copy(L.rest[nm]); return; } const B = L.bones, A = L.ax, dt = clamp(clock - L.last, 0, .1); L.last = clock;
   const seated = !!SEATED[an], walking = an === 'walk', t = clock + L.off, o = k === 'A' ? 'B' : 'A';
   /* breathing and weight shift */
   rotLocal(B.spine2, A.spine2 && { axis: A.spine2.side.axis, sign: A.spine2.side.sign }, breath(t, an === 'talk' ? .3 : .24, L.off) * .011);
@@ -875,17 +881,23 @@ function lifeLayer(k, Q, an, sp, clock, shotActive) {
   const gy = AC[k].rotation.y, rx = Math.cos(gy), rz = -Math.sin(gy); tgt.x += rx * Math.tan(g.x * Math.PI / 180) * 1.6; tgt.z += rz * Math.tan(g.x * Math.PI / 180) * 1.6; tgt.y += Math.tan(g.y * Math.PI / 180) * 1.6;
   aimBone(B.neck, A.neck && A.neck.fwd, tgt, .5, w.head * .35); aimBone(B.head, A.head && A.head.fwd, tgt, .62, w.head * .75);
   const eyeLim = .56; aimBone(B.eyeL, A.eyeL && A.eyeL.fwd, tgt, eyeLim, w.eyes); aimBone(B.eyeR, A.eyeR && A.eyeR.fwd, tgt, eyeLim, w.eyes);
-  /* speech: while talking the jaw opens and closes with each syllable, the lips spread and round with the vowel, and the bottom lip follows the jaw */
-  const talking = an === 'talk' ? 1 : an === 'phone' ? .85 : an === 'offer' ? .5 : 0;
-  if (B.jaw && A.jaw) {
-    const sp2 = talking ? speech(t, L.seed) : { open: 0, wide: 0 }, open = sp2.open * talking, hv = A.head ? A.head : null;
-    rotLocal(B.jaw, { axis: A.jaw.side.axis, sign: A.jaw.side.sign * L.jawSign }, open * .155);
-    if (hv) { const sd = (b, nm, f) => { if (!b) return; const v = axisVec(A.head.side, new T.Vector3()); b.position.copy(L.rest[nm]).addScaledVector(v, f / (L.sc || 1)); }; sd(B.cornerL, 'cornerL', sp2.wide * talking * .0032 + open * .001); sd(B.cornerR, 'cornerR', -(sp2.wide * talking * .0032 + open * .001)); }
-    if (B.lipU && A.head) { const v = axisVec(A.head.up, new T.Vector3()); B.lipU.position.copy(L.rest.lipU).addScaledVector(v, open * .0028 / (L.sc || 1)); }
+  /* the face: speech, expression and blinking all move face bones in the head's own frame, so they are added up per bone and applied together */
+  const side = A.head && axisVec(A.head.side, new T.Vector3()), up = A.head && axisVec(A.head.up, new T.Vector3()), fwd = A.head && axisVec(A.head.fwd, new T.Vector3()), mm = .001 / (L.sc || 1);
+  if (side && up && fwd) {
+    const off = {}, add = (grp, dUp = 0, dOut = 0, dFwd = 0) => { for (const nm of FACE_GROUPS[grp] || []) { if (!B[nm]) continue; const o = off[nm] || (off[nm] = new T.Vector3()); o.addScaledVector(up, dUp * mm).addScaledVector(side, dOut * (L.out[nm] || 0) * mm).addScaledVector(fwd, dFwd * mm); } };
+    /* speech: while talking the jaw opens and closes with each syllable, the lips spread and round with the vowel, and the bottom lip follows the jaw */
+    const talking = an === 'talk' ? 1 : an === 'phone' ? .85 : an === 'offer' ? .5 : 0, sp2 = talking ? speech(t, L.seed) : { open: 0, wide: 0 }, open = sp2.open * talking;
+    /* expression: what the director chose for this actor, or what a person doing this would show; fades smoothly from one to the next */
+    const mood = (shotActive && shotActive['mood' + k]) || 'auto', ex = mixExpression(mood, an, t, L.seed, open); if (!L.expr) L.expr = { ...ex.w, raise: 0 };
+    const kf = 1 - Math.exp(-dt * 4.5); for (const key of Object.keys(ex.w)) L.expr[key] += (ex.w[key] - L.expr[key]) * kf; L.expr.raise += (ex.raise - L.expr.raise) * (1 - Math.exp(-dt * 12));
+    let jawExtra = 0; for (const key of Object.keys(ex.w)) { const wgt = L.expr[key], def = EXPR[key]; if (!def || wgt < .002) continue; for (const [grp, v] of Object.entries(def)) { if (grp === 'jaw') jawExtra += v * wgt; else add(grp, (v.up || 0) * wgt, (v.out || 0) * wgt, (v.fwd || 0) * wgt); } }
+    add('lipU', jawExtra * 18); add('corner', jawExtra * 6, jawExtra * 3);
+    for (const g of ['browI', 'browM', 'browO']) add(g, L.expr.raise * 1.8);
+    add('corner', open * 1, sp2.wide * talking * 3.2 + open * 1); add('lipU', open * 2.8);
+    const bl = LIFE.blink !== null ? LIFE.blink : blinkLevel(t, L.seed); add('lidT', -1.2 * bl * 10.5); add('lidB', .4 * bl * 10.5);
+    if (B.jaw && A.jaw) rotLocal(B.jaw, { axis: A.jaw.side.axis, sign: A.jaw.side.sign * L.jawSign }, open * .155 + jawExtra);
+    for (const nm of FACE_BONES) if (B[nm]) { B[nm].position.copy(L.rest[nm]); if (off[nm]) B[nm].position.add(off[nm]); }
   }
-  /* blinking: the top lids move down and the bottom lids a little up, in the head's own frame */
-  const bl = LIFE.blink !== null ? LIFE.blink : blinkLevel(t, L.seed), up = A.head ? A.head.up : null;
-  if (up) for (const [nm, f] of [['lidTL', -1.2], ['lidTR', -1.2], ['lidBL', .4], ['lidBR', .4]]) { const b = B[nm]; if (!b) continue; const v = axisVec(up, new T.Vector3()); b.position.copy(L.rest[nm]).addScaledVector(v, f * bl * .0105 / (L.sc || 1)); }
 }
 /* makes the scene's actors match P.actors (called after every change of the project) */
 function syncCast() {
@@ -1229,6 +1241,8 @@ const FIELDS = [
   ['rig', 'sel', 'Camera rig', () => [['auto', 'Automatic · ' + RIGS[rigFor({ move: (P.shots[sel] || {}).move })].name], ...rigIds().map(id => [id, RIGS[id].name])]],
   ['actionA', 'sel', '@A: action', () => Object.entries(ACTION_LABEL)],
   ['actionB', 'sel', '@B: action', () => Object.entries(ACTION_LABEL)],
+  ['moodA', 'sel', '@A: expression', () => MOOD_OPTIONS()],
+  ['moodB', 'sel', '@B: expression', () => MOOD_OPTIONS()],
   ['faceA', 'rng', '@A faces', -180, 180, 5, v => v + '°'],
   ['faceB', 'rng', '@B faces', -180, 180, 5, v => v + '°'],
   ['notes', 'area', 'Shot notes']
@@ -1249,7 +1263,7 @@ function buildInsp() {
     return `<div class="f"><label>${label}<em data-o="${k}">${c ? fmt(+v) : v}</em></label><input type="range" data-k="${k}" min="${a}" max="${b}" step="${c}" value="${v}"></div>`;
   };
   const F = Object.fromEntries(FIELDS.map(x => [x[0], f(x)]));
-  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.rig + F.actionA + F.actionB + laneHTML(sh) + `<div class="f"><label>Placement<em>click the set view</em></label><div class="pl"><button data-pl="A" class="${placing === 'A' ? 'on' : ''}">Place ${ACTOR_NAME.A}</button><button data-pl="B" class="${placing === 'B' ? 'on' : ''}">Place ${ACTOR_NAME.B}</button><button data-pl="R">Reset</button></div><div class="pl" style="margin-top:6px"><button data-pl="rA" class="${placing === 'rA' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.A}</button><button data-pl="rB" class="${placing === 'rB' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.B}</button><button data-pl="RC" title="Remove both walk paths">Clear paths</button></div></div>` + F.faceA + F.faceB + F.notes +
+  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.rig + F.actionA + F.actionB + F.moodA + F.moodB + laneHTML(sh) + `<div class="f"><label>Placement<em>click the set view</em></label><div class="pl"><button data-pl="A" class="${placing === 'A' ? 'on' : ''}">Place ${ACTOR_NAME.A}</button><button data-pl="B" class="${placing === 'B' ? 'on' : ''}">Place ${ACTOR_NAME.B}</button><button data-pl="R">Reset</button></div><div class="pl" style="margin-top:6px"><button data-pl="rA" class="${placing === 'rA' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.A}</button><button data-pl="rB" class="${placing === 'rB' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.B}</button><button data-pl="RC" title="Remove both walk paths">Clear paths</button></div></div>` + F.faceA + F.faceB + F.notes +
     `<div class="learn" style="--c:${catColor(mv.cat)}"><h4>Rig: ${RIGS[rigFor(sh)].name}</h4><p>${RIGS[rigFor(sh)].how}</p><p><i>On a budget:</i> ${RIGS[rigFor(sh)].budget}</p></div><div class="learn" style="--c:${catColor(mv.cat)}"><h4>Why “${mv.name}”</h4><p>${mv.why}</p><p><i>Try:</i> ${mv.tip}</p><p><i>${sh.lens} mm on ${sensorOf().label}${crop() > 1.01 ? ' (≈' + eqMm(sh.lens) + ' mm full-frame equivalent)' : ''}:</i> ${lensNote(sh.lens)}</p>${squeezeOf() > 1 ? `<p><i>${SQUEEZE_LABEL[squeezeOf()]}:</i> the picture is squeezed sideways onto the full sensor height, so the vertical view is wider than a ${sh.lens} mm spherical lens on this sensor, and the horizontal view matches a spherical lens of about ${Math.round(sh.lens / squeezeOf())} mm. Oval bokeh and flares are not simulated.</p>` : ''}<p><i>f/${sh.fstop}:</i> ${sh.fstop <= 2 ? 'Shallow focus melts the background and isolates the subject: the classic cinematic look.' : sh.fstop >= 8 ? 'Deep focus keeps everything sharp, so the audience can explore the whole frame.' : 'Moderate depth: subject sharp, background softly separated.'}</p></div>`;
 }
 /* click-to-place: click or drag on the set view to put an actor on the floor of the current shot */
@@ -1405,7 +1419,7 @@ ta.addEventListener('keydown', e => {
 });
 $('#cDoc').onclick = () => {
   const row = (k, v) => `<div><b style="color:var(--ac)">${k}</b> &nbsp;${v}</div>`;
-  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('assignment', '{ title, brief, checks: [{ type, value }] } a task with checks that Kalki verifies (scene level, optional)') + row('squeeze', '1, 1.33, 1.5, 2 (anamorphic squeeze, scene level; above 1 the full sensor height is used for the vertical view)') + row('info', '{ production, director, scene, day, accent, lang, logo } details printed on the PDFs (scene level)') + row('rig', 'auto, ' + rigIds().join(', ') + ' (equipment drawn in the set view; auto picks the usual rig for the move)') + row('actionA', Object.keys(ACTION_LABEL).join(', ') + ' (what Meera does)') + row('actionB', 'same list (what Arjun does)') + row('actors', '{ "A": "f11", "B": "m17" } who plays each actor: ' + Object.entries(AV).map(([id, a]) => id + ' = ' + a.first).join(', ')) + row('cuesA / cuesB', '[{ "t": 2, "a": "talk" }] action changes during the shot: t = seconds from the start of the shot (0.5 steps), a = any action except walk; walking shots cannot have changes') + row('placeA / placeB', '{ "x": -0.85, "z": 0.2 } position on the floor in metres (x right, z towards the audience); omit for the default spot') + row('faceA / faceB', '-180 to 180 degrees the actor turns (0 = towards the audience); omit to face the other actor') + row('notes', 'free text, up to ' + NOTE_MAX + ' characters (shown in the PDFs and CSV)') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
+  $('#docBody').innerHTML = row('move', MOVES.map(m => m.id).join(', ')) + row('duration', 'seconds, 1–20') + row('lens', LENSES.join(', ') + ' (mm)') + row('fstop', FSTOPS.join(', ') + ' (aperture: low = blurry background)') + row('look', Object.keys(LOOKS).join(', ') + ' (scene level)') + row('size', Object.keys(SIZES).join(', ')) + row('subject', 'A, B, both') + row('height', Object.keys(HEIGHTS).join(', ')) + row('angle', '-180 to 180 (degrees around the subject, 0 = front)') + row('amount', '0 to 1 (how strong the move is)') + row('dir', '1 or -1') + row('easing', Object.keys(EASES).join(', ')) + row('assignment', '{ title, brief, checks: [{ type, value }] } a task with checks that Kalki verifies (scene level, optional)') + row('moodA / moodB', 'expression of each actor: auto (what the action suggests), ' + MOODS.join(', ')) + row('squeeze', '1, 1.33, 1.5, 2 (anamorphic squeeze, scene level; above 1 the full sensor height is used for the vertical view)') + row('info', '{ production, director, scene, day, accent, lang, logo } details printed on the PDFs (scene level)') + row('rig', 'auto, ' + rigIds().join(', ') + ' (equipment drawn in the set view; auto picks the usual rig for the move)') + row('actionA', Object.keys(ACTION_LABEL).join(', ') + ' (what Meera does)') + row('actionB', 'same list (what Arjun does)') + row('actors', '{ "A": "f11", "B": "m17" } who plays each actor: ' + Object.entries(AV).map(([id, a]) => id + ' = ' + a.first).join(', ')) + row('cuesA / cuesB', '[{ "t": 2, "a": "talk" }] action changes during the shot: t = seconds from the start of the shot (0.5 steps), a = any action except walk; walking shots cannot have changes') + row('placeA / placeB', '{ "x": -0.85, "z": 0.2 } position on the floor in metres (x right, z towards the audience); omit for the default spot') + row('faceA / faceB', '-180 to 180 degrees the actor turns (0 = towards the audience); omit to face the other actor') + row('notes', 'free text, up to ' + NOTE_MAX + ' characters (shown in the PDFs and CSV)') + row('aspect', '"2.39", "1.778", "0.5625", "1"') + row('sensor', Object.keys(SENSORS).join(', ') + ' (scene level; changes the field of view of every lens)') + row('schemaVersion', SCHEMA + ' (file format version; older files still open)') +
     '<pre style="margin-top:12px;background:#0c0c11;padding:10px;border-radius:8px;color:#d8e3ff;white-space:pre-wrap">{ "move": "orbit", "duration": 6, "lens": 24,\n  "size": "WS", "subject": "both", "amount": 0.5 }</pre>';
   $('#mDoc').classList.add('on');
 };
@@ -2047,8 +2061,19 @@ async function runSelfTest() {
     const spread = sh => { let mx = 0, lip = 0; for (let i = 0; i < 160; i++) { const tt = 20 + i * .05; LIFE.on = false; poseActors(sh, i / 160, i * .05, tt); const q0 = jaw.quaternion.clone(), p0 = lipU.position.clone(); LIFE.on = true; poseActors(sh, i / 160, i * .05, tt); mx = Math.max(mx, jaw.quaternion.angleTo(q0)); lip = Math.max(lip, lipU.position.distanceTo(p0)); } return { mx, lip }; };
     const talk = spread(newShot({ actionA: 'talk', actionB: 'listen', duration: 8 })), quiet = spread(newShot({ actionA: 'listen', actionB: 'talk', duration: 8 }));
     LIFE.on = false; poseActors(newShot({ actionA: 'talk', duration: 8 }), .3, 2, 25); const off = lipU.position.distanceTo(L.rest.lipU); LIFE.on = lifeWas; poseActors(null, 0, 0, 0);
-    if (!(talk.mx > .05 && talk.mx < .2 && talk.lip > .0005 && quiet.mx < .03 && quiet.mx < talk.mx * .25 && quiet.lip < 1e-5 && off < 1e-6)) return false;
+    if (!(talk.mx > .05 && talk.mx < .2 && talk.lip > .0005 && quiet.mx < .03 && quiet.mx < talk.mx * .25 && quiet.lip < talk.lip * .6 && off < 1e-6)) return false;
     return true;
+  });
+  t('expressions: a chosen mood moves the brows and mouth corners the right way, auto follows the action, and it is saved', () => {
+    const lifeWas = LIFE.on, L = REAL.A.life, B = L.bones; if (!B.browIL || !B.cornerL || !B.cheekL) return false; LIFE.on = true; LIFE.blink = 0;
+    const settle = sh => { for (let i = 0; i < 80; i++) poseActors(sh, .5, 2 + i * .05, 30 + i * .05); return { brow: B.browIL.position.clone(), corner: B.cornerL.position.clone() }; };
+    const up = (p, nm) => (p.clone().sub(L.rest[nm]).dot(new T.Vector3().setComponent(L.ax.head.up.axis, L.ax.head.up.sign)));
+    const neutral = settle(newShot({ actionA: 'stand', moodA: 'neutral', duration: 8 })), smile = settle(newShot({ actionA: 'stand', moodA: 'smile', duration: 8 })), serious = settle(newShot({ actionA: 'stand', moodA: 'serious', duration: 8 })), sad = settle(newShot({ actionA: 'stand', moodA: 'sad', duration: 8 })), surprised = settle(newShot({ actionA: 'stand', moodA: 'surprised', duration: 8 }));
+    const waveAuto = settle(newShot({ actionA: 'wave', moodA: 'auto', duration: 8 })), standAuto = settle(newShot({ actionA: 'stand', moodA: 'auto', duration: 8 }));
+    LIFE.on = lifeWas; LIFE.blink = null; poseActors(null, 0, 0, 0);
+    const ok = up(smile.corner, 'cornerL') > up(neutral.corner, 'cornerL') + .0025 && up(serious.brow, 'browIL') < up(neutral.brow, 'browIL') - .001 && up(sad.corner, 'cornerL') < up(neutral.corner, 'cornerL') - .002 && up(surprised.brow, 'browIL') > up(neutral.brow, 'browIL') + .003 && up(waveAuto.corner, 'cornerL') > up(standAuto.corner, 'cornerL') + .001;
+    $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ moodA: 'sad', moodB: 'smile' }, { moodA: 'bogus' }, {}] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value).shots;
+    return ok && o[0].moodA === 'sad' && o[0].moodB === 'smile' && o[1].moodA === 'auto' && o[2].moodB === 'auto';
   });
   t('walking: the planted foot stays still on the floor (no sliding) whatever the speed of the walk', () => {
     const slow = measureSlide(8, [{ x: 3, z: 1.5 }]), fast = measureSlide(2.5, [{ x: 3, z: 1.5 }]); // about 0.6 and 1.9 m/s
