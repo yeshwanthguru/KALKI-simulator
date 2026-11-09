@@ -797,9 +797,39 @@ async function installActor(k, id) {
   const chair = makeChair(); g.add(chair);
   const glass = makeGlass(), snack = makeSnack(), phone = makePhone(), plate = makePlate(), hand = m.getObjectByName('Bip01_R_Hand'); if (hand) { glass.position.set(.09, .02, .03); hand.add(glass); snack.position.set(.09, .02, .03); hand.add(snack); phone.position.set(.08, .04, .03); phone.rotation.set(0, 0, 1.2); hand.add(phone); plate.position.set(.1, 0, .02); hand.add(plate); } else g.add(glass, snack, phone, plate);
   REAL[k] = { mx, ia, wa, act, chair, glass, snack, phone, plate, sc, bx: [bx.min.toArray().map(v => +v.toFixed(2)), bx.max.toArray().map(v => +v.toFixed(2))], root: w, avatar: id, iD: ic.animations[0].duration, wD: wc.animations[0].duration };
-  REAL[k].life = lifeSetup(REAL[k], k);
+  REAL[k].life = lifeSetup(REAL[k], k); REAL[k].walkV = measureWalk(REAL[k]);
   installing[k] = null; pathKey = ''; applyOutfit(k);
 }
+/* ---------- walking without sliding feet ----------
+   The walk clip is one stride cycle with the body held in place. To keep the planted foot still on the floor, the cycle is played by distance travelled, not by
+   time: one cycle covers (natural walking speed x clip length) metres. The natural speed is measured once per avatar from how fast the planted foot moves back
+   relative to the body. */
+function measureWalk(Q) {
+  try {
+    const keep = { ia: Q.ia.weight, wa: Q.wa.weight, t: Q.wa.time, act: Object.entries(Q.act).map(([n, o]) => [n, o.a.weight]) };
+    Q.ia.weight = 0; Q.wa.weight = 1; for (const n in Q.act) Q.act[n].a.weight = 0;
+    const fl = Q.root.getObjectByName('Bip01_L_Foot'), fr = Q.root.getObjectByName('Bip01_R_Foot'), N = Math.max(12, Math.round(Q.wD * 60)), rows = [], p = new T.Vector3();
+    for (let i = 0; i <= N; i++) { Q.wa.time = i / N * Q.wD; Q.mx.update(0); Q.root.updateMatrixWorld(true); const a = Q.root.worldToLocal(fl.getWorldPosition(p.clone())), b = Q.root.worldToLocal(fr.getWorldPosition(p.clone())); rows.push([a.y, a.z, b.y, b.z]); }
+    const ymin = Math.min(...rows.map(r => Math.min(r[0], r[2]))), dt = Q.wD / N; let sum = 0, n = 0;
+    for (let i = 1; i < rows.length; i++) { const a = rows[i - 1], b = rows[i], left = (a[0] + b[0]) < (a[2] + b[2]), y = left ? (a[0] + b[0]) / 2 : (a[2] + b[2]) / 2; if (y < ymin + .03) { sum += -((left ? b[1] - a[1] : b[3] - a[3]) / dt); n++; } }
+    Q.ia.weight = keep.ia; Q.wa.weight = keep.wa; Q.wa.time = keep.t; for (const [nm, w] of keep.act) Q.act[nm].a.weight = w;
+    const v = n > 4 ? sum / n : 1.2; return clamp(v, .6, 2.2);
+  } catch (e) { return 1.2; }
+}
+const WALKD = new Map();
+/* metres walked by actor k at time t (0..1) of the shot, from the same positions the actors are drawn at */
+function walkDist(sh, k, t) {
+  const key = k + JSON.stringify(sh); let tab = WALKD.get(key);
+  if (!tab) { tab = [0]; const q = subjPos(sh, 0).pos[k]; let px = q.x, pz = q.z; for (let i = 1; i <= 80; i++) { const c = subjPos(sh, i / 80).pos[k]; tab.push(tab[i - 1] + Math.hypot(c.x - px, c.z - pz)); px = c.x; pz = c.z; } if (WALKD.size > 40) WALKD.clear(); WALKD.set(key, tab); }
+  const f = clamp(t, 0, 1) * 80, i = Math.min(79, Math.floor(f)); return tab[i] + (tab[i + 1] - tab[i]) * (f - i);
+}
+function measureSlide(dur, route) {
+      const sh = newShot({ actionA: 'walk', routeA: route, duration: dur, subject: 'A' }), L = REAL.A.life, fl = L.bones.eyeL && REAL.A.root.getObjectByName('Bip01_L_Foot'), fr = REAL.A.root.getObjectByName('Bip01_R_Foot'), rows = [], p = new T.Vector3();
+      const N = Math.round(dur * 30); for (let i = 0; i <= N; i++) { poseActors(sh, i / N, i / N * dur, 20 + i / 30); AC.A.updateMatrixWorld(true); const a = fl.getWorldPosition(p.clone()), b = fr.getWorldPosition(p.clone()); rows.push([a.x, a.y, a.z, b.x, b.y, b.z]); }
+      let sum = 0, n = 0; const ymin = Math.min(...rows.map(r => Math.min(r[1], r[4])));
+      for (let i = 1; i < rows.length; i++) { const a = rows[i - 1], b = rows[i], left = a[1] + b[1] < a[4] + b[4], y = left ? (a[1] + b[1]) / 2 : (a[4] + b[4]) / 2; if (y < ymin + .025) { const d = left ? Math.hypot(b[0] - a[0], b[2] - a[2]) : Math.hypot(b[3] - a[3], b[5] - a[5]); sum += d * 30; n++; } }
+      poseActors(null, 0, 0, 0); return n ? sum / n : 99;
+    }
 /* ---------- signs of life: breathing, weight shifts, eye and head movements, blinking (see src/life.js) ---------- */
 const LIFE = { on: true, blink: null }; // blink: a number forces the lids (used by tests and screenshots)
 const LIFE_BONES = { spine: 'Bip01_Spine', spine2: 'Bip01_Spine2', pelvis: 'Bip01_Pelvis', neck: 'Bip01_Neck', head: 'Bip01_Head', eyeL: 'Bip01_LEye', eyeR: 'Bip01_REye', lidTL: 'Bip01_LEyeBlinkTop', lidTR: 'Bip01_REyeBlinkTop', lidBL: 'Bip01_LEyeBlinkBottom', lidBR: 'Bip01_REyeBlinkBottom' };
@@ -1049,7 +1079,7 @@ function poseActors(sh, t, sec, clock) {
       wt[cur.a] = bw; if (prev) { wt[prev.a] = (wt[prev.a] || 0) + 1 - bw; st0[prev.a] = prev.t; } st0[cur.a] = cur.t;
       Q.wa.weight = wt.walk || 0; Q.ia.weight = wt.stand || 0;
       for (const nm in Q.act) Q.act[nm].a.weight = wt[nm] || 0;
-      Q.ia.time = (clock + (k === 'A' ? 0 : 1.3)) % Q.iD; Q.wa.time = (sec * 1.1) % Q.wD;
+      Q.ia.time = (clock + (k === 'A' ? 0 : 1.3)) % Q.iD; Q.wa.time = w && sh && !(window.__kalki && window.__kalki.WALK.old) ? ((walkDist(sh, k, t) / (Q.walkV * Q.wD)) % 1 + 1) % 1 * Q.wD : (sec * 1.1) % Q.wD;
       for (const nm in Q.act) if (wt[nm]) { const rel = sec - st0[nm] + (k === 'A' ? 0 : .7); Q.act[nm].a.time = ACTION_T[nm] ? clamp(ACTION_T[nm](rel), 0, Q.act[nm].dur) : pingPong(rel, Q.act[nm].dur); }
       Q.mx.update(0); g.position.y = 0; lifeLayer(k, Q, an, sp, clock, sh);
       Q.chair.visible = ((wt.sit || 0) + (wt.think || 0)) > 0; Q.glass.visible = (wt.sip || 0) > 0; Q.snack.visible = (wt.eat || 0) > 0; Q.phone.visible = (wt.phone || 0) > 0; Q.plate.visible = (wt.offer || 0) > 0;
@@ -1864,7 +1894,7 @@ $('#obSkip').onclick = () => endIntro('nocode');
 function refreshAll(code = true) { P.assignment = normAssignment(P.assignment, TASK_KNOWN) || undefined; if (!P.assignment) delete P.assignment; updateTaskBadge(); P.squeeze = squeezeOf(); P.info = normInfo(P.info); $('#squeeze').value = P.squeeze; P.actors = normCast(P.actors); P.outfit = normOutfit(P.outfit); syncCast(); P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); P.set = SETS[P.set] ? P.set : 'stall'; $('#set').value = P.set; applySet(P.set); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
 new ResizeObserver(layout).observe($('#view'));
 buildLib(); refreshAll();
-if (location.hash === '#selftest' || location.hash === '#e2e') { LIFE.on = false; /* tests need frames that depend only on the shot, not on the wall clock */ if (location.hash === '#selftest') runSelfTest(); window.__kalki = { real: REAL, T, LIFE, frameAt: (sec, W = 320) => { playing = false; demo = false; time = sec; step(); step(); render(true); const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = W; c.height = Math.round(W * film.h / film.w); c.getContext('2d').drawImage(cv, film.x * r, film.y * r, film.w * r, film.h * r, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', .8); }, setStats: () => Object.fromEntries(Object.keys(SETG).map(k => [k, setStats(k)])), reportUi: async f => { ref = await computeRef(f); $('#mRef').classList.add('on'); renderRef(); const n = $$('#rfRes select[data-rfsize]').length; const sl = $('#rfRes select[data-rfsize]'); sl.value = 'CU'; sl.dispatchEvent(new Event('change', { bubbles: true })); return { selects: n, shots: ref.clip.shots.length, size0: ref.sizes[0], kept: $('#rfRes select[data-rfsize]').value, simSize: toShots(ref.clip, 'Ref', ref.sizes)[0].size }; }, reportPdf: async f => { ref = await computeRef(f); const b = buildAnalysisPdf(refPdfDoc()), t = Array.from(b, c => String.fromCharCode(c)).join(''); return { bytes: b.length, head: t.slice(0, 8), pages: (t.match(/\/Type \/Page /g) || []).length, images: (t.match(/\/Subtype \/Image/g) || []).length }; }, analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
+if (location.hash === '#selftest' || location.hash === '#e2e') { LIFE.on = false; /* tests need frames that depend only on the shot, not on the wall clock */ if (location.hash === '#selftest') runSelfTest(); window.__kalki = { real: REAL, T, LIFE, measureSlide, WALK: { old: false }, frameAt: (sec, W = 320) => { playing = false; demo = false; time = sec; step(); step(); render(true); const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = W; c.height = Math.round(W * film.h / film.w); c.getContext('2d').drawImage(cv, film.x * r, film.y * r, film.w * r, film.h * r, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', .8); }, setStats: () => Object.fromEntries(Object.keys(SETG).map(k => [k, setStats(k)])), reportUi: async f => { ref = await computeRef(f); $('#mRef').classList.add('on'); renderRef(); const n = $$('#rfRes select[data-rfsize]').length; const sl = $('#rfRes select[data-rfsize]'); sl.value = 'CU'; sl.dispatchEvent(new Event('change', { bubbles: true })); return { selects: n, shots: ref.clip.shots.length, size0: ref.sizes[0], kept: $('#rfRes select[data-rfsize]').value, simSize: toShots(ref.clip, 'Ref', ref.sizes)[0].size }; }, reportPdf: async f => { ref = await computeRef(f); const b = buildAnalysisPdf(refPdfDoc()), t = Array.from(b, c => String.fromCharCode(c)).join(''); return { bytes: b.length, head: t.slice(0, 8), pages: (t.match(/\/Type \/Page /g) || []).length, images: (t.match(/\/Subtype \/Image/g) || []).length }; }, analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
 if (store.get('kalki.onboarded')) { demo = false; $('#ob').style.display = 'none'; setPlay(true); }
 
 /* ---------- self test: open the page with #selftest, results go to the title and #selftestOut (used by tests/smoke.mjs) ---------- */
@@ -2001,6 +2031,10 @@ async function runSelfTest() {
   t('both actors loaded', () => !!(REAL.A && REAL.B));
   t('every action clip is bound for both actors', () => ['A', 'B'].every(k => Object.keys(ACTION_LABEL).filter(n => n !== 'stand' && n !== 'walk').every(n => REAL[k].act[n] && REAL[k].act[n].dur > 1)));
   t('seated, sip, snack, phone and plate props exist and show only for their action', () => ['A', 'B'].every(k => REAL[k].chair && REAL[k].glass && REAL[k].snack && REAL[k].phone && REAL[k].plate) && (() => { const sh = newShot({ actionA: 'phone', duration: 6 }); poseActors(sh, .3, 1.5, 0); const a = REAL.A.phone.visible && !REAL.A.glass.visible && !REAL.A.snack.visible && !REAL.A.plate.visible; const sh2 = newShot({ actionA: 'eat', duration: 6 }); poseActors(sh2, .3, 1.5, 0); const b = REAL.A.snack.visible && !REAL.A.phone.visible; poseActors(null, 0, 0, 0); return a && b; })());
+  t('walking: the planted foot stays still on the floor (no sliding) whatever the speed of the walk', () => {
+    const slow = measureSlide(8, [{ x: 3, z: 1.5 }]), fast = measureSlide(2.5, [{ x: 3, z: 1.5 }]); // about 0.6 and 1.9 m/s
+    return slow < .28 && fast < .28 && Number.isFinite(REAL.A.walkV) && REAL.A.walkV > .6 && REAL.A.walkV < 2.2;
+  });
   t('signs of life: the head and eyes turn toward the other actor, blinking closes and restores the lids, and switching it off gives the plain animation', () => {
     const lifeWas = LIFE.on, sh = newShot({ subject: 'A', actionA: 'talk', actionB: 'listen', duration: 6 }), L = REAL.A.life; if (!L || !L.bones.head || !L.bones.lidTL || !L.bones.eyeL) return false;
     const head = L.bones.head, lid = L.bones.lidTL, rest = L.rest.lidTL.clone(), toB = () => { const p = new T.Vector3(); head.getWorldPosition(p); return AC.B.position.clone().setY(1.6).sub(p).normalize(); };

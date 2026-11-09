@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.11.0-ff6b4a?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.11.1-ff6b4a?style=flat-square">
   <img alt="Platform" src="https://img.shields.io/badge/platform-browser%20%7C%20Windows-ffb547?style=flat-square">
   <img alt="Offline" src="https://img.shields.io/badge/works-offline-2ea44f?style=flat-square">
   <img alt="Licence" src="https://img.shields.io/badge/licence-proprietary-lightgrey?style=flat-square">
@@ -31,7 +31,7 @@
 
 **In the browser** (nothing to install)
 
-1. Download [`Kalki-versions/Kalki-v0.11.0.html`](Kalki-versions/Kalki-v0.11.0.html), or the zipped package [`Kalki-v0.11.0.zip`](Kalki-versions/Kalki-v0.11.0.zip) with notices.
+1. Download [`Kalki-versions/Kalki-v0.11.1.html`](Kalki-versions/Kalki-v0.11.1.html), or the zipped package [`Kalki-v0.11.1.zip`](Kalki-versions/Kalki-v0.11.1.zip) with notices.
 2. Double-click it. It opens in Chrome or Edge and runs fully offline.
 
 **On Windows** (native app, about 3 MB)
@@ -159,7 +159,8 @@ v0.11.0 is a first realism pass. What changed, and what did not:
 - **Actors with signs of life.** On top of the recorded animation, each actor now breathes, shifts weight while standing, blinks every few seconds (sometimes twice), and looks at the other actor: the eyes follow fully, the head and neck partly, with the small quick eye movements people make. Eyelids use the avatar's own eyelid bones.
 - **Real lens behaviour.** Wide lenses bend straight lines at the edges (barrel distortion), long lenses very slightly the other way; a lens opened wide vignettes and fringes more than one stopped down. Handheld shake is now a three-layer motion (slow drift, body sway, fine tremor) instead of a mix of sine waves. Bloom only comes from real highlights, so bright walls no longer fog the picture.
 - **Less toy-like sets.** Skies behind the outdoor sets (blue at noon, orange at dusk, dark at night), floors that continue instead of ending in black, plaster with soft mottling and grime, lumpy foliage, a soft contact shadow under each actor, and a warm sheen on skin and cloth.
-- **Not done, and honest limits.** The sets are still built from simple shapes with flat colours, with no photographic textures, so they remain stylised. The recorded animations are limited to the ten original clips plus three that reuse them with props. There is no foot-sliding correction on walk paths, no facial expressions beyond blinking and eye direction, and no cloth or hair movement. Detail bump-mapping was tried and removed because it made frames shimmer and confused the camera-motion analysis.
+- **Walking without sliding feet (v0.11.1).** The walk cycle is now played by distance travelled instead of by time, using each avatar's measured natural walking speed, so the planted foot stays on the floor: measured sliding of the planted foot fell from about 0.74 to 0.07 m/s at a slow walk and from 0.46 to 0.23 m/s at a fast one.
+- **Not done, and honest limits.** The sets are still built from simple shapes with flat colours, with no photographic textures, so they remain stylised. The recorded animations are limited to the ten original clips plus three that reuse them with props. Turning in place is not corrected, there are no facial expressions beyond blinking and eye direction, and no cloth or hair movement. Detail bump-mapping was tried and removed because it made frames shimmer and confused the camera-motion analysis.
 
 ### Teaching and writing tools
 
@@ -245,7 +246,8 @@ Everything in a scene is plain data, so setups are precise and repeatable.
 | v0.9.1 | Three new actions: eating a snack, on the phone, offering something |
 | v0.10.0 | Whole-garment costumes: kurta, dhoti, lungi, saree, school uniform, formal wear |
 | v0.10.1 | Temple courtyard and office sets |
-| **v0.11.0** | **Latest.** Realism pass, bus interior and market sets |
+| v0.11.0 | Realism pass, bus interior and market sets |
+| **v0.11.1** | **Latest.** Walking without sliding feet |
 
 Every build is kept in [`Kalki-versions/`](Kalki-versions/). See [`VERSIONS.txt`](Kalki-versions/VERSIONS.txt).
 

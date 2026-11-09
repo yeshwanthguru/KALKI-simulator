@@ -96,7 +96,7 @@
 
 Done in v0.11.0: signs of life for the actors (breathing, weight shift, blinking, eye and head tracking), lens distortion, vignette and fringing tied to focal length and aperture, a three-layer handheld model, tamed bloom, skies, continuous floors, plaster mottling, lumpy foliage, contact shadows, skin and cloth sheen.
 
-Next candidates (estimates): foot-sliding correction on walk paths and turning in place (M), facial expressions and lip movement while talking (L, needs the avatars' face rig explored), more recorded animation (L, needs new animation data), photographic or hand-painted textures for sets (L, size cost), cloth and hair movement (L), light bounce and soft indirect shadows (M, performance cost on slow laptops), an exposure/ISO model (S).
+Foot sliding on straight walks: done in v0.11.1. Next candidates (estimates): turning in place and corners (M), facial expressions and lip movement while talking (L, needs the avatars' face rig explored), more recorded animation (L, needs new animation data), photographic or hand-painted textures for sets (L, size cost), cloth and hair movement (L), light bounce and soft indirect shadows (M, performance cost on slow laptops), an exposure/ISO model (S).
 
 ## Phase 5b — Reference video analysis ("Analyse my video") (v0.8.x–v0.9)
 

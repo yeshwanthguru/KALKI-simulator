@@ -1,6 +1,6 @@
 [package]
 name = "kalki-simulator"
-version = "0.11.0"
+version = "0.11.1"
 description = "Offline camera-movement simulator for filmmakers"
 edition = "2021"
 
