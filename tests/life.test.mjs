@@ -1,6 +1,6 @@
 // Tests for src/life.js: the small signs of life (blinks, breathing, weight shifts, eye movements) must be repeatable, bounded and natural in rate.
 import assert from 'node:assert/strict';
-import { rng, blinkLevel, breath, sway, gazeOffset, boneAxes, GAZE_WEIGHTS, noise1, handheld, lensLook } from '../src/life.js';
+import { rng, blinkLevel, breath, sway, gazeOffset, boneAxes, GAZE_WEIGHTS, noise1, handheld, lensLook, speech } from '../src/life.js';
 
 /* the generator is repeatable and stays in 0..1 */
 const a = rng(5), b = rng(5); for (let i = 0; i < 50; i++) { const x = a(); assert.equal(x, b()); assert.ok(x >= 0 && x < 1); }
@@ -46,4 +46,12 @@ const w14 = lensLook(14, 2.8), n50 = lensLook(50, 2.8), t135 = lensLook(135, 2.8
 assert.ok(w14.distortion > .07 && n50.distortion === 0 && t135.distortion < 0 && Math.abs(t135.distortion) < .02, 'distortion by focal length');
 assert.ok(open14.vignette > shut11.vignette && open14.fringe > shut11.fringe && w14.fringe > n50.fringe, 'aperture and focal length');
 assert.ok(lensLook(24, 4).distortion > 0 && lensLook(24, 4).distortion < w14.distortion, 'a 24 mm bends less than a 14 mm');
+/* speech: phrases with pauses, syllable rhythm, bounded, repeatable, different for each speaker */
+let talk = 0, total = 0, mx = 0, sum = 0, sylls = 0, prevOpen = 0, rising = false, phraseStarts = 0, was = 0;
+for (let tt = 0; tt < 120; tt += .01) { const s = speech(tt, 2), s2 = speech(tt, 2); assert.deepEqual(s, s2); assert.ok(s.open >= 0 && s.open <= 1 && Math.abs(s.wide) <= 1 && s.talking >= 0 && s.talking <= 1); total++; if (s.talking > .5) talk++; mx = Math.max(mx, s.open); sum += s.open;
+  if (s.open > .4 && prevOpen <= .4) sylls++; prevOpen = s.open; if (s.talking > .5 && was <= .5) phraseStarts++; was = s.talking; }
+assert.ok(talk / total > .45 && talk / total < .85, 'talks most of the time with pauses: ' + (talk / total).toFixed(2)); assert.ok(mx > .6, 'the jaw opens clearly'); assert.ok(sum / total < .35, 'and is mostly nearly closed');
+assert.ok(sylls / (talk / 100) > 2.5 && sylls / (talk / 100) < 7.5, 'about 3 to 7 syllables a second while talking: ' + (sylls / (talk / 100)).toFixed(1));
+assert.ok(phraseStarts > 20 && phraseStarts < 70, 'phrases: ' + phraseStarts);
+assert.notDeepEqual(Array.from({ length: 300 }, (_, i) => speech(i * .1, 1).open), Array.from({ length: 300 }, (_, i) => speech(i * .1, 2).open)); assert.deepEqual(speech(-1, 1), { open: 0, wide: 0, talking: 0 });
 console.log('life ok');

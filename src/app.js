@@ -3,7 +3,7 @@ import { LANGS, makeTranslator } from './i18n.js';
 import { LESSONS, TEMPLATES } from './lessons.js';
 import { RIGS, rigFor, rigIds, normRig } from './rigs.js';
 import { buildPrompts } from './prompts.js';
-import { blinkLevel, breath, sway, gazeOffset, boneAxes, GAZE_WEIGHTS, handheld, lensLook } from './life.js';
+import { blinkLevel, breath, sway, gazeOffset, boneAxes, GAZE_WEIGHTS, handheld, lensLook, speech } from './life.js';
 import { CHECK_TYPES, normAssignment, evaluate, summary as taskSummary, reportText } from './assignment.js';
 import { compareScenes } from './compare.js';
 import { scriptToShots } from './script.js';
@@ -832,15 +832,18 @@ function measureSlide(dur, route) {
     }
 /* ---------- signs of life: breathing, weight shifts, eye and head movements, blinking (see src/life.js) ---------- */
 const LIFE = { on: true, blink: null }; // blink: a number forces the lids (used by tests and screenshots)
-const LIFE_BONES = { spine: 'Bip01_Spine', spine2: 'Bip01_Spine2', pelvis: 'Bip01_Pelvis', neck: 'Bip01_Neck', head: 'Bip01_Head', eyeL: 'Bip01_LEye', eyeR: 'Bip01_REye', lidTL: 'Bip01_LEyeBlinkTop', lidTR: 'Bip01_REyeBlinkTop', lidBL: 'Bip01_LEyeBlinkBottom', lidBR: 'Bip01_REyeBlinkBottom' };
+const LIFE_BONES = { spine: 'Bip01_Spine', spine2: 'Bip01_Spine2', pelvis: 'Bip01_Pelvis', neck: 'Bip01_Neck', head: 'Bip01_Head', eyeL: 'Bip01_LEye', eyeR: 'Bip01_REye', lidTL: 'Bip01_LEyeBlinkTop', lidTR: 'Bip01_REyeBlinkTop', lidBL: 'Bip01_LEyeBlinkBottom', lidBR: 'Bip01_REyeBlinkBottom', jaw: 'Bip01_MJaw', lipB: 'Bip01_MBottomLip', lipU: 'Bip01_MUpperLip', cornerL: 'Bip01_LMouthCorner', cornerR: 'Bip01_RMouthCorner' };
 function lifeSetup(Q, k) {
   Q.root.updateMatrixWorld(true); const bones = {}, ax = {}, rest = {}, rq = Q.root.getWorldQuaternion(new T.Quaternion()).invert();
   for (const [nm, bn] of Object.entries(LIFE_BONES)) { const b = Q.root.getObjectByName(bn); if (!b) continue; bones[nm] = b; rest[nm] = b.position.clone();
     const e = new T.Matrix4().makeRotationFromQuaternion(rq.clone().multiply(b.getWorldQuaternion(new T.Quaternion()))).elements; ax[nm] = boneAxes([e[0], e[4], e[8], e[1], e[5], e[9], e[2], e[6], e[10]]); }
+  /* which way the jaw opens: try a small turn about its side axis both ways and keep the one that lowers the bottom lip */
+  let jawSign = 1;
+  if (bones.jaw && bones.lipB && ax.jaw) { const probe = sg => { const q0 = bones.jaw.quaternion.clone(); bones.jaw.quaternion.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3().setComponent(ax.jaw.side.axis, ax.jaw.side.sign * sg), .12)); Q.root.updateMatrixWorld(true); const y = bones.lipB.getWorldPosition(new T.Vector3()).y; bones.jaw.quaternion.copy(q0); Q.root.updateMatrixWorld(true); return y; }; jawSign = probe(1) <= probe(-1) ? 1 : -1; }
   /* a soft contact shadow under the feet: without it an actor in ambient light seems to hover above the floor */
   if (!AC[k].userData.blob) { const tex = canvasTex(64, 64, (g, w, h) => { const r = g.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2); r.addColorStop(0, 'rgba(0,0,0,.75)'); r.addColorStop(.55, 'rgba(0,0,0,.35)'); r.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = r; g.fillRect(0, 0, w, h); });
     const b = new T.Mesh(new T.PlaneGeometry(1.05, .8), new T.MeshBasicMaterial({ map: tex, transparent: true, opacity: .55, depthWrite: false, fog: false })); b.rotation.x = -Math.PI / 2; b.position.y = .012; b.renderOrder = 1; AC[k].add(b); AC[k].userData.blob = b; }
-  return { bones, ax, rest, seed: k === 'A' ? 3 : 5, off: k === 'A' ? 0 : 1.9, last: 0, tgt: null, sc: Q.sc || 1 };
+  return { bones, ax, rest, jawSign, seed: k === 'A' ? 3 : 5, off: k === 'A' ? 0 : 1.9, last: 0, tgt: null, sc: Q.sc || 1 };
 }
 const _lq = new T.Quaternion(), _lv = new T.Vector3(), _lw = new T.Vector3(), _lp = new T.Quaternion(), _lb = new T.Quaternion();
 const axisVec = (a, out = new T.Vector3()) => out.set(0, 0, 0).setComponent(a.axis, a.sign);
@@ -857,7 +860,7 @@ function aimBone(b, a, target, limit, weight) {
 }
 const HEAD_H = { f: 1.56, m: 1.66 };
 function lifeLayer(k, Q, an, sp, clock, shotActive) {
-  const L = Q.life; if (!L || !LIFE.on) return; const B = L.bones, A = L.ax, dt = clamp(clock - L.last, 0, .1); L.last = clock;
+  const L = Q.life; if (!L) return; if (!LIFE.on) { for (const nm of ['lidTL', 'lidTR', 'lidBL', 'lidBR', 'lipU', 'cornerL', 'cornerR']) if (L.bones[nm]) L.bones[nm].position.copy(L.rest[nm]); return; } const B = L.bones, A = L.ax, dt = clamp(clock - L.last, 0, .1); L.last = clock;
   const seated = !!SEATED[an], walking = an === 'walk', t = clock + L.off, o = k === 'A' ? 'B' : 'A';
   /* breathing and weight shift */
   rotLocal(B.spine2, A.spine2 && { axis: A.spine2.side.axis, sign: A.spine2.side.sign }, breath(t, an === 'talk' ? .3 : .24, L.off) * .011);
@@ -872,6 +875,14 @@ function lifeLayer(k, Q, an, sp, clock, shotActive) {
   const gy = AC[k].rotation.y, rx = Math.cos(gy), rz = -Math.sin(gy); tgt.x += rx * Math.tan(g.x * Math.PI / 180) * 1.6; tgt.z += rz * Math.tan(g.x * Math.PI / 180) * 1.6; tgt.y += Math.tan(g.y * Math.PI / 180) * 1.6;
   aimBone(B.neck, A.neck && A.neck.fwd, tgt, .5, w.head * .35); aimBone(B.head, A.head && A.head.fwd, tgt, .62, w.head * .75);
   const eyeLim = .56; aimBone(B.eyeL, A.eyeL && A.eyeL.fwd, tgt, eyeLim, w.eyes); aimBone(B.eyeR, A.eyeR && A.eyeR.fwd, tgt, eyeLim, w.eyes);
+  /* speech: while talking the jaw opens and closes with each syllable, the lips spread and round with the vowel, and the bottom lip follows the jaw */
+  const talking = an === 'talk' ? 1 : an === 'phone' ? .85 : an === 'offer' ? .5 : 0;
+  if (B.jaw && A.jaw) {
+    const sp2 = talking ? speech(t, L.seed) : { open: 0, wide: 0 }, open = sp2.open * talking, hv = A.head ? A.head : null;
+    rotLocal(B.jaw, { axis: A.jaw.side.axis, sign: A.jaw.side.sign * L.jawSign }, open * .155);
+    if (hv) { const sd = (b, nm, f) => { if (!b) return; const v = axisVec(A.head.side, new T.Vector3()); b.position.copy(L.rest[nm]).addScaledVector(v, f / (L.sc || 1)); }; sd(B.cornerL, 'cornerL', sp2.wide * talking * .0032 + open * .001); sd(B.cornerR, 'cornerR', -(sp2.wide * talking * .0032 + open * .001)); }
+    if (B.lipU && A.head) { const v = axisVec(A.head.up, new T.Vector3()); B.lipU.position.copy(L.rest.lipU).addScaledVector(v, open * .0028 / (L.sc || 1)); }
+  }
   /* blinking: the top lids move down and the bottom lids a little up, in the head's own frame */
   const bl = LIFE.blink !== null ? LIFE.blink : blinkLevel(t, L.seed), up = A.head ? A.head.up : null;
   if (up) for (const [nm, f] of [['lidTL', -1.2], ['lidTR', -1.2], ['lidBL', .4], ['lidBR', .4]]) { const b = B[nm]; if (!b) continue; const v = axisVec(up, new T.Vector3()); b.position.copy(L.rest[nm]).addScaledVector(v, f * bl * .0105 / (L.sc || 1)); }
@@ -2031,6 +2042,14 @@ async function runSelfTest() {
   t('both actors loaded', () => !!(REAL.A && REAL.B));
   t('every action clip is bound for both actors', () => ['A', 'B'].every(k => Object.keys(ACTION_LABEL).filter(n => n !== 'stand' && n !== 'walk').every(n => REAL[k].act[n] && REAL[k].act[n].dur > 1)));
   t('seated, sip, snack, phone and plate props exist and show only for their action', () => ['A', 'B'].every(k => REAL[k].chair && REAL[k].glass && REAL[k].snack && REAL[k].phone && REAL[k].plate) && (() => { const sh = newShot({ actionA: 'phone', duration: 6 }); poseActors(sh, .3, 1.5, 0); const a = REAL.A.phone.visible && !REAL.A.glass.visible && !REAL.A.snack.visible && !REAL.A.plate.visible; const sh2 = newShot({ actionA: 'eat', duration: 6 }); poseActors(sh2, .3, 1.5, 0); const b = REAL.A.snack.visible && !REAL.A.phone.visible; poseActors(null, 0, 0, 0); return a && b; })());
+  t('talking moves the jaw and lips, listening keeps the mouth still, and switching the layer off gives the plain pose', () => {
+    const lifeWas = LIFE.on, L = REAL.A.life, jaw = L.bones.jaw, lipU = L.bones.lipU; if (!jaw || !lipU || !L.bones.cornerL) return false;
+    const spread = sh => { let mx = 0, lip = 0; for (let i = 0; i < 160; i++) { const tt = 20 + i * .05; LIFE.on = false; poseActors(sh, i / 160, i * .05, tt); const q0 = jaw.quaternion.clone(), p0 = lipU.position.clone(); LIFE.on = true; poseActors(sh, i / 160, i * .05, tt); mx = Math.max(mx, jaw.quaternion.angleTo(q0)); lip = Math.max(lip, lipU.position.distanceTo(p0)); } return { mx, lip }; };
+    const talk = spread(newShot({ actionA: 'talk', actionB: 'listen', duration: 8 })), quiet = spread(newShot({ actionA: 'listen', actionB: 'talk', duration: 8 }));
+    LIFE.on = false; poseActors(newShot({ actionA: 'talk', duration: 8 }), .3, 2, 25); const off = lipU.position.distanceTo(L.rest.lipU); LIFE.on = lifeWas; poseActors(null, 0, 0, 0);
+    if (!(talk.mx > .05 && talk.mx < .2 && talk.lip > .0005 && quiet.mx < .03 && quiet.mx < talk.mx * .25 && quiet.lip < 1e-5 && off < 1e-6)) return false;
+    return true;
+  });
   t('walking: the planted foot stays still on the floor (no sliding) whatever the speed of the walk', () => {
     const slow = measureSlide(8, [{ x: 3, z: 1.5 }]), fast = measureSlide(2.5, [{ x: 3, z: 1.5 }]); // about 0.6 and 1.9 m/s
     return slow < .28 && fast < .28 && Number.isFinite(REAL.A.walkV) && REAL.A.walkV > .6 && REAL.A.walkV < 2.2;

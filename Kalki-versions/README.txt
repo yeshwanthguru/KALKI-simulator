@@ -1,4 +1,4 @@
-KALKI · கல்கி — Camera Studio (v0.11.1)
+KALKI · கல்கி — Camera Studio (v0.11.2)
 See your shot before you shoot it.
 
 HOW TO START
@@ -18,6 +18,7 @@ WHAT YOU CAN DO
   - Phone layout: on narrow screens the view sits on top with tabs for moves and shot settings
   - Download the reference-video analysis as a PDF report (pacing chart, shots, techniques, suggestions); the shot-list PDF now shows the camera rig
   - Mark the shot size of each shot in a reference video; Kalki uses it for suggestions, the simulation and the reports
+  - Talking mouths: while an actor talks the jaw opens and closes with the rhythm of speech and the lips spread and round, in natural phrases with pauses (it is not lip-sync to words)
   - Walking without sliding feet: the stride is played by distance travelled, so the planted foot stays on the floor at any walking speed
   - Realism pass: actors breathe, shift their weight, blink and look at each other; lenses distort, vignette and fringe like real ones; natural handheld shake; skies, soft contact shadows, plaster and foliage that look less like toys
   - Two more sets, a bus interior and a market

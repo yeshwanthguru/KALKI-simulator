@@ -87,3 +87,26 @@ export function lensLook(f, fstop) {
   const wide = Math.max(0, Math.min(1, (35 - f) / 21)), tele = Math.max(0, Math.min(1, (f - 85) / 100)), open = Math.max(0, Math.min(1, (8 - fstop) / 6.6));
   return { distortion: wide * .085 - tele * .018, vignette: .75 + open * .55, fringe: 1 + wide * .9 + open * .35 };
 }
+
+/* ---------- speech: how a talking mouth moves ----------
+   People speak in phrases of 1.5 to 4 seconds with short pauses; inside a phrase the jaw opens and closes with each syllable (3.5 to 6 per second) by varying
+   amounts, and the lips spread or round with the vowel. This is not lip-sync to any words: it is the natural rhythm of speech. Returns, at time t:
+   open 0..1 (jaw), wide -1..1 (lips spread positive, rounded negative), talking 0..1 (how far into a phrase we are, smoothed). */
+const speechCache = new Map();
+function phrases(seed, upTo) {
+  let c = speechCache.get(seed); if (!c) { c = { r: rng(seed * 15485863 + 3), list: [], t: .3 + (seed % 5) * .2 }; speechCache.set(seed, c); }
+  while (c.t < upTo + 10) { const len = 1.4 + c.r() * 2.8, rate = 3.6 + c.r() * 2.4, ph = c.r() * 6.28, loud = .55 + c.r() * .45, v1 = c.r(), v2 = c.r(); c.list.push({ s: c.t, e: c.t + len, rate, ph, loud, v1, v2 }); c.t += len + .35 + c.r() * .9; }
+  if (c.list.length > 3000) speechCache.delete(seed);
+  return c.list;
+}
+const smooth01 = x => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+export function speech(t, seed = 1) {
+  if (t < 0) return { open: 0, wide: 0, talking: 0 };
+  for (const p of phrases(seed, t)) {
+    if (t < p.s) break; if (t > p.e + .15) continue;
+    const u = t - p.s, env = smooth01(u / .12) * smooth01((p.e + .12 - t) / .18), syl = Math.sin(p.rate * 2 * Math.PI * u + p.ph), syl2 = Math.sin(p.rate * 1.37 * 2 * Math.PI * u + p.ph * 1.9);
+    const shape = Math.pow(Math.max(0, .5 + .5 * syl), 1.4) * (.7 + .3 * syl2) * p.loud, vowel = Math.sin(p.rate * .6 * 2 * Math.PI * u + p.v1 * 6.28) * (.5 + p.v2 * .5);
+    return { open: Math.max(0, Math.min(1, shape * env)), wide: Math.max(-1, Math.min(1, vowel * env)), talking: env };
+  }
+  return { open: 0, wide: 0, talking: 0 };
+}
