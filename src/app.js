@@ -873,9 +873,10 @@ function lifeLayer(k, Q, an, sp, clock, shotActive) {
   rotLocal(B.spine, A.spine && { axis: A.spine.side.axis, sign: A.spine.side.sign }, breath(t, an === 'talk' ? .3 : .24, L.off + .4) * .005);
   if (!seated && !walking) { const s = sway(t, L.seed); rotLocal(B.pelvis, A.pelvis && A.pelvis.fwd, s * .014); rotLocal(B.spine, A.spine && A.spine.fwd, -s * .009); }
   Q.root.updateMatrixWorld(true);
+  const walkAhead = an === 'walk' && sp && sp.head && sp.head[k] !== undefined;
   /* where the other person's eyes are (this frame's position, from the shot) */
   const op = (sp && sp.pos && sp.pos[o]) || AC[o].position, oSeated = shotActive && !!SEATED[(shotActive['action' + o])], oav = REAL[o] && AV[REAL[o].avatar], oh = (oav && HEAD_H[oav.g] || 1.6) - (oSeated ? .45 : 0);
-  const want = new T.Vector3(op.x, oh, op.z), me = AC[k].position; if (!L.tgt) L.tgt = want.clone(); L.tgt.lerp(want, 1 - Math.exp(-dt * 9));
+  const me = AC[k].position, want = walkAhead ? new T.Vector3(me.x + Math.sin(sp.head[k]) * 3, (oav && HEAD_H[oav.g] || 1.6) * .96, me.z + Math.cos(sp.head[k]) * 3) : new T.Vector3(op.x, oh, op.z); /* a walking person looks where they are going */ if (!L.tgt) L.tgt = want.clone(); L.tgt.lerp(want, 1 - Math.exp(-dt * 9));
   const w = GAZE_WEIGHTS[an] || GAZE_WEIGHTS.stand, g = gazeOffset(t, L.seed), tgt = L.tgt.clone();
   /* small quick eye movements around the target, in the character's own frame */
   const gy = AC[k].rotation.y, rx = Math.cos(gy), rz = -Math.sin(gy); tgt.x += rx * Math.tan(g.x * Math.PI / 180) * 1.6; tgt.z += rz * Math.tan(g.x * Math.PI / 180) * 1.6; tgt.y += Math.tan(g.y * Math.PI / 180) * 1.6;
@@ -973,7 +974,10 @@ function walkRoute(p0, rt, t) {
   for (let i = 1; i < pts.length; i++) len.push(len[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
   const L = len[len.length - 1], d = clamp(t, 0, 1) * L; let i = 1; while (i < pts.length - 1 && len[i] < d) i++;
   const a = pts[i - 1], b = pts[i], sl = len[i] - len[i - 1], u = sl > 1e-6 ? clamp((d - len[i - 1]) / sl, 0, 1) : 1;
-  const h = sl > 1e-6 ? Math.atan2(b[0] - a[0], b[1] - a[1]) : 0;
+  let h = sl > 1e-6 ? Math.atan2(b[0] - a[0], b[1] - a[1]) : 0;
+  /* at a corner the body turns over about half a metre before and after it (a person leans into the turn) instead of snapping to the new direction */
+  const segH = j => Math.atan2(pts[j + 1][0] - pts[j][0], pts[j + 1][1] - pts[j][1]), turn = (h0, h1, f) => { let dh = h1 - h0; while (dh > Math.PI) dh -= 2 * Math.PI; while (dh < -Math.PI) dh += 2 * Math.PI; const s2 = f * f * (3 - 2 * f); return h0 + dh * s2; };
+  for (let c = 1; c < pts.length - 1; c++) { const rad = Math.min(.5, (len[c] - len[c - 1]) / 2, (len[c + 1] - len[c]) / 2); if (rad > 1e-3 && Math.abs(d - len[c]) < rad) { h = turn(segH(c - 1), segH(c), (d - (len[c] - rad)) / (2 * rad)); break; } }
   return { x: lerp(a[0], b[0], u), z: lerp(a[1], b[1], u), h };
 }
 function subjPos(sh, t) {
@@ -2074,6 +2078,15 @@ async function runSelfTest() {
     const ok = up(smile.corner, 'cornerL') > up(neutral.corner, 'cornerL') + .0025 && up(serious.brow, 'browIL') < up(neutral.brow, 'browIL') - .001 && up(sad.corner, 'cornerL') < up(neutral.corner, 'cornerL') - .002 && up(surprised.brow, 'browIL') > up(neutral.brow, 'browIL') + .003 && up(waveAuto.corner, 'cornerL') > up(standAuto.corner, 'cornerL') + .001;
     $('#ta').value = JSON.stringify({ schemaVersion: SCHEMA, shots: [{ moodA: 'sad', moodB: 'smile' }, { moodA: 'bogus' }, {}] }); applyCode(); loadCode(); const o = JSON.parse($('#ta').value).shots;
     return ok && o[0].moodA === 'sad' && o[0].moodB === 'smile' && o[1].moodA === 'auto' && o[2].moodB === 'auto';
+  });
+  t('corners: the body turns smoothly into a new direction instead of snapping, and a walker looks where they are going', () => {
+    const rt = [{ x: 0, z: 2 }, { x: 3, z: 2 }], p0 = V(-1, 0, 0); let prev = walkRoute(p0, rt, 0).h, maxStep = 0, total = 0;
+    for (let i = 1; i <= 400; i++) { const h = walkRoute(p0, rt, i / 400).h; let d = h - prev; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; maxStep = Math.max(maxStep, Math.abs(d)); total += d; prev = h; }
+    const straight = walkRoute(p0, rt, .1).h, end = walkRoute(p0, rt, 1).h; if (!(maxStep < .1 && Math.abs(total - (Math.PI / 2 - Math.atan2(1, 2))) < .05 && Math.abs(straight - Math.atan2(1, 2)) < .02 && Math.abs(end - Math.PI / 2) < .02)) return false;
+    const lifeWas = LIFE.on, L = REAL.A.life; LIFE.on = true; LIFE.blink = 0; const sh = newShot({ actionA: 'walk', routeA: [{ x: 3, z: 0 }], duration: 8, subject: 'A', actionB: 'stand', placeB: { x: -2, z: 0 } }); let best = -9;
+    for (let i = 0; i < 40; i++) poseActors(sh, .5, 4 + i * .05, 50 + i * .05); AC.A.updateMatrixWorld(true);
+    const head = L.bones.head, a = L.ax.head.fwd, fw = new T.Vector3().setComponent(a.axis, a.sign).applyQuaternion(head.getWorldQuaternion(new T.Quaternion())), ahead = new T.Vector3(1, 0, 0), behind = new T.Vector3(-1, 0, 0); best = fw.dot(ahead) - fw.dot(behind);
+    LIFE.on = lifeWas; LIFE.blink = null; poseActors(null, 0, 0, 0); return best > .3;
   });
   t('walking: the planted foot stays still on the floor (no sliding) whatever the speed of the walk', () => {
     const slow = measureSlide(8, [{ x: 3, z: 1.5 }]), fast = measureSlide(2.5, [{ x: 3, z: 1.5 }]); // about 0.6 and 1.9 m/s

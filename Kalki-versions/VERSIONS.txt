@@ -39,8 +39,10 @@ v0.11.0  Realism pass (actors with signs of life, real lens behaviour, skies, sh
 v0.11.1  Walking without sliding feet
         (the Windows installer for this version could not be built on the development machine)
 v0.11.2  Talking mouths (jaw and lips move with the rhythm of speech)
-v0.12.0  Latest: facial expressions per actor and shot  << recommended
+v0.12.0  Facial expressions per actor and shot
+v0.12.1  Latest: smooth turns at path corners, walkers look ahead  << recommended
+        (no installer was built for 0.12.1: Windows blocked the build; the newest installer is 0.12.0)
         (no separate installers were built for 0.11.1 and 0.11.2; the 0.12.0 installer includes both)
 
 ZIP PACKAGES (same versions, each with README + license notices)
-  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip, Kalki-v0.5.zip, Kalki-v0.5.1.zip, Kalki-v0.5.2.zip, Kalki-v0.5.3.zip, Kalki-v0.5.4.zip, Kalki-v0.6.0.zip, Kalki-v0.6.1.zip, Kalki-v0.7.0.zip, Kalki-v0.7.1.zip, Kalki-v0.7.2.zip, Kalki-v0.7.3.zip, Kalki-v0.7.4.zip, Kalki-v0.7.5.zip, Kalki-v0.7.6.zip, Kalki-v0.7.7.zip, Kalki-v0.7.8.zip, Kalki-v0.8.0.zip, Kalki-v0.9.0.zip, Kalki-v0.9.1.zip, Kalki-v0.10.0.zip, Kalki-v0.10.1.zip, Kalki-v0.11.0.zip, Kalki-v0.11.1.zip, Kalki-v0.11.2.zip, Kalki-v0.12.0.zip
+  Kalki-v0.1.zip, Kalki-v0.2.zip, Kalki-v0.3.zip, Kalki-v0.3.1.zip, Kalki-v0.4.zip, Kalki-v0.4.1.zip, Kalki-v0.4.2.zip, Kalki-v0.5.zip, Kalki-v0.5.1.zip, Kalki-v0.5.2.zip, Kalki-v0.5.3.zip, Kalki-v0.5.4.zip, Kalki-v0.6.0.zip, Kalki-v0.6.1.zip, Kalki-v0.7.0.zip, Kalki-v0.7.1.zip, Kalki-v0.7.2.zip, Kalki-v0.7.3.zip, Kalki-v0.7.4.zip, Kalki-v0.7.5.zip, Kalki-v0.7.6.zip, Kalki-v0.7.7.zip, Kalki-v0.7.8.zip, Kalki-v0.8.0.zip, Kalki-v0.9.0.zip, Kalki-v0.9.1.zip, Kalki-v0.10.0.zip, Kalki-v0.10.1.zip, Kalki-v0.11.0.zip, Kalki-v0.11.1.zip, Kalki-v0.11.2.zip, Kalki-v0.12.0.zip, Kalki-v0.12.1.zip

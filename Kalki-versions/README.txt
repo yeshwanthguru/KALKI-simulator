@@ -1,4 +1,4 @@
-KALKI · கல்கி — Camera Studio (v0.12.0)
+KALKI · கல்கி — Camera Studio (v0.12.1)
 See your shot before you shoot it.
 
 HOW TO START
@@ -18,6 +18,7 @@ WHAT YOU CAN DO
   - Phone layout: on narrow screens the view sits on top with tabs for moves and shot settings
   - Download the reference-video analysis as a PDF report (pacing chart, shots, techniques, suggestions); the shot-list PDF now shows the camera rig
   - Mark the shot size of each shot in a reference video; Kalki uses it for suggestions, the simulation and the reports
+  - Smooth turns at the corners of a walk path (the body leans into the turn over about half a metre) and a walker looks where they are going
   - Facial expressions: choose an expression per actor and shot (neutral, smiling, serious, sad, surprised, angry) or leave it on Automatic, where the action decides (a wave smiles, thinking frowns slightly); brows lift with speech
   - Talking mouths: while an actor talks the jaw opens and closes with the rhythm of speech and the lips spread and round, in natural phrases with pauses (it is not lip-sync to words)
   - Walking without sliding feet: the stride is played by distance travelled, so the planted foot stays on the floor at any walking speed
