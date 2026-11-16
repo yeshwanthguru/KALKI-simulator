@@ -146,14 +146,15 @@ const composer = new T.EffectComposer(R);
 const bokeh = new T.BokehPass(scene, cam, { focus: 3, aperture: .0005, maxblur: .014 });
 const bloom = new T.UnrealBloomPass(new T.Vector2(512, 256), .22, .35, 1.2); // only real highlights (lamps, the sun on bright surfaces) glow
 const grade = new T.ShaderPass({
-  uniforms: { uDist: { value: 0 }, tDiffuse: { value: null }, uTime: { value: 0 }, uVel: { value: new T.Vector2() }, uRes: { value: new T.Vector2(1, 1) }, uGrain: { value: .045 }, uVig: { value: .55 }, uCA: { value: .0025 }, uLift: { value: new T.Vector3() }, uGain: { value: new T.Vector3(1, 1, 1) }, uSat: { value: 1 }, uCon: { value: 1 } },
+  uniforms: { uDist: { value: 0 }, tDiffuse: { value: null }, uTime: { value: 0 }, uVel: { value: new T.Vector2() }, uRes: { value: new T.Vector2(1, 1) }, uGrain: { value: .045 }, uVig: { value: .55 }, uCA: { value: .0025 }, uLift: { value: new T.Vector3() }, uGain: { value: new T.Vector3(1, 1, 1) }, uSat: { value: 1 }, uCon: { value: 1 }, uToon: { value: 0 } },
   vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-  fragmentShader: `uniform sampler2D tDiffuse;uniform float uTime,uGrain,uVig,uCA,uSat,uCon,uDist;uniform vec2 uVel,uRes;uniform vec3 uLift,uGain;varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse;uniform float uTime,uGrain,uVig,uCA,uSat,uCon,uDist,uToon;uniform vec2 uVel,uRes;uniform vec3 uLift,uGain;varying vec2 vUv;
 vec2 warp(vec2 uv){vec2 p=uv-.5;float r2=dot(p*vec2(1.,.56),p*vec2(1.,.56))*4.;return .5+p*(1.+uDist*r2)/(1.+uDist*.5);}
 vec3 smp(vec2 uv0){vec2 uv=warp(uv0);vec2 d=(uv-.5)*uCA;return vec3(texture2D(tDiffuse,uv+d).r,texture2D(tDiffuse,uv).g,texture2D(tDiffuse,uv-d).b);}
 void main(){vec3 c=vec3(0.);for(int i=0;i<8;i++){c+=smp(vUv+uVel*(float(i)/7.-.5));}c/=8.;
 c=(c-.5)*uCon+.5;float l=dot(c,vec3(.2126,.7152,.0722));c=mix(vec3(l),c,uSat);c=clamp(c,0.,1.);c=c*uGain+uLift*(1.-c);
 float v=smoothstep(.95,.2,length((vUv-.5)*vec2(1.,.85))*1.15);c*=mix(1.,v,uVig);
+if(uToon>.5){float lm=dot(c,vec3(.2126,.7152,.0722));float bands=floor(lm*4.+.5)/4.;c*=(max(bands,.12)+.08)/max(lm,.02);c=mix(vec3(dot(c,vec3(.2126,.7152,.0722))),c,1.25);vec2 px=1.5/uRes;float e=0.;vec3 w=vec3(.2126,.7152,.0722);float l0=dot(texture2D(tDiffuse,vUv).rgb,w);e+=abs(dot(texture2D(tDiffuse,vUv+vec2(px.x,0.)).rgb,w)-l0);e+=abs(dot(texture2D(tDiffuse,vUv-vec2(px.x,0.)).rgb,w)-l0);e+=abs(dot(texture2D(tDiffuse,vUv+vec2(0.,px.y)).rgb,w)-l0);e+=abs(dot(texture2D(tDiffuse,vUv-vec2(0.,px.y)).rgb,w)-l0);c=mix(c,vec3(.05,.04,.07),smoothstep(.3,.5,e));gl_FragColor=vec4(clamp(c,0.,1.),1.);return;}
 float n=fract(sin(dot(floor(vUv*uRes)+fract(uTime*7.)*137.,vec2(12.9898,78.233)))*43758.5453);c+=(n-.5)*uGrain;gl_FragColor=vec4(c,1.);}`
 });
 composer.addPass(new T.RenderPass(scene, cam)); composer.addPass(bokeh); composer.addPass(bloom); composer.addPass(new T.OutputPass()); composer.addPass(grade);
@@ -167,6 +168,7 @@ const LOOKS = {
   dawn: { label: 'Dawn', sun: [0xff9f8a, 2.6], hemi: [0xc7d3ff, 0x1d1418, .45], fill: .5, bulb: 4.5, glass: 0xffc2a8, shaft: 1.1, fog: 0x1a1520, dust: .5, g: [[.03, .005, .05], [1.05, .96, .94], 1.04, 1.04, .5, .03, .0025] },
   noon: { label: 'Noon', sun: [0xfff6ea, 5.4], hemi: [0xdfeaff, 0x1b1a16, .55], fill: .55, bulb: 1.2, glass: 0xffffff, shaft: .35, fog: 0x1b1a16, dust: .22, g: [[0, 0, 0], [1.02, 1.01, 1], 1.1, 1.04, .3, .02, .001] },
   dusk: { label: 'Dusk', sun: [0xff7a4a, 3.0], hemi: [0x7a63b5, 0x1a1018, .35], fill: .25, bulb: 5.5, glass: 0xff9a6a, shaft: .9, fog: 0x120c14, dust: .5, g: [[.03, 0, .06], [1.12, .94, .86], 1.15, 1.1, .6, .035, .003] },
+  toon: { label: 'Cartoon', toon: true, sun: [0xffffff, 3.2], hemi: [0xffffff, 0x8a93b8, 1.1], fill: .9, bulb: 1.6, glass: 0xffffff, shaft: 0, fog: 0x9fd0ff, dust: 0, g: [[0, 0, 0], [1.04, 1.03, 1], 1.35, 1.12, 0, 0, 0] },
   neutral: { label: 'Neutral', sun: [0xfff1e0, 3.4], hemi: [0xeef3ff, 0x1a1714, .4], fill: .4, bulb: 2.5, glass: 0xfff3e0, shaft: .5, fog: 0x15140f, dust: .3, g: [[0, 0, 0], [1, 1, 1], 1, 1.03, .35, .025, .0015] }
 };
 
@@ -1128,12 +1130,13 @@ function applyLook(name) {
   BULBS.forEach(b => b.intensity = L.bulb); GLASS.forEach(m => m.color.set(L.glass).multiplyScalar(name === 'night' ? .9 : 2.2));
   SHAFTS.forEach(s => { s.material.color.set(L.sun[0]); s.material.opacity = s.material.userData.base * L.shaft; s.visible = L.shaft > 0; });
   scene.background.set(L.fog); scene.fog.color.set(L.fog); dust.material.opacity = L.dust;
-  grade.userData = { vig: L.g[4], ca: L.g[6] };
+  grade.userData = { vig: L.g[4], ca: L.g[6] }; u.uToon.value = L.toon ? 1 : 0; toonOn = !!L.toon; bokeh.enabled = bloom.enabled = !light && !toonOn;
   u.uLift.value.set(...L.g[0]); u.uGain.value.set(...L.g[1]); u.uSat.value = L.g[2]; u.uCon.value = L.g[3]; u.uVig.value = L.g[4]; u.uGrain.value = L.g[5]; u.uCA.value = L.g[6];
 }
 /* ---------- render ---------- */
+let toonOn = false;
 let fpsAcc = 0, fpsN = 0, light = false, lowRes = false, perfSkip = 0;
-function setLight(v) { light = v; lowRes = false; R.setPixelRatio(v ? 1 : Math.min(devicePixelRatio, 1.5)); bokeh.enabled = bloom.enabled = !v; R.shadowMap.enabled = !v; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); layout(); $('#bPerf').style.color = v ? 'var(--ac)' : ''; }
+function setLight(v) { light = v; lowRes = false; R.setPixelRatio(v ? 1 : Math.min(devicePixelRatio, 1.5)); bokeh.enabled = bloom.enabled = !v && !toonOn; R.shadowMap.enabled = !v; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); layout(); $('#bPerf').style.color = v ? 'var(--ac)' : ''; }
 /* performance guard, two steps: below PERF.light fps the page goes to Light mode; if it is still below PERF.lowRes fps in Light mode, the picture is drawn at 75% resolution */
 const PERF = { light: 22, lowRes: 14, window: 3 };
 function setLowRes() { lowRes = true; R.setPixelRatio(.75); layout(); }
@@ -2179,7 +2182,7 @@ async function runSelfTest() {
   t('text added later is translated too, with numbers and names filled in', () => {
     setLang('hi'); const probe = document.createElement('span'); probe.textContent = 'Shot 2 of 4'; document.body.appendChild(probe); const sync = trFn(probe.textContent); probe.remove(); setLang('en'); return sync === 'शॉट 2 / 4';
   });
-  t('time-of-day looks exist and apply', () => { for (const k of ['dawn', 'noon', 'dusk']) { if (!LOOKS[k] || !LOOKS[k].label) return false; applyLook(k); } applyLook(P.look); return true; });
+  t('time-of-day looks exist and apply', () => { for (const k of ['dawn', 'noon', 'dusk', 'toon']) { if (!LOOKS[k] || !LOOKS[k].label) return false; applyLook(k); } applyLook(P.look); return grade.uniforms.uToon.value === 0 || LOOKS[P.look].toon; });
   t('Indic text becomes an image for PDFs', () => { const r = rasterText('தமிழ் காட்சி · हिन्दी', 10, false, [20, 20, 30]); return r.data[0] === 0xff && r.data[1] === 0xd8 && r.w > 40 && r.ptH > 8; });
   t('file names keep Tamil and Hindi letters', () => { const keep = P.title; P.title = 'தமிழ் காட்சி'; const a = fname('.json'); P.title = '!!!'; const b = fname('.json'); P.title = keep; return a === 'தமிழ்-காட்சி.json' && b === 'kalki-scene.json'; });
   const pass = res.filter(r => r[1]).length;
