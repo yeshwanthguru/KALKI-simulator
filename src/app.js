@@ -158,7 +158,7 @@ vec3 smp(vec2 uv0){vec2 uv=warp(uv0);vec2 d=(uv-.5)*uCA;return vec3(texture2D(tD
 void main(){vec3 c=vec3(0.);for(int i=0;i<8;i++){c+=smp(vUv+uVel*(float(i)/7.-.5));}c/=8.;
 c=(c-.5)*uCon+.5;float l=dot(c,vec3(.2126,.7152,.0722));c=mix(vec3(l),c,uSat);c=clamp(c,0.,1.);c=c*uGain+uLift*(1.-c);
 float v=smoothstep(.95,.2,length((vUv-.5)*vec2(1.,.85))*1.15);c*=mix(1.,v,uVig);
-if(uToon>.5){float lm=dot(c,vec3(.2126,.7152,.0722));float bands=floor(lm*4.+.5)/4.;c*=(max(bands,.12)+.08)/max(lm,.02);c=mix(vec3(dot(c,vec3(.2126,.7152,.0722))),c,1.25);vec2 px=1.5/uRes;float e=0.;vec3 w=vec3(.2126,.7152,.0722);float l0=dot(texture2D(tDiffuse,vUv).rgb,w);e+=abs(dot(texture2D(tDiffuse,vUv+vec2(px.x,0.)).rgb,w)-l0);e+=abs(dot(texture2D(tDiffuse,vUv-vec2(px.x,0.)).rgb,w)-l0);e+=abs(dot(texture2D(tDiffuse,vUv+vec2(0.,px.y)).rgb,w)-l0);e+=abs(dot(texture2D(tDiffuse,vUv-vec2(0.,px.y)).rgb,w)-l0);c=mix(c,vec3(.05,.04,.07),smoothstep(.3,.5,e));gl_FragColor=vec4(clamp(c,0.,1.),1.);return;}
+if(uToon>.5){float lm=dot(c,vec3(.2126,.7152,.0722));float bands=floor(lm*4.+.5)/4.;c*=(max(bands,.12)+.08)/max(lm,.02);c=mix(vec3(dot(c,vec3(.2126,.7152,.0722))),c,1.25);vec2 px=1.5/uRes;float e=0.;vec3 w=vec3(.2126,.7152,.0722);float l0=dot(texture2D(tDiffuse,vUv).rgb,w);e+=abs(dot(texture2D(tDiffuse,vUv+vec2(px.x,0.)).rgb,w)-l0);e+=abs(dot(texture2D(tDiffuse,vUv-vec2(px.x,0.)).rgb,w)-l0);e+=abs(dot(texture2D(tDiffuse,vUv+vec2(0.,px.y)).rgb,w)-l0);e+=abs(dot(texture2D(tDiffuse,vUv-vec2(0.,px.y)).rgb,w)-l0);c=mix(c,vec3(.05,.04,.07),smoothstep(.42,.75,e));gl_FragColor=vec4(clamp(c,0.,1.),1.);return;}
 float n=fract(sin(dot(floor(vUv*uRes)+fract(uTime*7.)*137.,vec2(12.9898,78.233)))*43758.5453);c+=(n-.5)*uGrain;gl_FragColor=vec4(c,1.);}`
 });
 composer.addPass(new T.RenderPass(scene, cam)); composer.addPass(bokeh); composer.addPass(bloom); composer.addPass(new T.OutputPass()); composer.addPass(grade);
@@ -172,7 +172,7 @@ const LOOKS = {
   dawn: { label: 'Dawn', sun: [0xff9f8a, 2.6], hemi: [0xc7d3ff, 0x1d1418, .45], fill: .5, bulb: 4.5, glass: 0xffc2a8, shaft: 1.1, fog: 0x1a1520, dust: .5, g: [[.03, .005, .05], [1.05, .96, .94], 1.04, 1.04, .5, .03, .0025] },
   noon: { label: 'Noon', sun: [0xfff6ea, 5.4], hemi: [0xdfeaff, 0x1b1a16, .55], fill: .55, bulb: 1.2, glass: 0xffffff, shaft: .35, fog: 0x1b1a16, dust: .22, g: [[0, 0, 0], [1.02, 1.01, 1], 1.1, 1.04, .3, .02, .001] },
   dusk: { label: 'Dusk', sun: [0xff7a4a, 3.0], hemi: [0x7a63b5, 0x1a1018, .35], fill: .25, bulb: 5.5, glass: 0xff9a6a, shaft: .9, fog: 0x120c14, dust: .5, g: [[.03, 0, .06], [1.12, .94, .86], 1.15, 1.1, .6, .035, .003] },
-  toon: { label: 'Cartoon', toon: true, sun: [0xffffff, 3.2], hemi: [0xffffff, 0x8a93b8, 1.1], fill: .9, bulb: 1.6, glass: 0xffffff, shaft: 0, fog: 0x9fd0ff, dust: 0, g: [[0, 0, 0], [1.04, 1.03, 1], 1.35, 1.12, 0, 0, 0] },
+  toon: { label: 'Cartoon', toon: true, sun: [0xffffff, 1.9], hemi: [0xffffff, 0x8a93b8, .85], fill: .6, bulb: 1.6, glass: 0xcfe6ff, shaft: 0, fog: 0x9fd0ff, dust: 0, g: [[0, 0, 0], [1, 1, 1], 1.15, 1.05, 0, 0, 0] },
   neutral: { label: 'Neutral', sun: [0xfff1e0, 3.4], hemi: [0xeef3ff, 0x1a1714, .4], fill: .4, bulb: 2.5, glass: 0xfff3e0, shaft: .5, fog: 0x15140f, dust: .3, g: [[0, 0, 0], [1, 1, 1], 1, 1.03, .35, .025, .0015] }
 };
 
@@ -872,7 +872,10 @@ function aimBone(b, a, target, limit, weight) {
 }
 const HEAD_H = { f: 1.56, m: 1.66 };
 function lifeLayer(k, Q, an, sp, clock, shotActive) {
-  const L = Q.life; if (!L) return; if (!LIFE.on) { for (const nm of FACE_BONES) if (L.bones[nm]) L.bones[nm].position.copy(L.rest[nm]); return; } const B = L.bones, A = L.ax, dt = clamp(clock - L.last, 0, .1); L.last = clock;
+  const L = Q.life; if (!L) return;
+  /* cartoon proportions: a bigger head and bigger eyes while the Cartoon look is on */
+  { const hs = toonOn ? 1.38 : 1, es = toonOn ? 1.3 : 1; if (L.bones.head) L.bones.head.scale.setScalar(hs); for (const nm of ['eyeL', 'eyeR']) if (L.bones[nm]) L.bones[nm].scale.setScalar(es); }
+  if (!LIFE.on) { for (const nm of FACE_BONES) if (L.bones[nm]) L.bones[nm].position.copy(L.rest[nm]); return; } const B = L.bones, A = L.ax, dt = clamp(clock - L.last, 0, .1); L.last = clock;
   const seated = !!SEATED[an], walking = an === 'walk', t = clock + L.off, o = k === 'A' ? 'B' : 'A';
   /* breathing and weight shift */
   rotLocal(B.spine2, A.spine2 && { axis: A.spine2.side.axis, sign: A.spine2.side.sign }, breath(t, an === 'talk' ? .3 : .24, L.off) * .011);
