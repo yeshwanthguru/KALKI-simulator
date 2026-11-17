@@ -356,6 +356,11 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
     <label>Accent colour<select class="sel" id="iAccent"></select></label>
     <label>Language of PDF headings<select class="sel" id="iLang"></select></label>
   </div>
+  <div class="info-grid" style="margin-top:10px">
+    <label style="grid-column:1/-1"><span><input type="checkbox" id="iCards"> Add a title card and an end card to recorded video</span></label>
+    <label>Line under the title<input id="iTag" maxlength="60" spellcheck="false" placeholder="A short film"></label>
+    <label>Credits on the end card<input id="iCred" maxlength="120" spellcheck="false" placeholder="Story and voices by ..."></label>
+  </div>
   <div class="rf-top" style="margin-top:10px"><button class="btn" id="iLogoPick">Choose a logo…</button><button class="btn" id="iLogoClear">Remove logo</button><span class="rf-note" id="iLogoNote"></span><input type="file" id="iLogoFile" accept="image/png,image/jpeg" style="display:none"></div>
   <button class="btn pri" style="margin-top:12px" id="iClose">Done</button>
 </div></div>

@@ -8,6 +8,7 @@ import { CHECK_TYPES, normAssignment, evaluate, summary as taskSummary, reportTe
 import { compareScenes } from './compare.js';
 import { scriptToShots } from './script.js';
 import { planClips, fitDuration } from './audio.js';
+import { cardContent, cardsOn, CARD_SECONDS } from './cards.js';
 import { storyPrompt, looksLikeScript, STORY_LANGS } from './story.js';
 import { ACCENTS, PDF_LANGS, LOGO_MAX, normInfo, infoLine } from './docinfo.js';
 import { analyzeClip, toShots, suggest, SIZE_NAME, toGray, AW, AH, fmtTime } from './analyze.js';
@@ -27,7 +28,7 @@ const SENSORS = {
 /* anamorphic squeeze: the lens squeezes the picture sideways so the full sensor height is used. The vertical view is then that of the full 4:3 gate. */
 const SQUEEZES = [1, 1.33, 1.5, 2];
 const SQUEEZE_LABEL = { 1: 'Spherical lens', 1.33: '1.33x anamorphic', 1.5: '1.5x anamorphic', 2: '2x anamorphic' };
-const DEFAULT_SENSOR = 'S35', SCHEMA = 13, NOTE_MAX = 240, LINE_MAX = 160;
+const DEFAULT_SENSOR = 'S35', SCHEMA = 14, NOTE_MAX = 240, LINE_MAX = 160;
 const sensorOf = () => SENSORS[P.sensor] || SENSORS[DEFAULT_SENSOR];
 const squeezeOf = () => (SQUEEZES.includes(+P.squeeze) ? +P.squeeze : 1);
 const sensorH = () => (squeezeOf() > 1 ? Math.max(sensorOf().h, sensorOf().w * .75) : sensorOf().h);
@@ -1168,7 +1169,7 @@ function step() {
   let sh = null, t = 0, sec = 0, idx = -1;
   if (demo) { sh = DEMO_SHOT; t = (clock % 30) / 30; sec = t * 30; }
   else if (P.shots.length) {
-    if (playing) { time += dt; if (time >= tot) { if (loop && !recording) time = 0; else { time = tot; setPlay(false); if (recording) stopRec(); } } }
+    if (playing) { time += dt; if (time >= tot) { if (loop && !recording) time = 0; else { time = tot; setPlay(false); if (recording) endRec(); } } }
     const a = at(time); idx = a.i; sh = P.shots[a.i]; t = a.t; sec = a.loc;
   }
   audioTick(dt);
@@ -1206,7 +1207,8 @@ function render(noInset) {
     const iy = ch - ins.y - ins.h;
     R.setViewport(ins.x, iy, ins.w, ins.h); R.setScissor(ins.x, iy, ins.w, ins.h); R.clearDepth(); R.render(scene, setCam);
   }
-  if (recording) { const r = R.getPixelRatio(); recording.ctx.drawImage(cv, film.x * r, film.y * r, film.w * r, film.h * r, 0, 0, recording.c.width, recording.c.height); const a = P.shots.length ? at(time) : null, sh = a && P.shots[a.i]; if (sh && sh.line) drawCaption(recording.ctx, recording.c.width, recording.c.height, sh.line); }
+  if (recording && recording.phase !== 'play') { const rc = recording, ci = cardInfo(), cc = cardContent(ci, P.title, new Date().toLocaleDateString('en-IN')), nowMs = performance.now(); drawCard(rc.ctx, rc.c.width, rc.c.height, rc.phase === 'title' ? cc.title : cc.end, ci.accent, rc.phase === 'end'); if (nowMs >= rc.until) { if (rc.phase === 'title') { rc.phase = 'play'; setPlay(true); } else stopRec(); } }
+  else if (recording) { const r = R.getPixelRatio(); recording.ctx.drawImage(cv, film.x * r, film.y * r, film.w * r, film.h * r, 0, 0, recording.c.width, recording.c.height); const a = P.shots.length ? at(time) : null, sh = a && P.shots[a.i]; if (sh && sh.line) drawCaption(recording.ctx, recording.c.width, recording.c.height, sh.line); }
 }
 
 /* ---------- UI ---------- */
@@ -1523,7 +1525,7 @@ function audioStart(tm) {
   if (MUSIC) { const s = x.createBufferSource(), g = x.createGain(); s.buffer = MUSIC.buf; s.loop = true; g.gain.value = MUSIC.vol; s.connect(g); g.connect(MASTER); s.start(now, tm % MUSIC.buf.duration); aud.src.push(s); }
 }
 function audioTick(dt) {
-  const want = (playing || !!recording) && !demo && !!ACTX;
+  const want = (playing || (!!recording && recording.phase === 'play')) && !demo && !!ACTX;
   if (!want) { if (aud.on) { audioStop(); aud.on = false; } return; }
   if (!aud.on || Math.abs(time - aud.last - dt) > .35) { audioStart(time); aud.on = true; }
   aud.last = time;
@@ -1635,13 +1637,14 @@ $('#cmpClose').onclick = () => $('#mCmp').classList.remove('on');
 
 /* document details dialog */
 function openInfo() {
-  const i = normInfo(P.info); $('#iProd').value = i.production; $('#iDir').value = i.director; $('#iScene').value = i.scene; $('#iDay').value = i.day;
+  const i = normInfo(P.info); $('#iProd').value = i.production; $('#iDir').value = i.director; $('#iScene').value = i.scene; $('#iDay').value = i.day; $('#iCards').checked = i.cards; $('#iTag').value = i.tagline; $('#iCred').value = i.credits;
   $('#iAccent').innerHTML = Object.entries(ACCENTS).map(([k, v]) => `<option value="${k}"${k === i.accent ? ' selected' : ''}>${v[0]}</option>`).join('');
   $('#iLang').innerHTML = PDF_LANGS.map(k => `<option value="${k}"${k === i.lang ? ' selected' : ''}>${k === 'ui' ? 'Same as the interface' : LANGS[k]}</option>`).join('');
   $('#iLogoNote').textContent = i.logo ? `Logo set (${i.logoW}×${i.logoH})` : 'No logo'; $('#mInfo').classList.add('on');
 }
 function saveInfo(patch) { commit(); P.info = normInfo({ ...normInfo(P.info), ...patch }); }
 for (const [id, k] of [['#iProd', 'production'], ['#iDir', 'director'], ['#iScene', 'scene'], ['#iDay', 'day']]) $(id).onchange = e => saveInfo({ [k]: e.target.value });
+$('#iCards').onchange = e => saveInfo({ cards: e.target.checked }); $('#iTag').onchange = e => saveInfo({ tagline: e.target.value }); $('#iCred').onchange = e => saveInfo({ credits: e.target.value });
 $('#iAccent').onchange = e => saveInfo({ accent: e.target.value }); $('#iLang').onchange = e => saveInfo({ lang: e.target.value });
 $('#iClose').onclick = () => $('#mInfo').classList.remove('on');
 $('#iLogoPick').onclick = () => $('#iLogoFile').click();
@@ -1715,6 +1718,24 @@ function drawCaption(g, w, h, text) {
   g.fillStyle = 'rgba(0,0,0,.62)'; const bw = Math.min(w * .9, Math.max(...lines.map(l => g.measureText(l).width)) + size * 1.2); g.beginPath(); g.roundRect ? g.roundRect((w - bw) / 2, y0, bw, bh, size * .3) : g.rect((w - bw) / 2, y0, bw, bh); g.fill();
   g.fillStyle = '#fff'; lines.forEach((l, i) => g.fillText(l, w / 2, y0 + size * .25 + lh * (i + .5))); g.restore();
 }
+/* a title or end card drawn on a recorded frame: dark background, an accent bar, the words centred */
+function drawCard(g, w, h, card, accent, end) {
+  g.save(); const bg = g.createLinearGradient(0, 0, 0, h); bg.addColorStop(0, '#0b0b10'); bg.addColorStop(1, '#1b1220'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  const ac = `rgb(${accent[0]},${accent[1]},${accent[2]})`, big = Math.round(h * (end ? .09 : .11)), small = Math.round(h * .045), font = f => `${f} "Segoe UI", "Nirmala UI", system-ui, sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  const fit = (txt, px, wt) => { let s = px; g.font = font(`${wt} ${s}px`); while (g.measureText(txt).width > w * .84 && s > 12) { s -= 2; g.font = font(`${wt} ${s}px`); } return s; };
+  const lines = end ? card.lines : card.sub ? [card.sub] : [], total = big * 1.3 + lines.length * small * 1.6, y0 = h / 2 - total / 2;
+  const hs = fit(card.head, big, 700); g.fillStyle = '#fff'; g.fillText(card.head, w / 2, y0 + big * .65);
+  g.fillStyle = ac; g.fillRect(w / 2 - w * .06, y0 + big * 1.3 + small * .1, w * .12, Math.max(2, h * .006));
+  g.fillStyle = 'rgba(255,255,255,.82)'; lines.forEach((l, i) => { fit(l, small, 500); g.fillText(l, w / 2, y0 + big * 1.3 + small * (1.2 + 1.6 * i) + small * .6); });
+  g.restore();
+}
+const cardInfo = () => { const i = normInfo(P.info); return { ...i, accent: ACCENTS[i.accent][1] }; };
+function endRec() {
+  const r = recording; if (!r) return;
+  if (r.phase === 'play' && cardsOn(P.info)) { r.phase = 'end'; r.until = performance.now() + CARD_SECONDS * 1000; return; }
+  stopRec();
+}
 function startRec() {
   if (!P.shots.length) return toast('Add a shot first');
   if (!window.MediaRecorder) return toast('Video export is not supported here');
@@ -1725,7 +1746,7 @@ function startRec() {
   const rec = new MediaRecorder(stream, mt ? { mimeType: mt, videoBitsPerSecond: 6e6 } : {}), chunks = [];
   rec.ondataavailable = e => e.data.size && chunks.push(e.data);
   rec.onstop = () => { if (dest) { try { MASTER.disconnect(dest); } catch {} } download(new Blob(chunks, { type: 'video/webm' }), fname('-preview.webm')); toast('Preview video saved'); };
-  recording = { c, ctx: c.getContext('2d'), rec }; layout(); time = 0; rec.start(); setPlay(true); toast('Recording… plays once through');
+  const cards = cardsOn(P.info); recording = { c, ctx: c.getContext('2d'), rec, phase: cards ? 'title' : 'play', until: performance.now() + CARD_SECONDS * 1000 }; layout(); time = 0; rec.start(); if (!cards) setPlay(true); toast(cards ? 'Recording with title and end cards…' : 'Recording… plays once through');
 }
 function stopRec() { const r = recording; recording = null; r.rec.stop(); layout(); }
 
@@ -1998,7 +2019,7 @@ $('#obSkip').onclick = () => endIntro('nocode');
 function refreshAll(code = true) { P.assignment = normAssignment(P.assignment, TASK_KNOWN) || undefined; if (!P.assignment) delete P.assignment; updateTaskBadge(); P.squeeze = squeezeOf(); P.info = normInfo(P.info); $('#squeeze').value = P.squeeze; P.actors = normCast(P.actors); P.outfit = normOutfit(P.outfit); syncCast(); P.look = LOOKS[P.look] ? P.look : 'golden'; $('#look').value = P.look; applyLook(P.look); P.set = SETS[P.set] ? P.set : 'stall'; $('#set').value = P.set; applySet(P.set); $('#title').value = P.title; $('#aspect').value = P.aspect; $('#sensor').value = SENSORS[P.sensor] ? P.sensor : DEFAULT_SENSOR; $('#empty').style.display = P.shots.length ? 'none' : 'grid'; buildTL(); buildInsp(); layout(); pathKey = ''; if (mode === 'code' && code) loadCode(); }
 new ResizeObserver(layout).observe($('#view'));
 buildLib(); refreshAll();
-if (location.hash === '#selftest' || location.hash === '#e2e') { LIFE.on = false; /* tests need frames that depend only on the shot, not on the wall clock */ if (location.hash === '#selftest') runSelfTest(); window.__kalki = { real: REAL, T, LIFE, measureSlide, WALK: { old: false }, frameAt: (sec, W = 320) => { playing = false; demo = false; time = sec; step(); step(); render(true); const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = W; c.height = Math.round(W * film.h / film.w); c.getContext('2d').drawImage(cv, film.x * r, film.y * r, film.w * r, film.h * r, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', .8); }, setStats: () => Object.fromEntries(Object.keys(SETG).map(k => [k, setStats(k)])), reportUi: async f => { ref = await computeRef(f); $('#mRef').classList.add('on'); renderRef(); const n = $$('#rfRes select[data-rfsize]').length; const sl = $('#rfRes select[data-rfsize]'); sl.value = 'CU'; sl.dispatchEvent(new Event('change', { bubbles: true })); return { selects: n, shots: ref.clip.shots.length, size0: ref.sizes[0], kept: $('#rfRes select[data-rfsize]').value, simSize: toShots(ref.clip, 'Ref', ref.sizes)[0].size }; }, reportPdf: async f => { ref = await computeRef(f); const b = buildAnalysisPdf(refPdfDoc()), t = Array.from(b, c => String.fromCharCode(c)).join(''); return { bytes: b.length, head: t.slice(0, 8), pages: (t.match(/\/Type \/Page /g) || []).length, images: (t.match(/\/Subtype \/Image/g) || []).length }; }, analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
+if (location.hash === '#selftest' || location.hash === '#e2e') { LIFE.on = false; /* tests need frames that depend only on the shot, not on the wall clock */ if (location.hash === '#selftest') runSelfTest(); window.__kalki = { real: REAL, T, LIFE, drawCard, cardInfo, cardContent, measureSlide, WALK: { old: false }, frameAt: (sec, W = 320) => { playing = false; demo = false; time = sec; step(); step(); render(true); const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = W; c.height = Math.round(W * film.h / film.w); c.getContext('2d').drawImage(cv, film.x * r, film.y * r, film.w * r, film.h * r, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', .8); }, setStats: () => Object.fromEntries(Object.keys(SETG).map(k => [k, setStats(k)])), reportUi: async f => { ref = await computeRef(f); $('#mRef').classList.add('on'); renderRef(); const n = $$('#rfRes select[data-rfsize]').length; const sl = $('#rfRes select[data-rfsize]'); sl.value = 'CU'; sl.dispatchEvent(new Event('change', { bubbles: true })); return { selects: n, shots: ref.clip.shots.length, size0: ref.sizes[0], kept: $('#rfRes select[data-rfsize]').value, simSize: toShots(ref.clip, 'Ref', ref.sizes)[0].size }; }, reportPdf: async f => { ref = await computeRef(f); const b = buildAnalysisPdf(refPdfDoc()), t = Array.from(b, c => String.fromCharCode(c)).join(''); return { bytes: b.length, head: t.slice(0, 8), pages: (t.match(/\/Type \/Page /g) || []).length, images: (t.match(/\/Subtype \/Image/g) || []).length }; }, analyse: async f => { const r = await computeRef(f); return { shots: r.clip.shots.map(x => ({ move: x.move, dir: x.dir, start: +x.start.toFixed(2), dur: +x.dur.toFixed(2), conf: +x.confidence.toFixed(2), cx: +x.cumX.toFixed(3), cy: +x.cumY.toFixed(3), cs: +x.cumS.toFixed(3), jit: +x.jitter.toFixed(4), par: +x.parallax.toFixed(2) })), summary: r.clip.summary, thumbs: r.thumbs.length }; } }; }
 if (store.get('kalki.onboarded')) { demo = false; $('#ob').style.display = 'none'; setPlay(true); }
 
 /* ---------- self test: open the page with #selftest, results go to the title and #selftestOut (used by tests/smoke.mjs) ---------- */
