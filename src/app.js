@@ -26,7 +26,7 @@ const SENSORS = {
 /* anamorphic squeeze: the lens squeezes the picture sideways so the full sensor height is used. The vertical view is then that of the full 4:3 gate. */
 const SQUEEZES = [1, 1.33, 1.5, 2];
 const SQUEEZE_LABEL = { 1: 'Spherical lens', 1.33: '1.33x anamorphic', 1.5: '1.5x anamorphic', 2: '2x anamorphic' };
-const DEFAULT_SENSOR = 'S35', SCHEMA = 11, NOTE_MAX = 240;
+const DEFAULT_SENSOR = 'S35', SCHEMA = 12, NOTE_MAX = 240, LINE_MAX = 160;
 const sensorOf = () => SENSORS[P.sensor] || SENSORS[DEFAULT_SENSOR];
 const squeezeOf = () => (SQUEEZES.includes(+P.squeeze) ? +P.squeeze : 1);
 const sensorH = () => (squeezeOf() > 1 ? Math.max(sensorOf().h, sensorOf().w * .75) : sensorOf().h);
@@ -116,6 +116,7 @@ function normShot(o, errs, i) {
   for (const k of ['A', 'B']) s['route' + k] = Array.isArray(o['route' + k]) ? o['route' + k].map(pl).filter(Boolean).slice(0, 6) : [];
   s.placeA = pl(o.placeA); s.placeB = pl(o.placeB); s.faceA = fc(o.faceA); s.faceB = fc(o.faceB);
   s.rig = normRig(o.rig); for (const k of ['A', 'B']) s['mood' + k] = o['mood' + k] === 'auto' || MOODS.includes(o['mood' + k]) ? o['mood' + k] : 'auto';
+  s.line = String(o.line || '').replace(/\s+/g, ' ').trim().slice(0, LINE_MAX); s.lineBy = o.lineBy === 'B' ? 'B' : 'A';
   s.notes = String(o.notes || '').replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
   return s;
 }
@@ -1203,7 +1204,7 @@ function render(noInset) {
     const iy = ch - ins.y - ins.h;
     R.setViewport(ins.x, iy, ins.w, ins.h); R.setScissor(ins.x, iy, ins.w, ins.h); R.clearDepth(); R.render(scene, setCam);
   }
-  if (recording) { const r = R.getPixelRatio(); recording.ctx.drawImage(cv, film.x * r, film.y * r, film.w * r, film.h * r, 0, 0, recording.c.width, recording.c.height); }
+  if (recording) { const r = R.getPixelRatio(); recording.ctx.drawImage(cv, film.x * r, film.y * r, film.w * r, film.h * r, 0, 0, recording.c.width, recording.c.height); const a = P.shots.length ? at(time) : null, sh = a && P.shots[a.i]; if (sh && sh.line) drawCaption(recording.ctx, recording.c.width, recording.c.height, sh.line); }
 }
 
 /* ---------- UI ---------- */
@@ -1253,6 +1254,8 @@ const FIELDS = [
   ['moodB', 'sel', '@B: expression', () => MOOD_OPTIONS()],
   ['faceA', 'rng', '@A faces', -180, 180, 5, v => v + '°'],
   ['faceB', 'rng', '@B faces', -180, 180, 5, v => v + '°'],
+  ['line', 'area', 'Spoken line (shown as a caption)', LINE_MAX, 'What is said in this shot, in any language'],
+  ['lineBy', 'sel', 'Spoken by', () => [['A', ACTOR_NAME.A], ['B', ACTOR_NAME.B]]],
   ['notes', 'area', 'Shot notes']
 ];
 function lensNote(l) { return l <= 18 ? 'Ultra-wide: exaggerates space and speed; faces distort up close.' : l <= 24 ? 'Wide: shows the environment; great for establishing and movement.' : l <= 50 ? 'Normal: close to how the eye sees; honest and natural.' : l <= 85 ? 'Portrait: flattering faces, soft separated backgrounds.' : 'Telephoto: compresses depth; feels voyeuristic or intense.'; }
@@ -1266,12 +1269,12 @@ function buildInsp() {
     const label = label0.replace('@A', ACTOR_NAME.A).replace('@B', ACTOR_NAME.B);
     const v = k === 'faceA' || k === 'faceB' ? defFace(sh, k) : sh[k];
     if (type === 'text') return `<div class="f"><label>${label}</label><input type="text" data-k="${k}" value="${String(v).replace(/"/g, '&quot;')}" maxlength="40"></div>`;
-    if (type === 'area') return `<div class="f"><label>${label}<em data-o="notes">${String(v).length}/${NOTE_MAX}</em></label><textarea data-k="${k}" rows="3" maxlength="${NOTE_MAX}" placeholder="Intent, blocking, reference, reminders for the crew…">${esc(v)}</textarea></div>`;
+    if (type === 'area') { const mx = a || NOTE_MAX; return `<div class="f"><label>${label}<em data-o="${k}">${String(v).length}/${mx}</em></label><textarea data-k="${k}" rows="${a ? 2 : 3}" maxlength="${mx}" placeholder="${b || 'Intent, blocking, reference, reminders for the crew…'}">${esc(v)}</textarea></div>`; }
     if (type === 'sel') return `<div class="f"><label>${label}</label><select data-k="${k}">${a().map(([o, l]) => `<option value="${o}"${String(o) === String(v) ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`;
     return `<div class="f"><label>${label}<em data-o="${k}">${c ? fmt(+v) : v}</em></label><input type="range" data-k="${k}" min="${a}" max="${b}" step="${c}" value="${v}"></div>`;
   };
   const F = Object.fromEntries(FIELDS.map(x => [x[0], f(x)]));
-  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.rig + F.actionA + F.actionB + F.moodA + F.moodB + laneHTML(sh) + `<div class="f"><label>Placement<em>click the set view</em></label><div class="pl"><button data-pl="A" class="${placing === 'A' ? 'on' : ''}">Place ${ACTOR_NAME.A}</button><button data-pl="B" class="${placing === 'B' ? 'on' : ''}">Place ${ACTOR_NAME.B}</button><button data-pl="R">Reset</button></div><div class="pl" style="margin-top:6px"><button data-pl="rA" class="${placing === 'rA' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.A}</button><button data-pl="rB" class="${placing === 'rB' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.B}</button><button data-pl="RC" title="Remove both walk paths">Clear paths</button></div></div>` + F.faceA + F.faceB + F.notes +
+  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.rig + F.actionA + F.actionB + F.moodA + F.moodB + F.line + (sh.line ? F.lineBy : '') + laneHTML(sh) + `<div class="f"><label>Placement<em>click the set view</em></label><div class="pl"><button data-pl="A" class="${placing === 'A' ? 'on' : ''}">Place ${ACTOR_NAME.A}</button><button data-pl="B" class="${placing === 'B' ? 'on' : ''}">Place ${ACTOR_NAME.B}</button><button data-pl="R">Reset</button></div><div class="pl" style="margin-top:6px"><button data-pl="rA" class="${placing === 'rA' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.A}</button><button data-pl="rB" class="${placing === 'rB' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.B}</button><button data-pl="RC" title="Remove both walk paths">Clear paths</button></div></div>` + F.faceA + F.faceB + F.notes +
     `<div class="learn" style="--c:${catColor(mv.cat)}"><h4>Rig: ${RIGS[rigFor(sh)].name}</h4><p>${RIGS[rigFor(sh)].how}</p><p><i>On a budget:</i> ${RIGS[rigFor(sh)].budget}</p></div><div class="learn" style="--c:${catColor(mv.cat)}"><h4>Why “${mv.name}”</h4><p>${mv.why}</p><p><i>Try:</i> ${mv.tip}</p><p><i>${sh.lens} mm on ${sensorOf().label}${crop() > 1.01 ? ' (≈' + eqMm(sh.lens) + ' mm full-frame equivalent)' : ''}:</i> ${lensNote(sh.lens)}</p>${squeezeOf() > 1 ? `<p><i>${SQUEEZE_LABEL[squeezeOf()]}:</i> the picture is squeezed sideways onto the full sensor height, so the vertical view is wider than a ${sh.lens} mm spherical lens on this sensor, and the horizontal view matches a spherical lens of about ${Math.round(sh.lens / squeezeOf())} mm. Oval bokeh and flares are not simulated.</p>` : ''}<p><i>f/${sh.fstop}:</i> ${sh.fstop <= 2 ? 'Shallow focus melts the background and isolates the subject: the classic cinematic look.' : sh.fstop >= 8 ? 'Deep focus keeps everything sharp, so the audience can explore the whole frame.' : 'Moderate depth: subject sharp, background softly separated.'}</p></div>`;
 }
 /* click-to-place: click or drag on the set view to put an actor on the floor of the current shot */
@@ -1315,7 +1318,7 @@ $('#insp').addEventListener('input', e => {
   const sh = P.shots[sel], fd = FIELDS.find(x => x[0] === k);
   let v = e.target.value; if (fd[1] === 'rng' || k === 'lens' || k === 'dir' || k === 'fstop') v = +v;
   sh[k] = v;
-  if (fd[1] === 'area') { const o = $(`[data-o="${k}"]`); if (o) o.textContent = `${v.length}/${NOTE_MAX}`; return; }
+  if (fd[1] === 'area') { const o = $(`[data-o="${k}"]`); if (o) o.textContent = `${v.length}/${fd[3] || NOTE_MAX}`; if (k === 'line') updTime(); return; }
   if (k === 'name') { buildTL(); return; }
   if (fd[1] === 'rng') { const o = $(`[data-o="${k}"]`); if (o) o.textContent = fd[6](v); buildTL(); }
   else { if (k === 'move' && MV[v].walk) sh['action' + (sh.subject === 'B' ? 'B' : 'A')] = 'walk'; buildInsp(); buildTL(); }
@@ -1340,6 +1343,7 @@ function updTime() {
   const a = P.shots.length ? at(time) : null, sh = a && P.shots[a.i];
   $('#hudTL').innerHTML = sh ? `${playing ? '<span class="rec"></span>' : ''}SHOT ${a.i + 1} · ${MV[sh.move].name.toUpperCase()}` : '';
   $('#hudBL').textContent = sh ? `${sh.lens}MM · F/${sh.fstop} · ${sh.size} · ${HEIGHTS[sh.height].toUpperCase()}` : '';
+  $('#cap').textContent = sh && sh.line ? sh.line : ''; $('#cap').style.display = sh && sh.line ? '' : 'none';
   $('#hudBR').textContent = sh ? `${tcf(time)}  ·  ${{ '2.39': '2.39:1', '1.778': '16:9', '0.5625': '9:16', '1': '1:1' }[P.aspect] || ''}` : '';
 }
 let drag = false;
@@ -1665,6 +1669,14 @@ function exportBlocking() {
   if (!P.shots.length) return toast('Add a shot first');
   download(new Blob([buildBlockingPdf(blockingDoc())], { type: 'application/pdf' }), fname('-blocking.pdf')); toast('Blocking diagram saved');
 }
+/* burns a caption into a recorded frame: white text on a dark band near the bottom, wrapped to the picture's width */
+function drawCaption(g, w, h, text) {
+  const size = Math.round(h * .052), maxW = w * .84; g.save(); g.font = `600 ${size}px "Segoe UI", "Nirmala UI", system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  const lines = [], words = text.split(' '); let cur = ''; for (const wd of words) { const t = cur ? cur + ' ' + wd : wd; if (g.measureText(t).width > maxW && cur) { lines.push(cur); cur = wd; } else cur = t; } if (cur) lines.push(cur);
+  const lh = size * 1.3, bh = lines.length * lh + size * .5, y0 = h * .92 - bh;
+  g.fillStyle = 'rgba(0,0,0,.62)'; const bw = Math.min(w * .9, Math.max(...lines.map(l => g.measureText(l).width)) + size * 1.2); g.beginPath(); g.roundRect ? g.roundRect((w - bw) / 2, y0, bw, bh, size * .3) : g.rect((w - bw) / 2, y0, bw, bh); g.fill();
+  g.fillStyle = '#fff'; lines.forEach((l, i) => g.fillText(l, w / 2, y0 + size * .25 + lh * (i + .5))); g.restore();
+}
 function startRec() {
   if (!P.shots.length) return toast('Add a shot first');
   if (!window.MediaRecorder) return toast('Video export is not supported here');
@@ -1956,6 +1968,7 @@ async function runSelfTest() {
   const near = (a, b, eps = 1e-6) => Math.abs(a - b) < eps;
 
   t('normShot defaults and clamps', () => { const s = normShot({ duration: 999, lens: 33, angle: 999 }); return s.duration === 20 && s.lens === 35 && s.angle === 180 && s.notes === '' && s.fstop === 2.8; });
+  t('normShot cleans the spoken line', () => { const s = normShot({ line: '  வணக்கம்   நண்பா ' + 'x'.repeat(300), lineBy: 'Z' }); return s.line.startsWith('வணக்கம் நண்பா') && s.line.length === LINE_MAX && s.lineBy === 'A' && normShot({}).line === '' && normShot({ lineBy: 'B' }).lineBy === 'B'; });
   t('normShot trims and limits notes', () => { const s = normShot({ notes: '  a \n  b ' + 'x'.repeat(500) }); return s.notes.startsWith('a b') && s.notes.length === NOTE_MAX; });
   t('normShot rejects unknown move', () => { const errs = []; const s = normShot({ move: 'nope' }, errs, 0); return s.move === 'static' && errs.length === 1; });
   t('18 moves exist', () => MOVES.length === 18);

@@ -51,7 +51,7 @@ export function scriptToShots(src, opts = {}) {
       const nextIsEnd = !blocks.slice(j).some(x => x.type === 'cue') || (blocks[j] && blocks[j].type === 'heading');
       const intense = /[!?]\s*$/.test(speech) && exchange > 1;
       push({ name: `${title(k.name)}: ${short(speech, 18)}`, move: nextIsEnd && who !== 'both' ? 'push_in' : 'static', size: intense || nextIsEnd ? 'MCU' : 'MS', lens: 50, subject: who, angle: who === 'A' ? 25 : who === 'B' ? -25 : 0, amount: nextIsEnd ? .4 : .6,
-        actionA: who === 'A' ? 'talk' : who === 'B' ? 'listen' : 'stand', actionB: who === 'B' ? 'talk' : who === 'A' ? 'listen' : 'stand', duration: clamp(Math.round(words(speech) / 2.5 * 2) / 2, 2, 10), notes: short(`${k.name}: ${speech}`, 200) });
+        actionA: who === 'A' ? 'talk' : who === 'B' ? 'listen' : 'stand', actionB: who === 'B' ? 'talk' : who === 'A' ? 'listen' : 'stand', line: short(speech, 160), lineBy: who === 'B' ? 'B' : 'A', duration: clamp(Math.round(words(speech) / 2.5 * 2) / 2, 2, 10), notes: short(`${k.name}: ${speech}`, 200) });
       b = j - 1;
     }
   }

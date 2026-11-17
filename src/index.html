@@ -66,7 +66,7 @@ button{cursor:pointer;border:0;background:none}
 .cn{position:absolute;width:18px;height:18px;border:2px solid rgba(255,255,255,.55)}
 .cn.a{left:10px;top:10px;border-right:0;border-bottom:0}.cn.b{right:10px;top:10px;border-left:0;border-bottom:0}.cn.c{left:10px;bottom:10px;border-right:0;border-top:0}.cn.d{right:10px;bottom:10px;border-left:0;border-top:0}
 .hud{position:absolute;font:600 11px var(--m);letter-spacing:.06em;color:rgba(255,255,255,.85);text-shadow:0 1px 6px rgba(0,0,0,.8)}
-#hudTL{left:36px;top:14px}#frame.narrow .hud{font-size:9.5px}#frame.narrow #hudBR{top:30px;bottom:auto;left:36px;right:auto}#hudBL{left:36px;bottom:14px}#hudBR{right:36px;bottom:14px}
+#cap{position:absolute;left:50%;bottom:11%;transform:translateX(-50%);max-width:84%;padding:.25em .7em;border-radius:8px;background:rgba(0,0,0,.62);color:#fff;font:600 clamp(11px,2.4cqw,24px)/1.3 "Segoe UI","Nirmala UI",system-ui,sans-serif;text-align:center;pointer-events:none;z-index:3}#frame{container-type:inline-size}#hudTL{left:36px;top:14px}#frame.narrow .hud{font-size:9.5px}#frame.narrow #hudBR{top:30px;bottom:auto;left:36px;right:auto}#hudBL{left:36px;bottom:14px}#hudBR{right:36px;bottom:14px}
 .rec{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ac2);margin-right:6px;animation:bl 1.2s infinite}
 @keyframes bl{50%{opacity:.2}}
 #inset{position:absolute;border:1px solid var(--ln2);border-radius:10px;pointer-events:none;box-shadow:0 10px 30px rgba(0,0,0,.5)}
@@ -260,7 +260,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
   <main id="view">
     <canvas id="cv"></canvas>
     <div id="frame"><div class="th"></div><svg id="gd" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><div class="cn a"></div><div class="cn b"></div><div class="cn c"></div><div class="cn d"></div>
-      <div class="hud" id="hudTL"></div><div class="hud" id="hudBL"></div><div class="hud" id="hudBR"></div></div>
+      <div id="cap" style="display:none"></div><div class="hud" id="hudTL"></div><div class="hud" id="hudBL"></div><div class="hud" id="hudBR"></div></div>
     <div id="inset"><span>SET VIEW</span></div>
     <div id="empty"><div><b>Your timeline is empty</b>Pick a camera move from the library to add your first shot.</div></div>
   </main>

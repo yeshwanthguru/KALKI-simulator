@@ -35,4 +35,5 @@ assert.ok(looksLikeScript(answer) && !looksLikeScript('Once upon a time there wa
 const r = scriptToShots(answer);
 assert.equal(r.title, 'The Last Cup'); assert.equal(r.set, 'stall'); assert.deepEqual(r.speakers, ['MEERA', 'ARJUN']);
 assert.ok(r.shots.length >= 6 && r.shots.some(s => s.actionA === 'talk') && r.shots.some(s => s.size === 'WS'));
+assert.ok(r.shots.filter(x => x.line).length === 3 && r.shots.find(x => x.line && x.line.startsWith('Good morning')).lineBy === 'A' && r.shots.find(x => x.line && x.line.startsWith('Coming right up')).lineBy === 'B', 'each spoken line becomes a caption by its speaker');
 console.log('story ok');
