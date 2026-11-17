@@ -7,6 +7,7 @@ import { blinkLevel, breath, sway, gazeOffset, boneAxes, GAZE_WEIGHTS, handheld,
 import { CHECK_TYPES, normAssignment, evaluate, summary as taskSummary, reportText } from './assignment.js';
 import { compareScenes } from './compare.js';
 import { scriptToShots } from './script.js';
+import { planClips, fitDuration } from './audio.js';
 import { storyPrompt, looksLikeScript, STORY_LANGS } from './story.js';
 import { ACCENTS, PDF_LANGS, LOGO_MAX, normInfo, infoLine } from './docinfo.js';
 import { analyzeClip, toShots, suggest, SIZE_NAME, toGray, AW, AH, fmtTime } from './analyze.js';
@@ -26,7 +27,7 @@ const SENSORS = {
 /* anamorphic squeeze: the lens squeezes the picture sideways so the full sensor height is used. The vertical view is then that of the full 4:3 gate. */
 const SQUEEZES = [1, 1.33, 1.5, 2];
 const SQUEEZE_LABEL = { 1: 'Spherical lens', 1.33: '1.33x anamorphic', 1.5: '1.5x anamorphic', 2: '2x anamorphic' };
-const DEFAULT_SENSOR = 'S35', SCHEMA = 12, NOTE_MAX = 240, LINE_MAX = 160;
+const DEFAULT_SENSOR = 'S35', SCHEMA = 13, NOTE_MAX = 240, LINE_MAX = 160;
 const sensorOf = () => SENSORS[P.sensor] || SENSORS[DEFAULT_SENSOR];
 const squeezeOf = () => (SQUEEZES.includes(+P.squeeze) ? +P.squeeze : 1);
 const sensorH = () => (squeezeOf() > 1 ? Math.max(sensorOf().h, sensorOf().w * .75) : sensorOf().h);
@@ -116,7 +117,7 @@ function normShot(o, errs, i) {
   for (const k of ['A', 'B']) s['route' + k] = Array.isArray(o['route' + k]) ? o['route' + k].map(pl).filter(Boolean).slice(0, 6) : [];
   s.placeA = pl(o.placeA); s.placeB = pl(o.placeB); s.faceA = fc(o.faceA); s.faceB = fc(o.faceB);
   s.rig = normRig(o.rig); for (const k of ['A', 'B']) s['mood' + k] = o['mood' + k] === 'auto' || MOODS.includes(o['mood' + k]) ? o['mood' + k] : 'auto';
-  s.line = String(o.line || '').replace(/\s+/g, ' ').trim().slice(0, LINE_MAX); s.lineBy = o.lineBy === 'B' ? 'B' : 'A';
+  s.line = String(o.line || '').replace(/\s+/g, ' ').trim().slice(0, LINE_MAX); s.lineBy = o.lineBy === 'B' ? 'B' : 'A'; s.voice = typeof o.voice === 'string' && /^[a-z0-9]{3,12}$/.test(o.voice) ? o.voice : ''; s.voiceName = s.voice ? String(o.voiceName || '').slice(0, 40) : '';
   s.notes = String(o.notes || '').replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
   return s;
 }
@@ -1170,6 +1171,7 @@ function step() {
     if (playing) { time += dt; if (time >= tot) { if (loop && !recording) time = 0; else { time = tot; setPlay(false); if (recording) stopRec(); } } }
     const a = at(time); idx = a.i; sh = P.shots[a.i]; t = a.t; sec = a.loc;
   }
+  audioTick(dt);
   let fstop = 4, focus = 6;
   if (sh) { const p = solve(sh, t, sec); applyCam(cam, p); poseActors(sh, t, sec, clock); fstop = sh.fstop || 2.8; focus = p.pos.distanceTo(V(p.sp.target.x, SIZES[sh.size].ty, p.sp.target.z)); }
   else { applyCam(cam, { pos: V(0, 1.7, 7.5), tg: V(0, 1, 0), fov: 40, yaw: 0, pitch: 0, roll: 0 }); poseActors(null, 0, 0, clock); }
@@ -1274,7 +1276,7 @@ function buildInsp() {
     return `<div class="f"><label>${label}<em data-o="${k}">${c ? fmt(+v) : v}</em></label><input type="range" data-k="${k}" min="${a}" max="${b}" step="${c}" value="${v}"></div>`;
   };
   const F = Object.fromEntries(FIELDS.map(x => [x[0], f(x)]));
-  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.rig + F.actionA + F.actionB + F.moodA + F.moodB + F.line + (sh.line ? F.lineBy : '') + laneHTML(sh) + `<div class="f"><label>Placement<em>click the set view</em></label><div class="pl"><button data-pl="A" class="${placing === 'A' ? 'on' : ''}">Place ${ACTOR_NAME.A}</button><button data-pl="B" class="${placing === 'B' ? 'on' : ''}">Place ${ACTOR_NAME.B}</button><button data-pl="R">Reset</button></div><div class="pl" style="margin-top:6px"><button data-pl="rA" class="${placing === 'rA' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.A}</button><button data-pl="rB" class="${placing === 'rB' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.B}</button><button data-pl="RC" title="Remove both walk paths">Clear paths</button></div></div>` + F.faceA + F.faceB + F.notes +
+  box.innerHTML = F.name + F.move + `<div class="row">${F.lens}${F.fstop}</div><div class="row">${F.size}${F.subject}</div>${F.height}` + F.duration + F.angle + (mv.id !== 'static' ? F.amount : '') + `<div class="row">${mv.dir ? F.dir : ''}${F.easing}</div>` + F.rig + F.actionA + F.actionB + F.moodA + F.moodB + F.line + (sh.line ? F.lineBy : '') + voiceHTML(sh) + laneHTML(sh) + `<div class="f"><label>Placement<em>click the set view</em></label><div class="pl"><button data-pl="A" class="${placing === 'A' ? 'on' : ''}">Place ${ACTOR_NAME.A}</button><button data-pl="B" class="${placing === 'B' ? 'on' : ''}">Place ${ACTOR_NAME.B}</button><button data-pl="R">Reset</button></div><div class="pl" style="margin-top:6px"><button data-pl="rA" class="${placing === 'rA' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.A}</button><button data-pl="rB" class="${placing === 'rB' ? 'on' : ''}" title="Click points on the set view; the actor walks through them">Walk path ${ACTOR_NAME.B}</button><button data-pl="RC" title="Remove both walk paths">Clear paths</button></div></div>` + F.faceA + F.faceB + F.notes +
     `<div class="learn" style="--c:${catColor(mv.cat)}"><h4>Rig: ${RIGS[rigFor(sh)].name}</h4><p>${RIGS[rigFor(sh)].how}</p><p><i>On a budget:</i> ${RIGS[rigFor(sh)].budget}</p></div><div class="learn" style="--c:${catColor(mv.cat)}"><h4>Why “${mv.name}”</h4><p>${mv.why}</p><p><i>Try:</i> ${mv.tip}</p><p><i>${sh.lens} mm on ${sensorOf().label}${crop() > 1.01 ? ' (≈' + eqMm(sh.lens) + ' mm full-frame equivalent)' : ''}:</i> ${lensNote(sh.lens)}</p>${squeezeOf() > 1 ? `<p><i>${SQUEEZE_LABEL[squeezeOf()]}:</i> the picture is squeezed sideways onto the full sensor height, so the vertical view is wider than a ${sh.lens} mm spherical lens on this sensor, and the horizontal view matches a spherical lens of about ${Math.round(sh.lens / squeezeOf())} mm. Oval bokeh and flares are not simulated.</p>` : ''}<p><i>f/${sh.fstop}:</i> ${sh.fstop <= 2 ? 'Shallow focus melts the background and isolates the subject: the classic cinematic look.' : sh.fstop >= 8 ? 'Deep focus keeps everything sharp, so the audience can explore the whole frame.' : 'Moderate depth: subject sharp, background softly separated.'}</p></div>`;
 }
 /* click-to-place: click or drag on the set view to put an actor on the floor of the current shot */
@@ -1456,6 +1458,8 @@ menu('#mFile', a => {
   if (a === 'new') { commit(); P = { schemaVersion: SCHEMA, actors: castOf(), title: 'Untitled scene', aspect: P.aspect, look: P.look, set: P.set, outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, squeeze: squeezeOf(), info: normInfo(P.info), shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
   if (a === 'open') $('#fileIn').click();
   if (a === 'script') $('#scriptIn').click();
+  if (a === 'music') { audIn.target = 'music'; audIn.click(); }
+  if (a === 'nomusic') { MUSIC = null; audioStop(); aud.on = false; toast('Background music removed'); }
   if (a === 'story') { $('#stNote').textContent = ''; $('#mStory').classList.add('on'); }
   if (a === 'compare') $('#cmpIn').click();
   if (a === 'save') { download(new Blob([JSON.stringify(P, null, 2)], { type: 'application/json' }), fname('.kalki.json')); toast('Project saved'); }
@@ -1505,6 +1509,40 @@ function importScript(text) {
 $('#scriptIn').onchange = e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return; if (f.size > 5e5) { toast('That script is too large (500 KB at most)'); return; }
   const rd = new FileReader(); rd.onload = () => { const r = importScript(String(rd.result)); toast(!r.ok ? 'No scenes or dialogue found in that file' : r.truncated ? `Imported the first ${r.n} shots · Ctrl+Z to undo` : `Imported ${r.n} shots · Ctrl+Z to undo`); }; rd.readAsText(f);
+};
+
+/* ---------- voice recordings and music ---------- */
+/* Recordings are decoded in memory (they are not saved in the project file, only their names). They play with the shots and are mixed into recorded video. */
+const AUD = new Map(); let ACTX = null, MASTER = null, MUSIC = null; const aud = { src: [], on: false, last: 0 };
+const audIn = $('#audIn'); audIn.target = 'voice';
+function audioCtx() { if (!ACTX) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ACTX = new C(); MASTER = ACTX.createGain(); MASTER.connect(ACTX.destination); } if (ACTX.state === 'suspended') ACTX.resume(); return ACTX; }
+function audioStop() { aud.src.forEach(s => { try { s.stop(); } catch {} }); aud.src = []; }
+function audioStart(tm) {
+  audioStop(); const x = ACTX; if (!x) return; const st = starts(), now = x.currentTime + .05;
+  for (const c of planClips(P.shots.map((s, i) => ({ at: st[i], dur: AUD.has(s.voice) ? AUD.get(s.voice).buf.duration : 0, id: s.voice })), tm)) { const s = x.createBufferSource(); s.buffer = AUD.get(c.id).buf; s.connect(MASTER); s.start(now + c.delay, c.offset); aud.src.push(s); }
+  if (MUSIC) { const s = x.createBufferSource(), g = x.createGain(); s.buffer = MUSIC.buf; s.loop = true; g.gain.value = MUSIC.vol; s.connect(g); g.connect(MASTER); s.start(now, tm % MUSIC.buf.duration); aud.src.push(s); }
+}
+function audioTick(dt) {
+  const want = (playing || !!recording) && !demo && !!ACTX;
+  if (!want) { if (aud.on) { audioStop(); aud.on = false; } return; }
+  if (!aud.on || Math.abs(time - aud.last - dt) > .35) { audioStart(time); aud.on = true; }
+  aud.last = time;
+}
+const voiceHTML = sh => `<div class="f"><label>Voice recording</label><div class="row"><button class="btn" data-v="attach">${sh.voice ? 'Replace audio…' : 'Attach audio…'}</button>${sh.voice ? '<button class="btn" data-v="clear">Remove</button>' : ''}</div>${sh.voice ? `<p class="rf-note" style="margin:4px 0 0">${AUD.has(sh.voice) ? esc(sh.voiceName) + ' · ' + AUD.get(sh.voice).buf.duration.toFixed(1) + ' s' : esc(sh.voiceName) + ' is not loaded. Attach it again (recordings are not saved in the project file).'}</p>` : ''}</div>`;
+$('#insp').addEventListener('click', e => {
+  const b = e.target.closest('button[data-v]'); if (!b) return; const sh = P.shots[sel]; if (!sh) return;
+  if (b.dataset.v === 'attach') { audIn.target = 'voice'; audIn.click(); return; }
+  commit(); AUD.delete(sh.voice); sh.voice = ''; sh.voiceName = ''; audioStop(); aud.on = false; buildInsp(); toast('Recording removed');
+});
+audIn.onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return; if (f.size > 12e6) { toast('That audio file is too large (12 MB at most)'); return; }
+  const x = audioCtx(); if (!x) { toast('Audio is not supported here'); return; }
+  let buf; try { buf = await x.decodeAudioData(await f.arrayBuffer()); } catch { toast('That audio file could not be read. Try MP3, WAV or OGG.'); return; }
+  if (audIn.target === 'music') { MUSIC = { name: f.name, buf, vol: .28 }; aud.on = false; toast(`Background music added: ${f.name.slice(0, 30)}`); return; }
+  const sh = P.shots[sel]; if (!sh) return; commit();
+  const id = 'a' + Math.random().toString(36).slice(2, 10); AUD.delete(sh.voice); AUD.set(id, { buf }); sh.voice = id; sh.voiceName = f.name.slice(0, 40);
+  const need = fitDuration(sh.duration, buf.duration), grew = need > sh.duration; sh.duration = need; aud.on = false; refreshAll();
+  toast(grew ? `Recording added; shot lengthened to ${need} s to fit it` : 'Recording added');
 };
 
 /* ---------- story to scenes ---------- */
@@ -1681,10 +1719,12 @@ function startRec() {
   if (!P.shots.length) return toast('Add a shot first');
   if (!window.MediaRecorder) return toast('Video export is not supported here');
   const r = R.getPixelRatio(), c = document.createElement('canvas'); c.width = Math.round(film.w * r / 2) * 2; c.height = Math.round(film.h * r / 2) * 2;
-  const mt = ['video/webm;codecs=vp9', 'video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || '';
-  const rec = new MediaRecorder(c.captureStream(30), mt ? { mimeType: mt, videoBitsPerSecond: 6e6 } : {}), chunks = [];
+  const stream = c.captureStream(30), hasAudio = !!ACTX && (!!MUSIC || P.shots.some(s => AUD.has(s.voice))); let dest = null;
+  if (hasAudio) { dest = ACTX.createMediaStreamDestination(); MASTER.connect(dest); dest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr)); }
+  const mt = (hasAudio ? ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus'] : []).concat(['video/webm;codecs=vp9', 'video/webm']).find(t => MediaRecorder.isTypeSupported(t)) || '';
+  const rec = new MediaRecorder(stream, mt ? { mimeType: mt, videoBitsPerSecond: 6e6 } : {}), chunks = [];
   rec.ondataavailable = e => e.data.size && chunks.push(e.data);
-  rec.onstop = () => { download(new Blob(chunks, { type: 'video/webm' }), fname('-preview.webm')); toast('Preview video saved'); };
+  rec.onstop = () => { if (dest) { try { MASTER.disconnect(dest); } catch {} } download(new Blob(chunks, { type: 'video/webm' }), fname('-preview.webm')); toast('Preview video saved'); };
   recording = { c, ctx: c.getContext('2d'), rec }; layout(); time = 0; rec.start(); setPlay(true); toast('Recording… plays once through');
 }
 function stopRec() { const r = recording; recording = null; r.rec.stop(); layout(); }
@@ -1969,6 +2009,8 @@ async function runSelfTest() {
 
   t('normShot defaults and clamps', () => { const s = normShot({ duration: 999, lens: 33, angle: 999 }); return s.duration === 20 && s.lens === 35 && s.angle === 180 && s.notes === '' && s.fstop === 2.8; });
   t('normShot cleans the spoken line', () => { const s = normShot({ line: '  வணக்கம்   நண்பா ' + 'x'.repeat(300), lineBy: 'Z' }); return s.line.startsWith('வணக்கம் நண்பா') && s.line.length === LINE_MAX && s.lineBy === 'A' && normShot({}).line === '' && normShot({ lineBy: 'B' }).lineBy === 'B'; });
+  t('voice recording fields are cleaned', () => { const s = normShot({ voice: 'ab1', voiceName: 'x'.repeat(90) }), z = normShot({ voice: '../x', voiceName: 'n' }); return s.voice === 'ab1' && s.voiceName.length === 40 && z.voice === '' && z.voiceName === ''; });
+  t('recordings are scheduled and stopped', () => { const x = audioCtx(); if (!x) return true; const keep = P.shots[0].voice, sec = x.createBuffer(1, 44100, 44100); AUD.set('tst1', { buf: sec }); P.shots[0].voice = 'tst1'; audioStart(0); const n = aud.src.length; audioStop(); const m = aud.src.length; P.shots[0].voice = keep; AUD.delete('tst1'); aud.on = false; return n === 1 && m === 0; });
   t('normShot trims and limits notes', () => { const s = normShot({ notes: '  a \n  b ' + 'x'.repeat(500) }); return s.notes.startsWith('a b') && s.notes.length === NOTE_MAX; });
   t('normShot rejects unknown move', () => { const errs = []; const s = normShot({ move: 'nope' }, errs, 0); return s.move === 'static' && errs.length === 1; });
   t('18 moves exist', () => MOVES.length === 18);

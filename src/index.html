@@ -232,6 +232,8 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
       <button data-a="new">New scene<small>Start from an empty timeline</small></button>
       <button data-a="open">Open project…<small>.kalki.json file</small></button>
       <button data-a="story">Story to scenes…<small>Write a story, get a prompt, build the shots</small></button>
+      <button data-a="music">Add background music…<small>MP3, WAV or OGG, mixed into recorded video</small></button>
+      <button data-a="nomusic">Remove background music<small>Keep only the voice recordings</small></button>
       <button data-a="script">Import script…<small>Fountain or plain text into a shot list</small></button>
       <button data-a="compare">Compare with another project…<small>Shot by shot, what differs</small></button>
       <button data-a="save">Save project<small>Download as .kalki.json</small></button>
@@ -315,7 +317,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
   <button class="btn pri" style="margin-top:12px;align-self:flex-start" id="learnClose">Done</button>
 </div></div>
 
-<input type="file" id="scriptIn" accept=".fountain,.txt,.md,text/plain" style="display:none"><input type="file" id="cmpIn" accept=".json,application/json" style="display:none">
+<input type="file" id="audIn" accept="audio/*" style="display:none"><input type="file" id="scriptIn" accept=".fountain,.txt,.md,text/plain" style="display:none"><input type="file" id="cmpIn" accept=".json,application/json" style="display:none">
 <div class="modal" id="mTask"><div class="card" style="width:min(720px,96vw);max-height:90vh;display:flex;flex-direction:column">
   <h2>Assignment</h2>
   <div id="taskBody" style="overflow:auto"></div>
