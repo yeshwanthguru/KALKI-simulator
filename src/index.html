@@ -231,6 +231,7 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
     <div class="menu" id="mFile"><button class="btn">File ▾</button><div class="dd">
       <button data-a="new">New scene<small>Start from an empty timeline</small></button>
       <button data-a="open">Open project…<small>.kalki.json file</small></button>
+      <button data-a="story">Story to scenes…<small>Write a story, get a prompt, build the shots</small></button>
       <button data-a="script">Import script…<small>Fountain or plain text into a shot list</small></button>
       <button data-a="compare">Compare with another project…<small>Shot by shot, what differs</small></button>
       <button data-a="save">Save project<small>Download as .kalki.json</small></button>
@@ -325,6 +326,21 @@ kbd{font:600 11px var(--m);background:var(--p3);border:1px solid var(--ln2);bord
   <h2>Compare projects</h2>
   <div id="cmpBody" style="overflow:auto"></div>
   <button class="btn pri" style="margin-top:12px;align-self:flex-start" id="cmpClose">Done</button>
+</div></div>
+
+<div class="modal" id="mStory"><div class="card" style="width:min(760px,96vw);max-height:92vh;display:flex;flex-direction:column">
+  <h2>Story to scenes</h2>
+  <p class="rf-note" style="margin:0 0 10px">Write your story, copy the prompt into any chat assistant, then paste its screenplay here to build the scenes. Kalki itself stays offline.</p>
+  <div style="overflow:auto;display:grid;gap:8px">
+    <label class="f">Your story<textarea id="stText" maxlength="4000" rows="6" spellcheck="false" placeholder="A shy girl at a tea stall meets the boy who ..."></textarea></label>
+    <div class="info-grid">
+      <label>Dialogue language<select id="stLang"></select></label>
+      <label>Length<select id="stLen"><option value="30">About 30 seconds</option><option value="60" selected>About 1 minute</option><option value="120">About 2 minutes</option></select></label>
+    </div>
+    <div><button class="btn" id="stCopy">Copy prompt</button> <span class="rf-note" id="stNote"></span></div>
+    <label class="f">Screenplay from the assistant<textarea id="stScript" rows="8" spellcheck="false" placeholder="Title: ...&#10;&#10;INT. TEA STALL - MORNING&#10;..."></textarea></label>
+  </div>
+  <div style="margin-top:12px;display:flex;gap:8px"><button class="btn pri" id="stBuild">Build scenes</button><button class="btn" id="stClose">Close</button></div>
 </div></div>
 
 <div class="modal" id="mInfo"><div class="card" style="width:min(560px,94vw)">

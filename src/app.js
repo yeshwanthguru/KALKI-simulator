@@ -7,6 +7,7 @@ import { blinkLevel, breath, sway, gazeOffset, boneAxes, GAZE_WEIGHTS, handheld,
 import { CHECK_TYPES, normAssignment, evaluate, summary as taskSummary, reportText } from './assignment.js';
 import { compareScenes } from './compare.js';
 import { scriptToShots } from './script.js';
+import { storyPrompt, looksLikeScript, STORY_LANGS } from './story.js';
 import { ACCENTS, PDF_LANGS, LOGO_MAX, normInfo, infoLine } from './docinfo.js';
 import { analyzeClip, toShots, suggest, SIZE_NAME, toGray, AW, AH, fmtTime } from './analyze.js';
 (function () {
@@ -1451,6 +1452,7 @@ menu('#mFile', a => {
   if (a === 'new') { commit(); P = { schemaVersion: SCHEMA, actors: castOf(), title: 'Untitled scene', aspect: P.aspect, look: P.look, set: P.set, outfit: outfitOf(), sensor: P.sensor || DEFAULT_SENSOR, squeeze: squeezeOf(), info: normInfo(P.info), shots: [] }; sel = 0; time = 0; refreshAll(); toast('New scene · Ctrl+Z to undo'); }
   if (a === 'open') $('#fileIn').click();
   if (a === 'script') $('#scriptIn').click();
+  if (a === 'story') { $('#stNote').textContent = ''; $('#mStory').classList.add('on'); }
   if (a === 'compare') $('#cmpIn').click();
   if (a === 'save') { download(new Blob([JSON.stringify(P, null, 2)], { type: 'application/json' }), fname('.kalki.json')); toast('Project saved'); }
 });
@@ -1500,6 +1502,24 @@ $('#scriptIn').onchange = e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return; if (f.size > 5e5) { toast('That script is too large (500 KB at most)'); return; }
   const rd = new FileReader(); rd.onload = () => { const r = importScript(String(rd.result)); toast(!r.ok ? 'No scenes or dialogue found in that file' : r.truncated ? `Imported the first ${r.n} shots · Ctrl+Z to undo` : `Imported ${r.n} shots · Ctrl+Z to undo`); }; rd.readAsText(f);
 };
+
+/* ---------- story to scenes ---------- */
+$('#stLang').innerHTML = Object.entries(STORY_LANGS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+const storyOpts = () => ({ story: $('#stText').value, lang: $('#stLang').value, seconds: +$('#stLen').value, names: [AV[castOf().A].first, AV[castOf().B].first] });
+$('#stCopy').onclick = async () => {
+  if (!$('#stText').value.trim()) { $('#stNote').textContent = 'Write your story first'; return; }
+  const txt = storyPrompt(storyOpts());
+  try { await navigator.clipboard.writeText(txt); $('#stNote').textContent = 'Prompt copied. Paste it into your chat assistant.'; }
+  catch { download(new Blob([txt], { type: 'text/plain' }), fname('-story-prompt.txt')); $('#stNote').textContent = 'Prompt saved as a text file.'; }
+};
+$('#stBuild').onclick = () => {
+  const txt = $('#stScript').value;
+  if (!looksLikeScript(txt)) { $('#stNote').textContent = 'That does not look like a screenplay: it needs scene headings such as INT. TEA STALL - MORNING and speaker names in capitals.'; return; }
+  const r = importScript(txt);
+  if (!r.ok) { $('#stNote').textContent = 'No scenes or dialogue found'; return; }
+  $('#mStory').classList.remove('on'); toast(`Built ${r.n} shots from your story · Ctrl+Z to undo`);
+};
+$('#stClose').onclick = () => $('#mStory').classList.remove('on');
 
 /* ---------- assignment ---------- */
 const TASK_KNOWN = { moves: MOVES.map(m => m.id), sizes: Object.keys(SIZES), aspects: ['2.39', '1.778', '0.5625', '1'] };
