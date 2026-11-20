@@ -15,15 +15,18 @@ const esc = s => latin(s).replace(/[\\()]/g, '\\$&');
 const num = n => (Math.round(n * 100) / 100).toString();
 const rgb = c => c.map(v => num(v / 255)).join(' ');
 
+const NONLATIN = /[^\u0000-\u00ff\u2013\u2014\u2018\u2019\u201c\u201d\u2022\u2026\u2248\u00d7]/;
+export const needsRaster = s => NONLATIN.test(String(s));
 export function textWidth(s, size, bold) {
   let w = 0;
+  if (needsRaster(s)) { for (const ch of String(s)) w += ch.codePointAt(0) > 255 && !/[\u2013\u2014\u2018\u2019\u201c\u201d\u2022\u2026\u2248\u00d7]/.test(ch) ? 620 : 556; return w * size / 1000 * (bold ? 1.06 : 1); }
   for (const ch of latin(s)) { const c = ch.charCodeAt(0); w += c >= 32 && c <= 126 ? W[c - 32] : 556; }
   return w * size / 1000 * (bold ? 1.06 : 1);
 }
 
 export function wrap(s, maxW, size, bold) {
   const out = []; let line = '';
-  for (const word of latin(s).split(' ')) {
+  for (const word of (needsRaster(s) ? String(s).replace(/\s+/g, ' ') : latin(s)).split(' ')) {
     const t = line ? line + ' ' + word : word;
     if (line && textWidth(t, size, bold) > maxW) { out.push(line); line = word; } else line = t;
   }
@@ -47,6 +50,7 @@ export class Pdf {
   constructor(w, h) { this.w = w; this.h = h; this.pages = []; this.images = []; this.cur = null; this.info = {}; }
   addPage() { this.cur = { ops: [], imgs: new Set() }; this.pages.push(this.cur); return this.cur; }
   text(x, y, s, { size = 10, bold = false, color = [0, 0, 0] } = {}) {
+    if (this.raster && needsRaster(s)) { const r = this.raster(String(s), size, bold, color); this.image(r.data, r.w, r.h, x - 1, y - r.ascent, r.ptW, r.ptH); return; } // Tamil, Hindi and other scripts are drawn as images
     this.cur.ops.push(`BT /F${bold ? 2 : 1} ${num(size)} Tf ${rgb(color)} rg ${num(x)} ${num(this.h - y)} Td (${esc(s)}) Tj ET`);
   }
   rect(x, y, w, h, { fill, stroke, lw = 0.5 } = {}) {
@@ -56,8 +60,31 @@ export class Pdf {
     op += `${num(x)} ${num(this.h - y - h)} ${num(w)} ${num(h)} re ${fill && stroke ? 'B' : fill ? 'f' : 'S'}`;
     this.cur.ops.push(op);
   }
-  line(x1, y1, x2, y2, { color = [0, 0, 0], lw = 0.5 } = {}) {
-    this.cur.ops.push(`${rgb(color)} RG ${num(lw)} w ${num(x1)} ${num(this.h - y1)} m ${num(x2)} ${num(this.h - y2)} l S`);
+  line(x1, y1, x2, y2, { color = [0, 0, 0], lw = 0.5, dash } = {}) {
+    this.cur.ops.push(`q ${rgb(color)} RG ${num(lw)} w ${dash ? `[${dash.join(' ')}] 0 d ` : ''}${num(x1)} ${num(this.h - y1)} m ${num(x2)} ${num(this.h - y2)} l S Q`);
+  }
+  /* everything drawn until unclip() is cut off at this rectangle */
+  clip(x, y, w, h) { this.cur.ops.push(`q ${num(x)} ${num(this.h - y - h)} ${num(w)} ${num(h)} re W n`); }
+  unclip() { this.cur.ops.push('Q'); }
+  /* closed polygon (or open polyline with open: true); points are [x, y] from the top */
+  poly(pts, { fill, stroke, lw = 0.5, dash, open } = {}) {
+    let op = 'q ';
+    if (fill) op += `${rgb(fill)} rg `;
+    if (stroke) op += `${rgb(stroke)} RG ${num(lw)} w `;
+    if (dash) op += `[${dash.join(' ')}] 0 d `;
+    op += pts.map(([x, y], i) => `${num(x)} ${num(this.h - y)} ${i ? 'l' : 'm'}`).join(' ');
+    op += open ? ' S' : fill && stroke ? ' b' : fill ? ' f' : ' s';
+    this.cur.ops.push(op + ' Q');
+  }
+  circle(cx, cy, r, { fill, stroke, lw = 0.5, dash } = {}) {
+    const k = 0.5523 * r, X = cx, Y = this.h - cy;
+    let op = 'q ';
+    if (fill) op += `${rgb(fill)} rg `;
+    if (stroke) op += `${rgb(stroke)} RG ${num(lw)} w `;
+    if (dash) op += `[${dash.join(' ')}] 0 d `;
+    op += `${num(X + r)} ${num(Y)} m ${num(X + r)} ${num(Y + k)} ${num(X + k)} ${num(Y + r)} ${num(X)} ${num(Y + r)} c ${num(X - k)} ${num(Y + r)} ${num(X - r)} ${num(Y + k)} ${num(X - r)} ${num(Y)} c ${num(X - r)} ${num(Y - k)} ${num(X - k)} ${num(Y - r)} ${num(X)} ${num(Y - r)} c ${num(X + k)} ${num(Y - r)} ${num(X + r)} ${num(Y - k)} ${num(X + r)} ${num(Y)} c`;
+    op += fill && stroke ? ' b' : fill ? ' f' : ' s';
+    this.cur.ops.push(op + ' Q');
   }
   image(jpeg, jw, jh, x, y, w, h) {
     let i = this.images.findIndex(im => im.data === jpeg);
@@ -98,19 +125,25 @@ export class Pdf {
 }
 
 /* ---------- shot-list layout ---------- */
-const INK = [24, 24, 30], MUTED = [110, 112, 125], RULE = [210, 212, 220], ACCENT = [232, 108, 52], HEAD = [244, 245, 248];
+const INK = [24, 24, 30], MUTED = [110, 112, 125], RULE = [210, 212, 220], HEAD = [244, 245, 248], DEFAULT_ACCENT = [232, 108, 52];
+let ACCENT = DEFAULT_ACCENT; // set from doc.accent at the start of every builder
+const lab = (doc, s) => (doc.t ? doc.t(s) : s);
+const theme = doc => { ACCENT = Array.isArray(doc.accent) && doc.accent.length === 3 ? doc.accent : DEFAULT_ACCENT; };
+/* small logo (JPEG) at the top right of the page: doc.logo = { jpeg, jw, jh } */
+const drawLogo = (pdf, doc) => { const l = doc.logo; if (!l || !l.jpeg) return; const mw = 110, mh = 38, k = Math.min(mw / l.jw, mh / l.jh); pdf.image(l.jpeg, l.jw, l.jh, 842 - 36 - l.jw * k, 20, l.jw * k, l.jh * k); };
 
-/* doc: { title, meta: [string], shots: [{ n, name, move, why, start, duration, lens, eq, fstop, size, height, angle, subject, action, amount, easing,
+/* doc: { title, meta: [string], shots: [{ n, name, move, rig, why, start, duration, lens, eq, fstop, size, height, angle, subject, action, amount, easing,
           jpeg?: Uint8Array, jw?, jh? }], aspect, footer } */
 export function buildShotListPdf(doc) {
-  const pdf = new Pdf(842, 595), M = 36, ROW = 82, TOP = 112, BOTTOM = 595 - 44;
-  const cols = [{ k: 'Frame', w: 134 }, { k: 'Shot', w: 200 }, { k: 'Timing', w: 78 }, { k: 'Lens', w: 96 }, { k: 'Framing', w: 138 }, { k: 'Subject', w: 124 }];
+  theme(doc);
+  const pdf = new Pdf(842, 595); pdf.raster = doc.raster; const M = 36, ROW = 82, TOP = 112, BOTTOM = 595 - 44;
+  const cols = [{ k: lab(doc, 'Frame'), w: 134 }, { k: lab(doc, 'Shot'), w: 200 }, { k: lab(doc, 'Timing'), w: 78 }, { k: lab(doc, 'Lens'), w: 96 }, { k: lab(doc, 'Framing'), w: 138 }, { k: lab(doc, 'Subject'), w: 124 }];
   const perPage = Math.max(1, Math.floor((BOTTOM - TOP) / ROW)), pages = Math.max(1, Math.ceil(doc.shots.length / perPage));
   for (let p = 0; p < pages; p++) {
     pdf.addPage();
-    pdf.rect(0, 0, 842, 8, { fill: ACCENT });
+    pdf.rect(0, 0, 842, 8, { fill: ACCENT }); drawLogo(pdf, doc);
     pdf.text(M, 48, doc.title || 'Untitled scene', { size: 20, bold: true, color: INK });
-    pdf.text(M, 66, 'SHOT LIST', { size: 8.5, bold: true, color: ACCENT });
+    pdf.text(M, 66, lab(doc, 'Shot list').toUpperCase(), { size: 8.5, bold: true, color: ACCENT });
     pdf.text(M, 82, doc.meta.join('   |   '), { size: 8.5, color: MUTED });
     let x = M; const hy = TOP - 18;
     pdf.rect(M, hy, 770, 16, { fill: HEAD });
@@ -126,9 +159,9 @@ export function buildShotListPdf(doc) {
       cx += cols[0].w;
       /* shot */
       pdf.text(cx + 6, y + 14, `${s.n}. ${s.name}`, { size: 10.5, bold: true, color: INK });
-      pdf.text(cx + 6, y + 27, s.move, { size: 9, bold: true, color: ACCENT });
+      pdf.text(cx + 6, y + 27, wrapMax(s.rig ? `${s.move}  ·  ${s.rig}` : s.move, cols[1].w - 12, 9, 1)[0] || s.move, { size: 9, bold: true, color: ACCENT });
       wrapMax(s.why, cols[1].w - 12, 7.5, 2).forEach((ln, i) => pdf.text(cx + 6, y + 39 + i * 9, ln, { size: 7.5, color: MUTED }));
-      if (s.notes) wrapMax('Note: ' + s.notes, cols[1].w - 12, 7.5, 2).forEach((ln, i) => pdf.text(cx + 6, y + 61 + i * 9, ln, { size: 7.5, color: INK }));
+      if (s.notes) wrapMax('Note: ' + s.notes, cols[1].w - 12, 7.5, 2).forEach((ln, i) => pdf.text(cx + 6, y + 61 + i * (needsRaster(s.notes) ? 10.5 : 9), ln, { size: 7.5, color: INK }));
       cx += cols[1].w;
       /* timing */
       pdf.text(cx + 6, y + 14, s.start, { size: 10, bold: true, color: INK });
@@ -147,12 +180,12 @@ export function buildShotListPdf(doc) {
       cx += cols[4].w;
       /* subject */
       pdf.text(cx + 6, y + 14, s.subject, { size: 10, bold: true, color: INK });
-      pdf.text(cx + 6, y + 27, s.action, { size: 9, color: INK });
-      pdf.text(cx + 6, y + 39, `Move intensity ${s.amount}%`, { size: 7.5, color: MUTED });
+      let ay = y + 25; for (const ln of (s.actions || [s.action || ''])) for (const w of wrapMax(ln, cols[5].w - 12, 7.5, 2)) { pdf.text(cx + 6, ay, w, { size: 7.5, color: INK }); ay += 8.5; }
+      pdf.text(cx + 6, y + 70, `Move intensity ${s.amount}%`, { size: 7, color: MUTED });
     });
     pdf.line(M, 595 - 34, M + 770, 595 - 34, { color: RULE });
     pdf.text(M, 595 - 20, doc.footer || '', { size: 7.5, color: MUTED });
-    const pg = `Page ${p + 1} / ${pages}`;
+    const pg = `${lab(doc, 'Page')} ${p + 1} / ${pages}`;
     pdf.text(M + 770 - textWidth(pg, 7.5), 595 - 20, pg, { size: 7.5, color: MUTED });
   }
   return pdf.build();
@@ -161,14 +194,15 @@ export function buildShotListPdf(doc) {
 /* ---------- storyboard sheet ---------- */
 /* doc as for buildShotListPdf. The grid adapts to the frame aspect ratio. */
 export function buildStoryboardPdf(doc) {
-  const pdf = new Pdf(842, 595), M = 36, TOP = 100, BOTTOM = 595 - 44, ar = doc.aspect || 1.778;
+  theme(doc);
+  const pdf = new Pdf(842, 595); pdf.raster = doc.raster; const M = 36, TOP = 100, BOTTOM = 595 - 44, ar = doc.aspect || 1.778;
   const cols = ar >= 1.5 ? 3 : ar >= 1 ? 5 : 6, gap = 12, cw = (770 - gap * (cols - 1)) / cols, fh = cw / ar, CAP = 50, cellH = fh + CAP + 10;
   const rows = Math.max(1, Math.floor((BOTTOM - TOP + 10) / cellH)), perPage = cols * rows, pages = Math.max(1, Math.ceil(doc.shots.length / perPage));
   for (let p = 0; p < pages; p++) {
     pdf.addPage();
-    pdf.rect(0, 0, 842, 8, { fill: ACCENT });
+    pdf.rect(0, 0, 842, 8, { fill: ACCENT }); drawLogo(pdf, doc);
     pdf.text(M, 48, doc.title || 'Untitled scene', { size: 20, bold: true, color: INK });
-    pdf.text(M, 66, 'STORYBOARD', { size: 8.5, bold: true, color: ACCENT });
+    pdf.text(M, 66, lab(doc, 'Storyboard').toUpperCase(), { size: 8.5, bold: true, color: ACCENT });
     pdf.text(M, 82, doc.meta.join('   |   '), { size: 8.5, color: MUTED });
     doc.shots.slice(p * perPage, (p + 1) * perPage).forEach((s, k) => {
       const x = M + (k % cols) * (cw + gap), y = TOP + Math.floor(k / cols) * cellH;
@@ -176,15 +210,183 @@ export function buildStoryboardPdf(doc) {
       pdf.rect(x, y, cw, fh, { stroke: RULE });
       const tag = String(s.n); pdf.rect(x, y, textWidth(tag, 9, true) + 12, 15, { fill: ACCENT });
       pdf.text(x + 6, y + 11, tag, { size: 9, bold: true, color: [255, 255, 255] });
-      const fit = (t, size, bold) => { let o = latin(t); while (o.length > 1 && textWidth(o, size, bold) > cw) o = o.slice(0, -2) + '.'; return o; };
+      const fit = (t, size, bold) => { let o = needsRaster(t) ? String(t) : latin(t); while (o.length > 1 && textWidth(o, size, bold) > cw) o = o.slice(0, -2) + '.'; return o; };
       pdf.text(x, y + fh + 13, fit(s.name, 9.5, true), { size: 9.5, bold: true, color: INK });
       pdf.text(x, y + fh + 24, fit(`${s.move}  |  ${s.lens} mm  |  ${s.sizeCode || s.size}  |  ${s.duration} s`, 7.5), { size: 7.5, color: ACCENT });
-      wrapMax(s.notes || s.why, cw, 7.5, 2).forEach((ln, i) => pdf.text(x, y + fh + 35 + i * 9, ln, { size: 7.5, color: s.notes ? INK : MUTED }));
+      wrapMax(s.notes || s.why, cw, 7.5, 2).forEach((ln, i) => pdf.text(x, y + fh + 35 + i * (needsRaster(s.notes || s.why) ? 10.5 : 9), ln, { size: 7.5, color: s.notes ? INK : MUTED }));
     });
     pdf.line(M, 595 - 34, M + 770, 595 - 34, { color: RULE });
     pdf.text(M, 595 - 20, doc.footer || '', { size: 7.5, color: MUTED });
-    const pg = `Page ${p + 1} / ${pages}`;
+    const pg = `${lab(doc, 'Page')} ${p + 1} / ${pages}`;
     pdf.text(M + 770 - textWidth(pg, 7.5), 595 - 20, pg, { size: 7.5, color: MUTED });
   }
+  return pdf.build();
+}
+
+/* ---------- blocking diagram (top-down) ---------- */
+/* doc: { title, meta, footer, aspect, floor: {x0, x1, z0, z1}, wallZ,
+          shots: [{ n, name, move, lens, sizeCode, duration, actions: [textA, textB],
+                    actors: [{ k: 'A'|'B', x0, z0, x1, z1, face0, face1, walk, route?: [[x, z]...] }],
+                    cam: { pts: [[x, z]...], tgx0, tgz0, tgx1, tgz1, hfov0, hfov1 } }] }
+   World x runs left to right, world z runs towards the audience (drawn downwards). */
+export function buildBlockingPdf(doc) {
+  theme(doc);
+  const pdf = new Pdf(842, 595); pdf.raster = doc.raster; const M = 36, TOP = 100, BOTTOM = 595 - 44, GAP = 14, cols = 3, cw = (770 - GAP * (cols - 1)) / cols, MAPH = 168, CAP = 44, cellH = MAPH + CAP + 8;
+  const rows = Math.max(1, Math.floor((BOTTOM - TOP + 8) / cellH)), perPage = cols * rows, pages = Math.max(1, Math.ceil(doc.shots.length / perPage));
+  /* one shared world window so every cell uses the same scale: zoomed to the actors and the camera start points
+     (at least 10 m wide); the rest of the floor and long camera paths are clipped at the cell edge */
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  const grow = (x, z) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); };
+  for (const s of doc.shots) { grow(s.cam.pts[0][0], s.cam.pts[0][1]); s.actors.forEach(a => { grow(a.x0, a.z0); grow(a.x1, a.z1); (a.route || []).forEach(q => grow(q[0], q[1])); }); }
+  x0 -= 1.4; x1 += 1.4; z0 -= 1.4; z1 += 1.4;
+  const minW = 10, minH = minW * MAPH / cw;
+  if (x1 - x0 < minW) { const m = (x0 + x1) / 2; x0 = m - minW / 2; x1 = m + minW / 2; }
+  if (z1 - z0 < minH) { const m = (z0 + z1) / 2; z0 = m - minH / 2; z1 = m + minH / 2; }
+  const sc = Math.min(cw / (x1 - x0), MAPH / (z1 - z0)), offx = (cw - (x1 - x0) * sc) / 2, offy = (MAPH - (z1 - z0) * sc) / 2;
+  const COLOR = { A: ACCENT, B: [42, 141, 132] };
+  for (let p = 0; p < pages; p++) {
+    pdf.addPage();
+    pdf.rect(0, 0, 842, 8, { fill: ACCENT }); drawLogo(pdf, doc);
+    pdf.text(M, 48, doc.title || 'Untitled scene', { size: 20, bold: true, color: INK });
+    pdf.text(M, 66, `${lab(doc, 'Blocking diagram').toUpperCase()}  (${lab(doc, 'view from above, audience at the bottom')})`, { size: 8.5, bold: true, color: ACCENT });
+    pdf.text(M, 82, doc.meta.join('   |   '), { size: 8.5, color: MUTED });
+    doc.shots.slice(p * perPage, (p + 1) * perPage).forEach((s, k) => {
+      const cx = M + (k % cols) * (cw + GAP), cy = TOP + Math.floor(k / cols) * cellH;
+      const X = x => cx + offx + (x - x0) * sc, Y = z => cy + offy + (z - z0) * sc;
+      /* floor and grid */
+      pdf.rect(cx, cy, cw, MAPH, { fill: [250, 248, 244] });
+      pdf.clip(cx, cy, cw, MAPH);
+      pdf.rect(X(doc.floor.x0), Y(doc.floor.z0), (doc.floor.x1 - doc.floor.x0) * sc, (doc.floor.z1 - doc.floor.z0) * sc, { fill: [240, 232, 220], stroke: [205, 195, 180] });
+      for (let gx = Math.ceil(doc.floor.x0 / 2) * 2; gx <= doc.floor.x1; gx += 2) pdf.line(X(gx), Y(doc.floor.z0), X(gx), Y(doc.floor.z1), { color: [226, 216, 202], lw: .4 });
+      for (let gz = Math.ceil(doc.floor.z0 / 2) * 2; gz <= doc.floor.z1; gz += 2) pdf.line(X(doc.floor.x0), Y(gz), X(doc.floor.x1), Y(gz), { color: [226, 216, 202], lw: .4 });
+      pdf.line(X(doc.floor.x0), Y(doc.wallZ), X(doc.floor.x1), Y(doc.wallZ), { color: [120, 100, 80], lw: 2 });
+      pdf.text(X(doc.floor.x0) + 3, Y(doc.wallZ) - 3, 'back wall', { size: 6, color: [150, 130, 110] });
+      const c = s.cam;
+      /* camera view cones: start filled, end outlined */
+      const cone = (px, pz, tx, tz, hfov, o) => {
+        const dir = Math.atan2(tx - px, tz - pz), len = Math.max(1.5, Math.min(7, Math.hypot(tx - px, tz - pz) * 1.35)), h = hfov * Math.PI / 360;
+        const pt = a => [X(px + Math.sin(dir + a) * len), Y(pz + Math.cos(dir + a) * len)];
+        pdf.poly([[X(px), Y(pz)], pt(-h), pt(h)], o);
+      };
+      cone(c.pts[0][0], c.pts[0][1], c.tgx0, c.tgz0, c.hfov0, { fill: [255, 226, 205], stroke: [235, 150, 100], lw: .6 });
+      const L = c.pts.length - 1;
+      if (Math.hypot(c.pts[L][0] - c.pts[0][0], c.pts[L][1] - c.pts[0][1]) > .05 || Math.abs(c.hfov1 - c.hfov0) > .5) cone(c.pts[L][0], c.pts[L][1], c.tgx1, c.tgz1, c.hfov1, { stroke: [235, 150, 100], lw: .6, dash: [3, 2] });
+      /* camera path */
+      if (L > 0) { pdf.poly(c.pts.map(q => [X(q[0]), Y(q[1])]), { stroke: INK, lw: 1, open: true }); const a = c.pts[Math.max(0, L - 3)], b = c.pts[L]; const ang = Math.atan2(X(b[0]) - X(a[0]), Y(b[1]) - Y(a[1])); pdf.poly([[X(b[0]) + Math.sin(ang) * 5, Y(b[1]) + Math.cos(ang) * 5], [X(b[0]) + Math.sin(ang + 2.5) * 4, Y(b[1]) + Math.cos(ang + 2.5) * 4], [X(b[0]) + Math.sin(ang - 2.5) * 4, Y(b[1]) + Math.cos(ang - 2.5) * 4]], { fill: INK }); }
+      /* camera body at the start */
+      const cp = c.pts[0], cd = Math.atan2(c.tgx0 - cp[0], c.tgz0 - cp[1]), q = (fwd, side) => [X(cp[0]) + Math.sin(cd) * fwd + Math.cos(cd) * side, Y(cp[1]) + Math.cos(cd) * fwd - Math.sin(cd) * side];
+      pdf.poly([q(-5, -4), q(-5, 4), q(3, 4), q(3, -4)], { fill: INK });
+      pdf.poly([q(3, -3), q(3, 3), q(8, 6), q(8, -6)], { fill: INK });
+      /* actors */
+      for (const a of s.actors) {
+        const col = COLOR[a.k], r = .32 * sc;
+        if (a.walk) {
+          pdf.circle(X(a.x0), Y(a.z0), r, { stroke: col, lw: 1, dash: [2, 2] });
+          if (a.route) for (let i = 1; i < a.route.length; i++) pdf.line(X(a.route[i - 1][0]), Y(a.route[i - 1][1]), X(a.route[i][0]), Y(a.route[i][1]), { color: col, lw: 1.2, dash: [4, 3] });
+          else pdf.line(X(a.x0), Y(a.z0), X(a.x1), Y(a.z1), { color: col, lw: 1.2, dash: [4, 3] });
+        }
+        const ex = a.walk ? a.x1 : a.x0, ez = a.walk ? a.z1 : a.z0, f = a.walk ? a.face1 : a.face0;
+        pdf.circle(X(ex), Y(ez), r, { fill: col, stroke: [255, 255, 255], lw: .8 });
+        const tip = [X(ex) + Math.sin(f) * (r + 5), Y(ez) + Math.cos(f) * (r + 5)], bl = [X(ex) + Math.sin(f + 1.1) * r * .95, Y(ez) + Math.cos(f + 1.1) * r * .95], br = [X(ex) + Math.sin(f - 1.1) * r * .95, Y(ez) + Math.cos(f - 1.1) * r * .95];
+        pdf.poly([tip, bl, br], { fill: col });
+        pdf.text(X(ex) - 2.2, Y(ez) + 2.3, a.k === 'A' ? 'M' : 'A', { size: 6.5, bold: true, color: [255, 255, 255] });
+      }
+      pdf.unclip();
+      pdf.rect(cx, cy, cw, MAPH, { stroke: RULE });
+      /* caption */
+      const tag = String(s.n); pdf.rect(cx, cy, textWidth(tag, 9, true) + 12, 15, { fill: ACCENT });
+      pdf.text(cx + 6, cy + 11, tag, { size: 9, bold: true, color: [255, 255, 255] });
+      const fit = (t, size, bold) => { let o = needsRaster(t) ? String(t) : latin(t); while (o.length > 1 && textWidth(o, size, bold) > cw) o = o.slice(0, -2) + '.'; return o; };
+      pdf.text(cx, cy + MAPH + 13, fit(s.name, 9.5, true), { size: 9.5, bold: true, color: INK });
+      pdf.text(cx, cy + MAPH + 24, fit(`${s.move}  |  ${s.lens} mm  |  ${s.sizeCode}  |  ${s.duration} s`, 7.5), { size: 7.5, color: ACCENT });
+      pdf.text(cx, cy + MAPH + 34, fit(s.actions.join('   '), 7.5), { size: 7.5, color: MUTED });
+    });
+    /* legend */
+    const lg = 595 - 52; pdf.rect(M, lg - 7, 9, 9, { fill: ACCENT }); pdf.text(M + 13, lg, 'Meera', { size: 7.5, color: MUTED });
+    pdf.rect(M + 55, lg - 7, 9, 9, { fill: [42, 141, 132] }); pdf.text(M + 68, lg, 'Arjun', { size: 7.5, color: MUTED });
+    pdf.rect(M + 108, lg - 7, 9, 9, { fill: INK }); pdf.text(M + 121, lg, 'Camera (start)', { size: 7.5, color: MUTED });
+    pdf.line(M + 190, lg - 2.5, M + 210, lg - 2.5, { color: INK, lw: 1 }); pdf.text(M + 214, lg, 'Camera path', { size: 7.5, color: MUTED });
+    pdf.line(M + 275, lg - 2.5, M + 295, lg - 2.5, { color: ACCENT, lw: 1.2, dash: [4, 3] }); pdf.text(M + 299, lg, 'Actor movement', { size: 7.5, color: MUTED });
+    pdf.line(M, 595 - 34, M + 770, 595 - 34, { color: RULE });
+    pdf.text(M, 595 - 20, doc.footer || '', { size: 7.5, color: MUTED });
+    const pg = `${lab(doc, 'Page')} ${p + 1} / ${pages}`;
+    pdf.text(M + 770 - textWidth(pg, 7.5), 595 - 20, pg, { size: 7.5, color: MUTED });
+  }
+  return pdf.build();
+}
+
+/* ---------- reference-video analysis report ---------- */
+/* doc: { title, subtitle, cards: [[label, value]], shots: [{ n, at, len, tech, intensity, easing, conf (0-100), jpeg?, jw?, jh? }],
+          techniques: [{ name, shots, why }], tips: [{ rule, text }], tipsNote, note, footer, raster } */
+export function buildAnalysisPdf(doc) {
+  theme(doc);
+  const pdf = new Pdf(842, 595); pdf.raster = doc.raster; const M = 36, CW = 770, TOP = 108, BOTTOM = 595 - 44;
+  let y = TOP;
+  const head = () => {
+    pdf.addPage(); pdf.rect(0, 0, 842, 8, { fill: ACCENT }); drawLogo(pdf, doc);
+    pdf.text(M, 48, doc.title || 'Camera analysis', { size: 20, bold: true, color: INK });
+    pdf.text(M, 66, lab(doc, 'Reference video analysis').toUpperCase(), { size: 8.5, bold: true, color: ACCENT });
+    if (doc.subtitle) pdf.text(M, 82, wrapMax(doc.subtitle, CW, 8.5, 1)[0], { size: 8.5, color: MUTED });
+    y = TOP;
+  };
+  const room = h => { if (y + h > BOTTOM) head(); };
+  const section = t => { room(40); pdf.text(M, y + 10, t, { size: 8.5, bold: true, color: ACCENT }); y += 20; };
+  head();
+  const cards = doc.cards || [], cw = CW / Math.max(1, cards.length);
+  cards.forEach(([k, v], i) => { const x = M + i * cw; pdf.rect(x, y, cw - 8, 40, { fill: HEAD, stroke: RULE }); pdf.text(x + 8, y + 14, String(k).toUpperCase(), { size: 6.5, bold: true, color: MUTED }); pdf.text(x + 8, y + 32, wrapMax(String(v), cw - 22, 12, 1, true)[0], { size: 12, bold: true, color: INK }); });
+  y += 56;
+  const secs = (doc.shots || []).map(s => s.secs || 0);
+  if (secs.length && Math.max(...secs) > 0) {
+    section('PACING (SHOT LENGTH IN SECONDS)'); const mx = Math.max(...secs), bw = Math.min(40, (CW - 8) / secs.length), base = y + 46;
+    secs.forEach((v, i) => { const h = Math.max(3, v / mx * 40), x = M + i * (bw + 2); pdf.rect(x, base - h, bw, h, { fill: doc.avg && v < doc.avg ? [61, 160, 150] : ACCENT }); if (secs.length <= 24) pdf.text(x, base - h - 3, v.toFixed(1), { size: 6, color: MUTED }); });
+    if (doc.avg) { const ay = base - doc.avg / mx * 40; pdf.line(M, ay, M + Math.min(CW, secs.length * (bw + 2)), ay, { color: MUTED }); pdf.text(M + Math.min(CW, secs.length * (bw + 2)) + 6, ay + 2, `average ${doc.avg.toFixed(1)} s`, { size: 7, color: MUTED }); }
+    y = base + 16;
+  }
+  section('SHOTS FOUND');
+  const cols = [{ k: '#', w: 28 }, { k: 'Frame', w: 84 }, { k: 'At', w: 60 }, { k: 'Length', w: 60 }, { k: 'Camera technique', w: 200 }, { k: 'Shot size (set by you)', w: 90 }, { k: 'Intensity', w: 66 }, { k: 'Easing', w: 66 }, { k: 'Confidence', w: 116 }];
+  const colHead = () => { let x = M; pdf.rect(M, y, CW, 16, { fill: HEAD }); for (const c of cols) { pdf.text(x + 6, y + 11, c.k.toUpperCase(), { size: 7, bold: true, color: MUTED }); x += c.w; } y += 18; };
+  colHead();
+  const ROW = 44;
+  for (const s of doc.shots || []) {
+    if (y + ROW > BOTTOM) { head(); colHead(); }
+    let x = M; pdf.line(M, y + ROW - 2, M + CW, y + ROW - 2, { color: RULE });
+    pdf.text(x + 6, y + 16, String(s.n), { size: 10, bold: true, color: INK }); x += cols[0].w;
+    const fw = 72, fh = 40.5;
+    if (s.jpeg) pdf.image(s.jpeg, s.jw, s.jh, x + 6, y + 1, fw, fh); else pdf.rect(x + 6, y + 1, fw, fh, { fill: HEAD, stroke: RULE });
+    x += cols[1].w;
+    pdf.text(x + 6, y + 16, s.at, { size: 9, color: INK }); x += cols[2].w;
+    pdf.text(x + 6, y + 16, s.len, { size: 9, color: INK }); x += cols[3].w;
+    wrapMax(s.tech, cols[4].w - 12, 9, 2, true).forEach((ln, i) => pdf.text(x + 6, y + 16 + i * 11, ln, { size: 9, bold: true, color: ACCENT })); x += cols[4].w;
+    pdf.text(x + 6, y + 16, wrapMax(s.size || '-', cols[5].w - 10, 8.5, 1)[0], { size: 8.5, color: INK }); x += cols[5].w;
+    pdf.text(x + 6, y + 16, s.intensity, { size: 9, color: INK }); x += cols[6].w;
+    pdf.text(x + 6, y + 16, s.easing, { size: 9, color: INK }); x += cols[7].w;
+    pdf.rect(x + 6, y + 9, 66, 6, { fill: HEAD, stroke: RULE }); pdf.rect(x + 6, y + 9, 66 * Math.max(0, Math.min(100, s.conf)) / 100, 6, { fill: ACCENT });
+    pdf.text(x + 78, y + 16, `${s.conf}%`, { size: 8, color: MUTED });
+    y += ROW;
+  }
+  y += 8;
+  if ((doc.techniques || []).length) {
+    section('HOW THE CAMERA IS USED');
+    for (const t of doc.techniques) {
+      const lines = wrapMax(t.why, CW, 8, 3); room(18 + lines.length * 10);
+      pdf.text(M, y + 10, t.name, { size: 10, bold: true, color: INK }); pdf.text(M + textWidth(t.name, 10, true) + 8, y + 10, t.shots, { size: 8, color: MUTED });
+      lines.forEach((ln, i) => pdf.text(M, y + 22 + i * 10, ln, { size: 8, color: INK })); y += 26 + lines.length * 10;
+    }
+  }
+  if ((doc.tips || []).length || doc.tipsNote) {
+    y += 4; section('SUGGESTED CHANGES TO YOUR SCENE');
+    if (doc.tipsNote) { room(14); pdf.text(M, y + 8, doc.tipsNote, { size: 8, color: MUTED }); y += 16; }
+    (doc.tips || []).forEach((t, i) => {
+      const lines = wrapMax(t.text, CW - 14, 8, 3); room(16 + lines.length * 10);
+      pdf.text(M, y + 10, `${i + 1}. ${t.rule}`, { size: 9.5, bold: true, color: INK });
+      lines.forEach((ln, k) => pdf.text(M + 14, y + 22 + k * 10, ln, { size: 8, color: INK })); y += 26 + lines.length * 10;
+    });
+  }
+  if (doc.note) { y += 6; const lines = wrapMax(doc.note, CW, 7.5, 3); room(lines.length * 9 + 6); lines.forEach((ln, i) => pdf.text(M, y + 8 + i * 9, ln, { size: 7.5, color: MUTED })); }
+  pdf.pages.forEach((pg, i) => {
+    pdf.cur = pg; pdf.line(M, 595 - 34, M + CW, 595 - 34, { color: RULE });
+    pdf.text(M, 595 - 20, doc.footer || '', { size: 7.5, color: MUTED });
+    const label = `${lab(doc, 'Page')} ${i + 1} / ${pdf.pages.length}`; pdf.text(M + CW - textWidth(label, 7.5), 595 - 20, label, { size: 7.5, color: MUTED });
+  });
   return pdf.build();
 }
